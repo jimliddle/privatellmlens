@@ -1,5 +1,5 @@
 # PrivateLLMLens
-This provide A Zero-Server Web Interface for use with Ollama local LLM\s
+This provide A Zero-Server Web Interface for use with Ollama local LLM's. Please star the repository if you like it.
 
 So what is a zero-server web interface ? It is just a HTML file that you can double-click to launch (and then bookmark for subsequent use). It's served as a file through the web browser rather than through http/https.
 
