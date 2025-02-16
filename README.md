@@ -6,7 +6,7 @@ So what is a zero-server web interface ? It is just a HTML file that you can dou
 ### Configuration
 There is not a lot to configure but you do need to setup the Ollama Origin flag. The Ollama Origins setting is used to whitelist which web origins (domains, protocols, ports) are permitted to access the Ollama server's API. This prevents unauthorized websites from making requests and helps mitigate cross-site request forgery (CSRF) vulnerabilities. In essence, it ensures that only trusted sources (like our local  environment) can interact with your Ollama instance.
 
-### #Mac
+#### Mac
 On Mac you should enter the following for the command prompt:
 launchctl setenv OLLAMA_ORIGINS "*"
 After you have done this restart Ollama and verify it is available (http://localhost:11434) and then load the web page
