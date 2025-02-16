@@ -15,6 +15,10 @@ After you have done this restart Ollama and verify it is available (http://local
 The tell tale that all is well is that models are loaded in the model configuration in the bottom right.
 If you want the environment variable to persist across system restarts, you can use a Mac LaunchAgent
 
+#### Windows
+On Windows open search and type 'env' and you should see 'edit the system environment variables appear. Click this and the 'System Properties; window will appear. Click the 'Environment Variables' button. Create a new User variable called OLLAMA_ORIGINS with a value of *. 
+The cleanest way for this to stick is to reboot the machine. This will now stick between subsequent reboots.
+
 ### Overview
 
 This started out as something that would let me test the different models and response times but at some point I realized it would be pretty neat to be able to use this as an easy way to interact with Ollama without ever having to fire up the command prompt. 
