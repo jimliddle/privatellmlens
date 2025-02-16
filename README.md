@@ -3,6 +3,18 @@ This provide A Zero-Server Web Interface for use with Ollama local LLM's. Please
 
 So what is a zero-server web interface ? It is just a HTML file that you can double-click to launch (and then bookmark for subsequent use). It's served as a file through the web browser rather than through http/https.
 
+###Configuration
+There is not a lot to configure but you do need to setup the Ollama Origin flag. The Ollama Origins setting is used to whitelist which web origins (domains, protocols, ports) are permitted to access the Ollama server's API. This prevents unauthorized websites from making requests and helps mitigate cross-site request forgery (CSRF) vulnerabilities. In essence, it ensures that only trusted sources (like our local  environment) can interact with your Ollama instance.
+
+####Mac
+On Mac you should enter the following for the command prompt:
+launchctl setenv OLLAMA_ORIGINS "*"
+After you have done this restart Ollama and verify it is available (http://localhost:11434) and then load the web page
+The tell tale that all is well is that models are loaded in the model configuration in the bottom right.
+If you want the environment variable to persist across system restarts, you can use a Mac LaunchAgent
+
+###Overview
+
 This started out as something that would let me test the different models and response times but at some point I realized it would be pretty neat to be able to use this as an easy way to interact with Ollama without ever having to fire up the command prompt. 
 
 Below you can see the interface and you can see that every time we interact with a model the model name and response time are noted:
