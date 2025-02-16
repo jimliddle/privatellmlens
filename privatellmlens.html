@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PrivateLLMLens</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <style>
+    /* Global and layout styles */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-size: 14px; }
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      padding: 10px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #headerSection {
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    #mainContainer {
+      flex-grow: 1;
+      display: flex;
+      min-height: 0;
+    }
+    /* Sidebar styles */
+    #sidebar {
+      width: 220px;
+      background: #e9e9e9;
+      border-right: 1px solid #ccc;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    #threadsHeader {
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #threadsList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #threadsList li {
+      padding: 5px;
+      cursor: pointer;
+      border-bottom: 1px solid #ccc;
+      position: relative;
+    }
+    #threadsList li.active {
+      background: #ddd;
+      font-weight: bold;
+    }
+    #threadsList li button {
+      position: absolute;
+      right: 5px;
+      top: 5px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    /* Chat container styles */
+    #chatContainer {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #messageHistory {
+      flex-grow: 1;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+    .message {
+      padding: 8px;
+      border-radius: 4px;
+      word-wrap: break-word;
+      margin-bottom: 8px;
+    }
+    .user-message { background: #e3f2fd; margin-left: 20px; }
+    .assistant-message { background: #f5f5f5; margin-right: 20px; }
+    #inputSection { flex-shrink: 0; margin-top: auto; }
+    #inputRow {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 5px;
+      align-items: center;
+    }
+    #userInput {
+      flex-grow: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      height: 40px;
+    }
+    #sendButton {
+      padding: 8px 16px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 70px;
+      height: 40px;
+    }
+    button:disabled { background: #ccc; }
+    #attachmentPreview {
+      margin-bottom: 5px;
+    }
+    #attachmentPreview div {
+      border: 1px solid #ccc;
+      padding: 5px;
+      margin-bottom: 5px;
+    }
+    #actionRow {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px;
+      font-size: 12px;
+    }
+    .action-link { color: #2196f3; text-decoration: underline; cursor: pointer; margin-right: 10px; }
+    .action-link.delete { color: #f44336; }
+    #modelSelection {
+      font-size: 14px;
+      padding: 5px;
+    }
+    .loading #chatContainer { opacity: 0.6; }
+    /* Spinner for "Still Thinking" feedback */
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #2196f3;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    /* Response time styling */
+    .response-time {
+      font-size: 12px;
+      color: #555;
+      margin-top: 4px;
+    }
+    /* Follow-on checkbox styling */
+    #followOnContainer {
+      margin-top: 5px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="headerSection">PrivateLLMLens</div>
+  <div id="mainContainer">
+    <div id="sidebar">
+      <div id="threadsHeader">
+        Threads
+        <button id="newThreadBtn" title="Create New Thread">+</button>
+      </div>
+      <ul id="threadsList"></ul>
+    </div>
+    <div id="chatContainer">
+      <div id="messageHistory"></div>
+      <div id="inputSection">
+        <div id="inputRow">
+          <input type="text" id="userInput" placeholder="Type your message...">
+          <input type="file" id="fileInput">
+          <button id="sendButton">Send</button>
+        </div>
+        <div id="followOnContainer">
+          <label><input type="checkbox" id="followOnCheckbox"> Follow on question</label>
+        </div>
+        <div id="attachmentPreview"></div>
+        <div id="actionRow">
+          <a class="action-link delete" onclick="clearAllMessages()">Clear all messages</a>
+          <a class="action-link" onclick="resetDatabase()">Reset IndexedDB</a>
+          <select id="modelSelection"><option>Loading models...</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Endpoint and global variables
+    const apiEndpoint = "http://localhost:11434/api/chat";
+    let db;
+    let currentThreadId = null; // active thread id
+    let pendingAttachment = null;
+    let lastQA = null; // holds last Q&A for follow-on questions
+
+    // Open (or create) IndexedDB (version 2: threads and messages with threadId index)
+    async function openDatabase(retryCount = 3, delay = 1000) {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("OllamaChat", 2);
+        request.onerror = (e) => {
+          console.error("Database failed to open:", e);
+          if (retryCount > 0) {
+            setTimeout(() => {
+              openDatabase(retryCount - 1, delay).then(resolve).catch(reject);
+            }, delay);
+          } else {
+            reject("Database failed to open after multiple attempts.");
+          }
+        };
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (e) => {
+          let db = e.target.result;
+          if (!db.objectStoreNames.contains("messages")) {
+            let messagesStore = db.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
+            messagesStore.createIndex("threadId", "threadId", { unique: false });
+          }
+          if (!db.objectStoreNames.contains("threads")) {
+            let threadsStore = db.createObjectStore("threads", { keyPath: "id", autoIncrement: true });
+            threadsStore.createIndex("name", "name", { unique: false });
+          }
+        };
+      });
+    }
+
+    // Save a message. For images, store full data URL as imageData; for assistant, include responseTime.
+    function saveMessage(messageObj) {
+      messageObj.threadId = currentThreadId;
+      const transaction = db.transaction(["messages"], "readwrite");
+      const store = transaction.objectStore("messages");
+      store.add(messageObj);
+    }
+
+    // Load messages for the current thread and render them
+    function loadMessages() {
+      const messageHistory = document.getElementById("messageHistory");
+      messageHistory.innerHTML = "";
+      try {
+        const transaction = db.transaction(["messages"], "readonly");
+        const store = transaction.objectStore("messages");
+        const index = store.index("threadId");
+        const range = IDBKeyRange.only(currentThreadId);
+        index.openCursor(range).onsuccess = function(e) {
+          const cursor = e.target.result;
+          if (cursor) {
+            const { role, text, type, fileName, imageData, responseTime } = cursor.value;
+            const messageElem = document.createElement("div");
+            messageElem.className = "message " + (role === "user" ? "user-message" : "assistant-message");
+            if (type === 'image' && imageData) {
+              const fileLabel = document.createElement("div");
+              fileLabel.textContent = fileName ? `Attached Image: ${fileName}` : "Attached Image";
+              messageElem.appendChild(fileLabel);
+              const imgElem = document.createElement("img");
+              imgElem.src = imageData;
+              imgElem.style.maxWidth = "150px";
+              imgElem.style.maxHeight = "150px";
+              messageElem.appendChild(imgElem);
+            } else {
+              messageElem.textContent = text;
+            }
+            if (responseTime) {
+              const timeElem = document.createElement("div");
+              timeElem.className = "response-time";
+              timeElem.textContent = responseTime;
+              messageElem.appendChild(timeElem);
+            }
+            messageHistory.appendChild(messageElem);
+            cursor.continue();
+          }
+        };
+      } catch(err) {
+        console.error("Error loading messages:", err);
+        messageHistory.innerHTML = "<p>Error loading messages. Please reset the database.</p>";
+      }
+    }
+
+    // Clear messages for the current thread
+    async function clearAllMessages() {
+      if (!confirm("Clear all messages for this thread?")) return;
+      const transaction = db.transaction(["messages"], "readwrite");
+      const store = transaction.objectStore("messages");
+      const index = store.index("threadId");
+      const range = IDBKeyRange.only(currentThreadId);
+      index.openCursor(range).onsuccess = function(e) {
+        const cursor = e.target.result;
+        if (cursor) {
+          store.delete(cursor.primaryKey);
+          cursor.continue();
+        } else {
+          document.getElementById("messageHistory").innerHTML = "";
+        }
+      };
+    }
+
+    // Reset IndexedDB by deleting the database and reloading the page
+    function resetDatabase() {
+      if (!confirm("Are you sure you want to reset the database? This will clear all threads and messages.")) return;
+      const req = indexedDB.deleteDatabase("OllamaChat");
+      req.onsuccess = function() {
+        alert("Database reset successfully. Reloading page.");
+        location.reload();
+      };
+      req.onerror = function(e) {
+        alert("Error resetting database: " + e.target.error);
+      };
+    }
+
+    // Display a preview of the pending attachment
+    function showPendingAttachmentPreview(attachment) {
+      const attachmentPreview = document.getElementById("attachmentPreview");
+      attachmentPreview.innerHTML = "";
+      const previewElem = document.createElement("div");
+      if (attachment.type === 'txt') {
+        previewElem.textContent = "Attached Text File: " + attachment.fileName;
+      } else if (attachment.type === 'image') {
+        const label = document.createElement("div");
+        label.textContent = "Attached Image: " + attachment.fileName;
+        previewElem.appendChild(label);
+        const imgElem = document.createElement("img");
+        imgElem.src = attachment.content;
+        imgElem.style.maxWidth = "150px";
+        imgElem.style.maxHeight = "150px";
+        previewElem.appendChild(imgElem);
+      } else if (attachment.type === 'pdf') {
+        previewElem.textContent = "Attached PDF: " + attachment.fileName;
+      }
+      const removeButton = document.createElement("button");
+      removeButton.textContent = "Remove Attachment";
+      removeButton.addEventListener("click", clearPendingAttachment);
+      previewElem.appendChild(removeButton);
+      attachmentPreview.appendChild(previewElem);
+    }
+
+    function clearPendingAttachment() {
+      pendingAttachment = null;
+      document.getElementById("attachmentPreview").innerHTML = "";
+    }
+
+    /**
+     * Send a message to the LLM.
+     * For image attachments, the payload uses the "images" key.
+     * For text (or text/PDF attachments merged), the content is merged into the prompt.
+     * A "Still thinking..." timer is displayed; response time is measured, stored, and shown.
+     * If "Follow on question" is checked, the previous Q&A is prepended.
+     */
+    async function sendMessage() {
+      const userInput = document.getElementById("userInput");
+      let promptText = userInput.value.trim();
+      if (document.getElementById("followOnCheckbox").checked && lastQA) {
+        promptText = `Previous conversation:\nUser: ${lastQA.question}\nAssistant: ${lastQA.answer}\n\n` + promptText;
+      }
+      if (!promptText && !pendingAttachment) return;
+      const selectedModel = document.getElementById("modelSelection").value;
+      const messageHistory = document.getElementById("messageHistory");
+
+      // Build and display user's message
+      const userMessage = document.createElement("div");
+      userMessage.className = "message user-message";
+      if (promptText) {
+        const promptDiv = document.createElement("div");
+        promptDiv.textContent = promptText;
+        userMessage.appendChild(promptDiv);
+      }
+      if (pendingAttachment) {
+        const attachDiv = document.createElement("div");
+        if (pendingAttachment.type === 'txt') {
+          attachDiv.textContent = "Attached Text File: " + pendingAttachment.fileName;
+        } else if (pendingAttachment.type === 'image') {
+          const fileLabel = document.createElement("div");
+          fileLabel.textContent = "Attached Image: " + pendingAttachment.fileName;
+          attachDiv.appendChild(fileLabel);
+          const imgElem = document.createElement("img");
+          imgElem.src = pendingAttachment.content;
+          imgElem.style.maxWidth = "150px";
+          imgElem.style.maxHeight = "150px";
+          attachDiv.appendChild(imgElem);
+        } else if (pendingAttachment.type === 'pdf') {
+          attachDiv.textContent = "Attached PDF: " + pendingAttachment.fileName;
+        }
+        userMessage.appendChild(attachDiv);
+      }
+      messageHistory.appendChild(userMessage);
+      
+      // Save user message; for images, store full data URL in imageData
+      if (pendingAttachment && pendingAttachment.type === 'image') {
+        saveMessage({
+          role: "user",
+          text: "Attached Image: " + pendingAttachment.fileName,
+          type: pendingAttachment.type,
+          imageData: pendingAttachment.content,
+          timestamp: Date.now()
+        });
+      } else {
+        saveMessage({
+          role: "user",
+          text: userMessage.textContent,
+          type: pendingAttachment ? pendingAttachment.type : 'text',
+          timestamp: Date.now()
+        });
+      }
+      
+      // Build payload for API call
+      let payload = { model: selectedModel, stream: false, messages: [] };
+      if (pendingAttachment && pendingAttachment.type === 'image') {
+        let base64Data = pendingAttachment.content;
+        if (base64Data.startsWith("data:image/")) {
+          base64Data = base64Data.substring(base64Data.indexOf("base64,") + 7);
+        }
+        let imagePrompt = promptText || "Extract all text from the image and return it as markdown.\nDo not describe the image or add extra text.\nOnly return the text found in the image.";
+        payload.messages.push({
+          role: "user",
+          content: imagePrompt,
+          images: [base64Data]
+        });
+      } else {
+        let combinedPrompt = promptText;
+        if (pendingAttachment && (pendingAttachment.type === 'txt' || pendingAttachment.type === 'pdf')) {
+          combinedPrompt += "\n\n[ATTACHMENT: " + pendingAttachment.fileName + "]\n" 
+                          + pendingAttachment.content + "\n[END ATTACHMENT]";
+        }
+        payload.messages.push({
+          role: "user",
+          content: combinedPrompt
+        });
+      }
+      
+      userInput.value = "";
+      clearPendingAttachment();
+      userInput.disabled = true;
+      userInput.title = "Response is being processed.";
+      document.getElementById("sendButton").disabled = true;
+      
+      // Create a placeholder for the assistant's response and start a timer
+      const placeholder = document.createElement("div");
+      placeholder.className = "message assistant-message";
+      let startTime = Date.now();
+      placeholder.innerHTML = "🤔 Still thinking... <span class='spinner'></span> (0 sec)";
+      messageHistory.appendChild(placeholder);
+      
+      let thinkingInterval = setInterval(() => {
+        let elapsed = Math.floor((Date.now() - startTime) / 1000);
+        placeholder.innerHTML = `🤔 Still thinking... <span class='spinner'></span> (${elapsed} sec)`;
+      }, 1000);
+      
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+        const resJson = await response.json();
+        clearInterval(thinkingInterval);
+        let reply = (resJson.message && resJson.message.content) ? resJson.message.content : "No response received";
+        placeholder.innerHTML = reply;
+        let endTime = Date.now();
+        let responseTimeSec = Math.floor((endTime - startTime) / 1000);
+        let responseTimeText = `Model: ${selectedModel} Response Time: ${responseTimeSec} sec`;
+        let timeElem = document.createElement("div");
+        timeElem.className = "response-time";
+        timeElem.textContent = responseTimeText;
+        placeholder.appendChild(timeElem);
+        // Save assistant message with response time
+        saveMessage({
+          role: "assistant",
+          text: reply,
+          type: "text",
+          responseTime: responseTimeText,
+          timestamp: Date.now()
+        });
+        // Update last Q&A for follow-on questions
+        lastQA = { question: promptText, answer: reply };
+      } catch (err) {
+        clearInterval(thinkingInterval);
+        placeholder.textContent = "Error: " + err.message;
+        console.error("Error during fetch:", err);
+      } finally {
+        userInput.disabled = false;
+        userInput.title = "";
+        document.getElementById("sendButton").disabled = false;
+      }
+    }
+
+    // Handle file input changes
+    document.getElementById("fileInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fileName = file.name;
+      if (file.type === "text/plain") {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const fileText = event.target.result;
+          pendingAttachment = { type: 'txt', fileName: fileName, content: fileText };
+          showPendingAttachmentPreview(pendingAttachment);
+        };
+        reader.readAsText(file);
+      } else if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const imageData = event.target.result;
+          pendingAttachment = { type: 'image', fileName: fileName, content: imageData };
+          showPendingAttachmentPreview(pendingAttachment);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+          const typedarray = new Uint8Array(event.target.result);
+          try {
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            let pdfText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(" ");
+              pdfText += pageText + "\n";
+            }
+            pendingAttachment = { type: 'pdf', fileName: fileName, content: pdfText };
+            showPendingAttachmentPreview(pendingAttachment);
+          } catch (error) {
+            console.error("Error processing PDF:", error);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        alert("Unsupported file type: " + file.type);
+      }
+      e.target.value = "";
+    });
+
+    // Thread management
+
+    // Load threads from the "threads" store and display them in the sidebar
+    function loadThreads() {
+      const threadsList = document.getElementById("threadsList");
+      threadsList.innerHTML = "";
+      const transaction = db.transaction(["threads"], "readonly");
+      const store = transaction.objectStore("threads");
+      store.openCursor().onsuccess = function(e) {
+        const cursor = e.target.result;
+        if (cursor) {
+          const thread = cursor.value;
+          const li = document.createElement("li");
+          li.textContent = thread.name;
+          li.dataset.threadId = thread.id;
+          li.addEventListener("click", () => selectThread(thread.id));
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "🗑";
+          delBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            deleteThread(thread.id);
+          });
+          li.appendChild(delBtn);
+          threadsList.appendChild(li);
+          cursor.continue();
+        } else {
+          updateThreadSelectionUI();
+        }
+      };
+    }
+
+    // Create a new thread
+    function createNewThread() {
+      const threadName = prompt("Enter a name for the new thread:", "New Thread");
+      if (!threadName) return;
+      const transaction = db.transaction(["threads"], "readwrite");
+      const store = transaction.objectStore("threads");
+      const thread = { name: threadName, created: Date.now() };
+      const request = store.add(thread);
+      request.onsuccess = function(e) {
+        currentThreadId = e.target.result;
+        loadThreads();
+        loadMessages();
+      };
+    }
+
+    // Select a thread by ID
+    function selectThread(threadId) {
+      currentThreadId = Number(threadId);
+      loadMessages();
+      updateThreadSelectionUI();
+    }
+
+    // Update sidebar UI to highlight the active thread
+    function updateThreadSelectionUI() {
+      const threadsListItems = document.querySelectorAll("#threadsList li");
+      threadsListItems.forEach(li => {
+        if (Number(li.dataset.threadId) === currentThreadId) {
+          li.classList.add("active");
+        } else {
+          li.classList.remove("active");
+        }
+      });
+    }
+
+    // Delete a thread and all its messages
+    function deleteThread(threadId) {
+      if (!confirm("Delete this thread?")) return;
+      const transaction = db.transaction(["threads", "messages"], "readwrite");
+      const threadsStore = transaction.objectStore("threads");
+      const messagesStore = transaction.objectStore("messages");
+      threadsStore.delete(Number(threadId));
+      const index = messagesStore.index("threadId");
+      const range = IDBKeyRange.only(Number(threadId));
+      index.openCursor(range).onsuccess = function(e) {
+        const cursor = e.target.result;
+        if (cursor) {
+          messagesStore.delete(cursor.primaryKey);
+          cursor.continue();
+        }
+      };
+      transaction.oncomplete = function() {
+        if (currentThreadId === Number(threadId)) {
+          currentThreadId = null;
+          const threadsList = document.getElementById("threadsList");
+          if (threadsList.children.length > 0) {
+            const firstThreadId = threadsList.children[0].dataset.threadId;
+            selectThread(firstThreadId);
+          } else {
+            createNewThread();
+          }
+        } else {
+          loadThreads();
+        }
+      };
+    }
+
+    // New thread button event listener
+    document.getElementById("newThreadBtn").addEventListener("click", createNewThread);
+
+    // Send message on Enter key press in input field
+    document.getElementById("userInput").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Model selection: Save last selected model to local storage
+    document.getElementById("modelSelection").addEventListener("change", function() {
+      localStorage.setItem("defaultModel", this.value);
+    });
+
+    // Fetch available models from the API and set default from local storage if available
+    async function fetchModels() {
+      try {
+        const response = await fetch("http://localhost:11434/api/tags");
+        const data = await response.json();
+        const modelDropdown = document.getElementById("modelSelection");
+        modelDropdown.innerHTML = "";
+        if (data.models && data.models.length > 0) {
+          data.models.forEach(model => {
+            let option = document.createElement("option");
+            option.value = model.name;
+            option.textContent = model.name;
+            modelDropdown.appendChild(option);
+          });
+          const savedModel = localStorage.getItem("defaultModel");
+          if (savedModel) {
+            modelDropdown.value = savedModel;
+          } else {
+            modelDropdown.selectedIndex = 0;
+          }
+        } else {
+          modelDropdown.innerHTML = "<option>No models found</option>";
+        }
+      } catch (error) {
+        console.error("Error fetching models:", error);
+        document.getElementById("modelSelection").innerHTML = "<option>Error loading models</option>";
+      }
+    }
+
+    // On page load: open DB, load threads (or create default thread), load messages, and fetch models
+    document.addEventListener("DOMContentLoaded", async () => {
+      await openDatabase();
+      const transaction = db.transaction(["threads"], "readonly");
+      const store = transaction.objectStore("threads");
+      const countRequest = store.count();
+      countRequest.onsuccess = function() {
+        if (countRequest.result === 0) {
+          const defaultTransaction = db.transaction(["threads"], "readwrite");
+          const defaultStore = defaultTransaction.objectStore("threads");
+          const defaultThread = { name: "Default", created: Date.now() };
+          const addRequest = defaultStore.add(defaultThread);
+          addRequest.onsuccess = function(e) {
+            currentThreadId = e.target.result;
+            loadThreads();
+            loadMessages();
+          };
+        } else {
+          store.openCursor().onsuccess = function(e) {
+            const cursor = e.target.result;
+            if (cursor) {
+              currentThreadId = cursor.value.id;
+              loadThreads();
+              loadMessages();
+              return;
+            }
+          };
+        }
+      };
+      await fetchModels();
+    });
+
+    // Attach sendMessage to the Send button
+    document.getElementById("sendButton").addEventListener("click", sendMessage);
+  </script>
+</body>
+</html>
