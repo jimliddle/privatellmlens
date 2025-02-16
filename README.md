@@ -17,7 +17,9 @@ If you want the environment variable to persist across system restarts, you can 
 
 #### Windows
 On Windows open search and type 'env' and you should see 'edit the system environment variables appear. Click this and the 'System Properties; window will appear. Click the 'Environment Variables' button. 
+
 <code>Create a new User variable called OLLAMA_ORIGINS with a value of * </code> 
+
 The cleanest way for this to stick is to reboot the windows machine. This will now stick between subsequent reboots.
 
 ### Overview
