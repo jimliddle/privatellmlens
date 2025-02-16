@@ -8,7 +8,9 @@ There is not a lot to configure but you do need to setup the Ollama Origin flag.
 
 #### Mac
 On Mac you should enter the following for the command prompt:
-launchctl setenv OLLAMA_ORIGINS "*"
+
+<code> launchctl setenv OLLAMA_ORIGINS "*" </code>
+
 After you have done this restart Ollama and verify it is available (http://localhost:11434) and then load the web page
 The tell tale that all is well is that models are loaded in the model configuration in the bottom right.
 If you want the environment variable to persist across system restarts, you can use a Mac LaunchAgent
