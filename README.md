@@ -55,7 +55,7 @@ The response is a decent summary of the content provided. There is no vector DB 
 
 We can also do the same with the PDF version of the same content:
 
-Here are we are doing something similar but we are dynamically loading pdf.js to extract the content and then append to the prompt the same way as we are doing with the text attachments.
+Here are we are doing something similar but we are dynamically loading pdf.js (used under the terms of its Apache 2.0 license) to extract the content and then append to the prompt the same way as we are doing with the text attachments.
 
 ![image](https://github.com/user-attachments/assets/b2fb4f97-b2ef-40c3-a285-d5014231bd6f)
 
