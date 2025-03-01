@@ -2,12 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>PrivateLLMLens</title>
+
+  <!-- pdf.js for PDF chunking -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- Marked for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- DOMPurify for HTML sanitization -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+
   <style>
-    /* Global and layout styles */
-    * { box-sizing: border-box; margin: 0; padding: 0; font-size: 14px; }
+    /*
+      ================================
+      Default (Light) Theme
+      ================================
+    */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-size: 14px;
+    }
     body {
       font-family: Arial, sans-serif;
       line-height: 1.6;
@@ -18,6 +34,7 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
     #headerSection {
       background: #fff;
@@ -26,15 +43,32 @@
       margin-bottom: 10px;
       padding: 10px;
       text-align: center;
-      font-weight: bold;
       font-size: 16px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    #aiIcon {
+      height: 24px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    #settingsButton {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
     }
     #mainContainer {
       flex-grow: 1;
       display: flex;
       min-height: 0;
     }
-    /* Sidebar styles */
     #sidebar {
       width: 220px;
       background: #e9e9e9;
@@ -72,7 +106,6 @@
       background: transparent;
       cursor: pointer;
     }
-    /* Chat container styles */
     #chatContainer {
       flex-grow: 1;
       display: flex;
@@ -92,10 +125,33 @@
       border-radius: 4px;
       word-wrap: break-word;
       margin-bottom: 8px;
+      position: relative; /* for trash icon */
     }
-    .user-message { background: #e3f2fd; margin-left: 20px; }
-    .assistant-message { background: #f5f5f5; margin-right: 20px; }
-    #inputSection { flex-shrink: 0; margin-top: auto; }
+    .delete-msg-icon {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 12px;
+      color: #888;
+      cursor: pointer;
+      display: none;
+      z-index: 10; /* Added to ensure the trash icon appears above content */
+    }
+    .message:hover .delete-msg-icon {
+      display: block;
+    }
+    .user-message {
+      background: #e3f2fd;
+      margin-left: 20px;
+    }
+    .assistant-message {
+      background: #f5f5f5;
+      margin-right: 20px;
+    }
+    #inputSection {
+      flex-shrink: 0;
+      margin-top: auto;
+    }
     #inputRow {
       display: flex;
       gap: 10px;
@@ -109,6 +165,10 @@
       border-radius: 4px;
       height: 40px;
     }
+    /* File input tooltip added on fileInput element */
+    #fileInput {
+      /* no additional styling required */
+    }
     #sendButton {
       padding: 8px 16px;
       background: #2196f3;
@@ -119,7 +179,9 @@
       min-width: 70px;
       height: 40px;
     }
-    button:disabled { background: #ccc; }
+    button:disabled {
+      background: #ccc;
+    }
     #attachmentPreview {
       margin-bottom: 5px;
     }
@@ -128,20 +190,45 @@
       padding: 5px;
       margin-bottom: 5px;
     }
+    #processingProgress {
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: #333;
+    }
+    #cancelButtonContainer {
+      margin-bottom: 5px;
+      display: none;
+    }
+    #cancelButton {
+      padding: 4px 8px;
+      background: #f44336;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
     #actionRow {
       display: flex;
       justify-content: space-between;
       padding: 5px;
       font-size: 12px;
     }
-    .action-link { color: #2196f3; text-decoration: underline; cursor: pointer; margin-right: 10px; }
-    .action-link.delete { color: #f44336; }
+    .action-link {
+      color: #2196f3;
+      text-decoration: underline;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .action-link.delete {
+      color: #f44336;
+    }
     #modelSelection {
       font-size: 14px;
       padding: 5px;
     }
-    .loading #chatContainer { opacity: 0.6; }
-    /* Spinner for "Still Thinking" feedback */
+    .loading #chatContainer {
+      opacity: 0.6;
+    }
     .spinner {
       border: 3px solid #f3f3f3;
       border-top: 3px solid #2196f3;
@@ -157,21 +244,228 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    /* Response time styling */
     .response-time {
       font-size: 12px;
       color: #555;
       margin-top: 4px;
     }
-    /* Follow-on checkbox styling */
     #followOnContainer {
       margin-top: 5px;
       font-size: 12px;
     }
+    /* Updated followOnContainer: Added "Don't summarize" checkbox */
+    #followOnContainer label {
+      margin-right: 10px;
+    }
+    #settingsPanel {
+      display: none;
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    #settingsPanel h3 {
+      margin-bottom: 10px;
+    }
+    #settingsPanel label {
+      font-size: 14px;
+    }
+    #settingsPanel input {
+      margin-left: 5px;
+      width: 200px;
+    }
+    #settingsPanel button {
+      margin-top: 10px;
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+    .citations {
+      font-size: 12px;
+      color: #333;
+      margin-top: 8px;
+      border-top: 1px solid #ddd;
+      padding-top: 5px;
+    }
+    .citation-link {
+      display: block;
+      color: #2196f3;
+      text-decoration: underline;
+      margin-top: 3px;
+      word-break: break-all;
+    }
+    /* Markdown styling for messages */
+    .message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+      font-weight: bold;
+    }
+    .message p {
+      margin-bottom: 0.8em;
+      line-height: 1.5;
+    }
+    .message ul, .message ol {
+      margin-left: 20px;
+      margin-bottom: 0.8em;
+    }
+    .message li {
+      margin-bottom: 0.3em;
+      list-style-position: inside;
+    }
+    .message pre {
+      background-color: #f4f4f4;
+      border: 1px solid #ddd;
+      padding: 10px;
+      overflow-x: auto;
+      margin-bottom: 0.8em;
+    }
+    .message code {
+      background-color: #f4f4f4;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .message blockquote {
+      margin-left: 10px;
+      padding: 10px;
+      border-left: 2px solid;
+    }
+
+    /*
+      ================================
+      Dark Theme
+      ================================
+    */
+    body.dark-theme {
+      background: #000000;
+      color: #ffffff;
+    }
+   /* Make the settings icon visible in dark theme */
+    body.dark-theme #settingsButton {
+      color: #fff;
+    }
+    body.dark-theme #headerSection {
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+    body.dark-theme #sidebar {
+      background: #1a1a1a;
+      border-right: 1px solid #555;
+    }
+    body.dark-theme #threadsList li {
+      border-bottom: 1px solid #555;
+    }
+    body.dark-theme #threadsList li.active {
+      background: #333;
+    }
+    body.dark-theme #chatContainer {
+      background: #1a1a1a;
+    }
+    body.dark-theme #messageHistory {
+      background: #2a2a2a;
+      color: #ffffff;
+      border: 1px solid #333;
+    }
+    body.dark-theme .user-message {
+      background: #333333;
+    }
+    body.dark-theme .assistant-message {
+      background: #404040;
+    }
+    body.dark-theme #inputSection {
+      color: #ffffff;
+    }
+    body.dark-theme #userInput,
+    body.dark-theme #fileInput {
+      background: #333;
+      color: #ffffff;
+      border: 1px solid #555;
+    }
+    body.dark-theme #processingProgress {
+      color: #ffffff;
+    }
+    body.dark-theme #cancelButtonContainer {
+      color: #ffffff;
+    }
+    body.dark-theme #actionRow {
+      color: #ffffff;
+    }
+    body.dark-theme .action-link {
+      color: #4a9eff;
+    }
+    body.dark-theme #modelSelection {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+    }
+    body.dark-theme .message p,
+    body.dark-theme .message li,
+    body.dark-theme .message blockquote,
+    body.dark-theme .message code {
+      color: #ffffff;
+    }
+    body.dark-theme .response-time {
+      color: #bbb;
+    }
+    body.dark-theme .citations {
+      color: #ccc;
+      border-top: 1px solid #555;
+    }
+    /* fix: code blocks in dark theme */
+    body.dark-theme .message pre,
+    body.dark-theme .message code {
+      background-color: #333;
+      color: #fff;
+    }
+    body.dark-theme .message pre {
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+   body.dark-theme .user-message {
+     background: #333333; /* Existing color, keep it as is (or slightly darker) */
+     margin-left: 20px;    /* Keep existing styles */
+     border: 1px solid #555; /* visible border */
+     border-radius: 4px;     /* Keeps the rounded corners */
+   }
+
+    body.dark-theme .assistant-message {
+     background: #4f4f4f; /* Lighter gray than user-message */
+     margin-right: 20px;   /* Keep existing styles */
+   }
+  /* Dark theme settings panel */
+    body.dark-theme #settingsPanel {
+        background: #333; /* Dark background */
+        color: #fff;       /* White text */
+        border: 1px solid #555; /* Darker border */
+    }
+
+    body.dark-theme #settingsPanel input,
+    body.dark-theme #settingsPanel select,
+    body.dark-theme #settingsPanel button {
+        background-color: #444;
+        color: #fff;
+        border: 1px solid #666;
+    }
+    body.dark-theme #settingsPanel button:hover{
+       background-color:#555;
+    }
+    body.dark-theme #aiIcon {
+    filter: invert(100%); 
+    }
   </style>
 </head>
 <body>
-  <div id="headerSection">PrivateLLMLens</div>
+  <div id="headerSection">
+    <img src="https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/robot.svg" alt="AI Icon" id="aiIcon">
+    <span>PrivateLLMLens</span>
+    <button id="settingsButton" title="Settings">⚙</button>
+  </div>
+
   <div id="mainContainer">
     <div id="sidebar">
       <div id="threadsHeader">
@@ -185,13 +479,25 @@
       <div id="inputSection">
         <div id="inputRow">
           <input type="text" id="userInput" placeholder="Type your message...">
-          <input type="file" id="fileInput">
+          <!-- Added title attribute for tooltip on file input -->
+          <input type="file" id="fileInput" title="Supports PDF, Text, Python, HTML, CSV and JSON files">
           <button id="sendButton">Send</button>
         </div>
+        <!-- Updated followOnContainer: added "Don't summarize" checkbox -->
         <div id="followOnContainer">
           <label><input type="checkbox" id="followOnCheckbox"> Follow on question</label>
+          <label style="margin-left: 20px;">
+            <input type="checkbox" id="dontSummarizeCheckbox"> Don't summarize
+          </label>
+          <label style="margin-left: 20px;">
+            <input type="checkbox" id="perplexitySearchCheckbox"> Perplexity Search
+          </label>
         </div>
         <div id="attachmentPreview"></div>
+        <div id="processingProgress"></div>
+        <div id="cancelButtonContainer">
+          <button id="cancelButton" onclick="cancelProcessingFunc()">Cancel Processing</button>
+        </div>
         <div id="actionRow">
           <a class="action-link delete" onclick="clearAllMessages()">Clear all messages</a>
           <a class="action-link" onclick="resetDatabase()">Reset IndexedDB</a>
@@ -201,27 +507,69 @@
     </div>
   </div>
 
-  <script>
-    // Endpoint and global variables
-    const apiEndpoint = "http://localhost:11434/api/chat";
-    let db;
-    let currentThreadId = null; // active thread id
-    let pendingAttachment = null;
-    let lastQA = null; // holds last Q&A for follow-on questions
+  <!-- Settings Panel -->
+  <div id="settingsPanel">
+    <h3>Settings</h3>
+    <label for="textChunkSizeInput">Text Chunk Size (bytes): 
+      <input type="number" id="textChunkSizeInput" value="10240">
+    </label>
+    <br><br>
+    <label for="pdfPagesPerChunkInput">PDF Pages per Chunk: 
+      <input type="number" id="pdfPagesPerChunkInput" value="3">
+    </label>
+    <br><br>
+    <label>Theme:
+      <select id="themeSelect">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+    <br><br>
+    <label for="perplexityApiKeyInput">Perplexity API Key:
+      <input type="password" id="perplexityApiKeyInput">
+    </label>
+    <br><br>
+    <button id="saveSettingsButton">Save</button>
+    <button id="cancelSettingsButton">Cancel</button>
+  </div>
 
-    // Open (or create) IndexedDB (version 2: threads and messages with threadId index)
-    async function openDatabase(retryCount = 3, delay = 1000) {
+  <script>
+    const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
+    const OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+
+    let db;
+    let currentThreadId = null;
+    let pendingAttachment = null;
+    let lastQA = null;
+    let cancelProcessing = false;
+
+    // Default localStorage
+    if (!localStorage.getItem("textChunkSize")) {
+      localStorage.setItem("textChunkSize", "10240");
+    }
+    if (!localStorage.getItem("pdfPagesPerChunk")) {
+      localStorage.setItem("pdfPagesPerChunk", "3");
+    }
+    if (!localStorage.getItem("perplexityApiKey")) {
+      localStorage.setItem("perplexityApiKey", "");
+    }
+    if (!localStorage.getItem("theme")) {
+      localStorage.setItem("theme", "light");
+    }
+
+    function applyTheme(theme) {
+      if (theme === "dark") {
+        document.body.classList.add("dark-theme");
+      } else {
+        document.body.classList.remove("dark-theme");
+      }
+    }
+
+    function openDatabase() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open("OllamaChat", 2);
         request.onerror = (e) => {
-          console.error("Database failed to open:", e);
-          if (retryCount > 0) {
-            setTimeout(() => {
-              openDatabase(retryCount - 1, delay).then(resolve).catch(reject);
-            }, delay);
-          } else {
-            reject("Database failed to open after multiple attempts.");
-          }
+          reject("Database failed to open: " + e.target.error);
         };
         request.onsuccess = () => {
           db = request.result;
@@ -241,316 +589,40 @@
       });
     }
 
-    // Save a message. For images, store full data URL as imageData; for assistant, include responseTime.
-    function saveMessage(messageObj) {
-      messageObj.threadId = currentThreadId;
-      const transaction = db.transaction(["messages"], "readwrite");
-      const store = transaction.objectStore("messages");
-      store.add(messageObj);
-    }
-
-    // Load messages for the current thread and render them
-    function loadMessages() {
-      const messageHistory = document.getElementById("messageHistory");
-      messageHistory.innerHTML = "";
+    async function fetchModels() {
       try {
-        const transaction = db.transaction(["messages"], "readonly");
-        const store = transaction.objectStore("messages");
-        const index = store.index("threadId");
-        const range = IDBKeyRange.only(currentThreadId);
-        index.openCursor(range).onsuccess = function(e) {
-          const cursor = e.target.result;
-          if (cursor) {
-            const { role, text, type, fileName, imageData, responseTime } = cursor.value;
-            const messageElem = document.createElement("div");
-            messageElem.className = "message " + (role === "user" ? "user-message" : "assistant-message");
-            if (type === 'image' && imageData) {
-              const fileLabel = document.createElement("div");
-              fileLabel.textContent = fileName ? `Attached Image: ${fileName}` : "Attached Image";
-              messageElem.appendChild(fileLabel);
-              const imgElem = document.createElement("img");
-              imgElem.src = imageData;
-              imgElem.style.maxWidth = "150px";
-              imgElem.style.maxHeight = "150px";
-              messageElem.appendChild(imgElem);
-            } else {
-              messageElem.textContent = text;
-            }
-            if (responseTime) {
-              const timeElem = document.createElement("div");
-              timeElem.className = "response-time";
-              timeElem.textContent = responseTime;
-              messageElem.appendChild(timeElem);
-            }
-            messageHistory.appendChild(messageElem);
-            cursor.continue();
+        const response = await fetch("http://localhost:11434/api/tags");
+        const data = await response.json();
+        const modelDropdown = document.getElementById("modelSelection");
+        modelDropdown.innerHTML = "";
+        if (data.models && data.models.length > 0) {
+          data.models.forEach(model => {
+            let option = document.createElement("option");
+            option.value = model.name;
+            option.textContent = model.name;
+            modelDropdown.appendChild(option);
+          });
+          const savedModel = localStorage.getItem("defaultModel");
+          if (savedModel) {
+            modelDropdown.value = savedModel;
+          } else {
+            modelDropdown.selectedIndex = 0;
           }
-        };
-      } catch(err) {
-        console.error("Error loading messages:", err);
-        messageHistory.innerHTML = "<p>Error loading messages. Please reset the database.</p>";
-      }
-    }
-
-    // Clear messages for the current thread
-    async function clearAllMessages() {
-      if (!confirm("Clear all messages for this thread?")) return;
-      const transaction = db.transaction(["messages"], "readwrite");
-      const store = transaction.objectStore("messages");
-      const index = store.index("threadId");
-      const range = IDBKeyRange.only(currentThreadId);
-      index.openCursor(range).onsuccess = function(e) {
-        const cursor = e.target.result;
-        if (cursor) {
-          store.delete(cursor.primaryKey);
-          cursor.continue();
         } else {
-          document.getElementById("messageHistory").innerHTML = "";
+          modelDropdown.innerHTML = "<option>No models found</option>";
         }
-      };
-    }
-
-    // Reset IndexedDB by deleting the database and reloading the page
-    function resetDatabase() {
-      if (!confirm("Are you sure you want to reset the database? This will clear all threads and messages.")) return;
-      const req = indexedDB.deleteDatabase("OllamaChat");
-      req.onsuccess = function() {
-        alert("Database reset successfully. Reloading page.");
-        location.reload();
-      };
-      req.onerror = function(e) {
-        alert("Error resetting database: " + e.target.error);
-      };
-    }
-
-    // Display a preview of the pending attachment
-    function showPendingAttachmentPreview(attachment) {
-      const attachmentPreview = document.getElementById("attachmentPreview");
-      attachmentPreview.innerHTML = "";
-      const previewElem = document.createElement("div");
-      if (attachment.type === 'txt') {
-        previewElem.textContent = "Attached Text File: " + attachment.fileName;
-      } else if (attachment.type === 'image') {
-        const label = document.createElement("div");
-        label.textContent = "Attached Image: " + attachment.fileName;
-        previewElem.appendChild(label);
-        const imgElem = document.createElement("img");
-        imgElem.src = attachment.content;
-        imgElem.style.maxWidth = "150px";
-        imgElem.style.maxHeight = "150px";
-        previewElem.appendChild(imgElem);
-      } else if (attachment.type === 'pdf') {
-        previewElem.textContent = "Attached PDF: " + attachment.fileName;
-      }
-      const removeButton = document.createElement("button");
-      removeButton.textContent = "Remove Attachment";
-      removeButton.addEventListener("click", clearPendingAttachment);
-      previewElem.appendChild(removeButton);
-      attachmentPreview.appendChild(previewElem);
-    }
-
-    function clearPendingAttachment() {
-      pendingAttachment = null;
-      document.getElementById("attachmentPreview").innerHTML = "";
-    }
-
-    /**
-     * Send a message to the LLM.
-     * For image attachments, the payload uses the "images" key.
-     * For text (or text/PDF attachments merged), the content is merged into the prompt.
-     * A "Still thinking..." timer is displayed; response time is measured, stored, and shown.
-     * If "Follow on question" is checked, the previous Q&A is prepended.
-     */
-    async function sendMessage() {
-      const userInput = document.getElementById("userInput");
-      let promptText = userInput.value.trim();
-      if (document.getElementById("followOnCheckbox").checked && lastQA) {
-        promptText = `Previous conversation:\nUser: ${lastQA.question}\nAssistant: ${lastQA.answer}\n\n` + promptText;
-      }
-      if (!promptText && !pendingAttachment) return;
-      const selectedModel = document.getElementById("modelSelection").value;
-      const messageHistory = document.getElementById("messageHistory");
-
-      // Build and display user's message
-      const userMessage = document.createElement("div");
-      userMessage.className = "message user-message";
-      if (promptText) {
-        const promptDiv = document.createElement("div");
-        promptDiv.textContent = promptText;
-        userMessage.appendChild(promptDiv);
-      }
-      if (pendingAttachment) {
-        const attachDiv = document.createElement("div");
-        if (pendingAttachment.type === 'txt') {
-          attachDiv.textContent = "Attached Text File: " + pendingAttachment.fileName;
-        } else if (pendingAttachment.type === 'image') {
-          const fileLabel = document.createElement("div");
-          fileLabel.textContent = "Attached Image: " + pendingAttachment.fileName;
-          attachDiv.appendChild(fileLabel);
-          const imgElem = document.createElement("img");
-          imgElem.src = pendingAttachment.content;
-          imgElem.style.maxWidth = "150px";
-          imgElem.style.maxHeight = "150px";
-          attachDiv.appendChild(imgElem);
-        } else if (pendingAttachment.type === 'pdf') {
-          attachDiv.textContent = "Attached PDF: " + pendingAttachment.fileName;
-        }
-        userMessage.appendChild(attachDiv);
-      }
-      messageHistory.appendChild(userMessage);
-      
-      // Save user message; for images, store full data URL in imageData
-      if (pendingAttachment && pendingAttachment.type === 'image') {
-        saveMessage({
-          role: "user",
-          text: "Attached Image: " + pendingAttachment.fileName,
-          type: pendingAttachment.type,
-          imageData: pendingAttachment.content,
-          timestamp: Date.now()
-        });
-      } else {
-        saveMessage({
-          role: "user",
-          text: userMessage.textContent,
-          type: pendingAttachment ? pendingAttachment.type : 'text',
-          timestamp: Date.now()
-        });
-      }
-      
-      // Build payload for API call
-      let payload = { model: selectedModel, stream: false, messages: [] };
-      if (pendingAttachment && pendingAttachment.type === 'image') {
-        let base64Data = pendingAttachment.content;
-        if (base64Data.startsWith("data:image/")) {
-          base64Data = base64Data.substring(base64Data.indexOf("base64,") + 7);
-        }
-        let imagePrompt = promptText || "Extract all text from the image and return it as markdown.\nDo not describe the image or add extra text.\nOnly return the text found in the image.";
-        payload.messages.push({
-          role: "user",
-          content: imagePrompt,
-          images: [base64Data]
-        });
-      } else {
-        let combinedPrompt = promptText;
-        if (pendingAttachment && (pendingAttachment.type === 'txt' || pendingAttachment.type === 'pdf')) {
-          combinedPrompt += "\n\n[ATTACHMENT: " + pendingAttachment.fileName + "]\n" 
-                          + pendingAttachment.content + "\n[END ATTACHMENT]";
-        }
-        payload.messages.push({
-          role: "user",
-          content: combinedPrompt
-        });
-      }
-      
-      userInput.value = "";
-      clearPendingAttachment();
-      userInput.disabled = true;
-      userInput.title = "Response is being processed.";
-      document.getElementById("sendButton").disabled = true;
-      
-      // Create a placeholder for the assistant's response and start a timer
-      const placeholder = document.createElement("div");
-      placeholder.className = "message assistant-message";
-      let startTime = Date.now();
-      placeholder.innerHTML = "🤔 Still thinking... <span class='spinner'></span> (0 sec)";
-      messageHistory.appendChild(placeholder);
-      
-      let thinkingInterval = setInterval(() => {
-        let elapsed = Math.floor((Date.now() - startTime) / 1000);
-        placeholder.innerHTML = `🤔 Still thinking... <span class='spinner'></span> (${elapsed} sec)`;
-      }, 1000);
-      
-      try {
-        const response = await fetch(apiEndpoint, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
-        });
-        const resJson = await response.json();
-        clearInterval(thinkingInterval);
-        let reply = (resJson.message && resJson.message.content) ? resJson.message.content : "No response received";
-        placeholder.innerHTML = reply;
-        let endTime = Date.now();
-        let responseTimeSec = Math.floor((endTime - startTime) / 1000);
-        let responseTimeText = `Model: ${selectedModel} Response Time: ${responseTimeSec} sec`;
-        let timeElem = document.createElement("div");
-        timeElem.className = "response-time";
-        timeElem.textContent = responseTimeText;
-        placeholder.appendChild(timeElem);
-        // Save assistant message with response time
-        saveMessage({
-          role: "assistant",
-          text: reply,
-          type: "text",
-          responseTime: responseTimeText,
-          timestamp: Date.now()
-        });
-        // Update last Q&A for follow-on questions
-        lastQA = { question: promptText, answer: reply };
-      } catch (err) {
-        clearInterval(thinkingInterval);
-        placeholder.textContent = "Error: " + err.message;
-        console.error("Error during fetch:", err);
-      } finally {
-        userInput.disabled = false;
-        userInput.title = "";
-        document.getElementById("sendButton").disabled = false;
+      } catch (error) {
+        console.error("Error fetching models:", error);
+        document.getElementById("modelSelection").innerHTML = "<option>Error loading models</option>";
       }
     }
 
-    // Handle file input changes
-    document.getElementById("fileInput").addEventListener("change", function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const fileName = file.name;
-      if (file.type === "text/plain") {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-          const fileText = event.target.result;
-          pendingAttachment = { type: 'txt', fileName: fileName, content: fileText };
-          showPendingAttachmentPreview(pendingAttachment);
-        };
-        reader.readAsText(file);
-      } else if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-          const imageData = event.target.result;
-          pendingAttachment = { type: 'image', fileName: fileName, content: imageData };
-          showPendingAttachmentPreview(pendingAttachment);
-        };
-        reader.readAsDataURL(file);
-      } else if (file.type === "application/pdf") {
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-          const typedarray = new Uint8Array(event.target.result);
-          try {
-            const pdf = await pdfjsLib.getDocument(typedarray).promise;
-            let pdfText = "";
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const textContent = await page.getTextContent();
-              const pageText = textContent.items.map(item => item.str).join(" ");
-              pdfText += pageText + "\n";
-            }
-            pendingAttachment = { type: 'pdf', fileName: fileName, content: pdfText };
-            showPendingAttachmentPreview(pendingAttachment);
-          } catch (error) {
-            console.error("Error processing PDF:", error);
-          }
-        };
-        reader.readAsArrayBuffer(file);
-      } else {
-        alert("Unsupported file type: " + file.type);
-      }
-      e.target.value = "";
-    });
-
-    // Thread management
-
-    // Load threads from the "threads" store and display them in the sidebar
-    function loadThreads() {
+    // Threads
+    async function loadThreads() {
       const threadsList = document.getElementById("threadsList");
       threadsList.innerHTML = "";
+      if (!db) return;
+
       const transaction = db.transaction(["threads"], "readonly");
       const store = transaction.objectStore("threads");
       store.openCursor().onsuccess = function(e) {
@@ -561,6 +633,7 @@
           li.textContent = thread.name;
           li.dataset.threadId = thread.id;
           li.addEventListener("click", () => selectThread(thread.id));
+
           const delBtn = document.createElement("button");
           delBtn.textContent = "🗑";
           delBtn.addEventListener("click", (ev) => {
@@ -568,6 +641,7 @@
             deleteThread(thread.id);
           });
           li.appendChild(delBtn);
+
           threadsList.appendChild(li);
           cursor.continue();
         } else {
@@ -576,10 +650,9 @@
       };
     }
 
-    // Create a new thread
     function createNewThread() {
       const threadName = prompt("Enter a name for the new thread:", "New Thread");
-      if (!threadName) return;
+      if (!threadName || !db) return;
       const transaction = db.transaction(["threads"], "readwrite");
       const store = transaction.objectStore("threads");
       const thread = { name: threadName, created: Date.now() };
@@ -591,14 +664,12 @@
       };
     }
 
-    // Select a thread by ID
     function selectThread(threadId) {
       currentThreadId = Number(threadId);
       loadMessages();
       updateThreadSelectionUI();
     }
 
-    // Update sidebar UI to highlight the active thread
     function updateThreadSelectionUI() {
       const threadsListItems = document.querySelectorAll("#threadsList li");
       threadsListItems.forEach(li => {
@@ -610,9 +681,9 @@
       });
     }
 
-    // Delete a thread and all its messages
     function deleteThread(threadId) {
       if (!confirm("Delete this thread?")) return;
+      if (!db) return;
       const transaction = db.transaction(["threads", "messages"], "readwrite");
       const threadsStore = transaction.objectStore("threads");
       const messagesStore = transaction.objectStore("messages");
@@ -642,85 +713,862 @@
       };
     }
 
-    // New thread button event listener
-    document.getElementById("newThreadBtn").addEventListener("click", createNewThread);
+    // Messages
+async function loadMessages() {
+      const messageHistory = document.getElementById("messageHistory");
+      messageHistory.innerHTML = "";
+      if (!currentThreadId || !db) return;
 
-    // Send message on Enter key press in input field
+      try {
+        const transaction = db.transaction(["messages"], "readonly");
+        const store = transaction.objectStore("messages");
+        const index = store.index("threadId");
+        const range = IDBKeyRange.only(currentThreadId);
+        index.openCursor(range).onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            const {
+              id,
+              role,
+              text,
+              type,
+              fileName,
+              imageData,
+              responseTime,
+              citations
+            } = cursor.value;
+
+            const messageElem = document.createElement("div");
+            messageElem.className = "message " + (role === "user" ? "user-message" : "assistant-message");
+
+            // Trash icon
+            const trashIcon = document.createElement("span");
+            trashIcon.className = "delete-msg-icon";
+            trashIcon.textContent = "🗑";
+            trashIcon.title = "Delete this message";
+                //THE FIX IS HERE
+            trashIcon.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              deleteSingleMessage(id);
+            });
+            messageElem.appendChild(trashIcon);
+
+            if (type === 'image' && imageData) {
+              const fileLabel = document.createElement("div");
+              fileLabel.textContent = fileName ? `Attached Image: ${fileName}` : "Attached Image";
+              messageElem.appendChild(fileLabel);
+
+              const imgElem = document.createElement("img");
+              imgElem.src = imageData;
+              imgElem.style.maxWidth = "150px";
+              imgElem.style.maxHeight = "150px";
+              messageElem.appendChild(imgElem);
+
+            } else {
+              // text-based output
+              const contentDiv = document.createElement("div");
+              const safeHTML = DOMPurify.sanitize(marked.parse(text || ""));
+              contentDiv.innerHTML = safeHTML;
+              messageElem.appendChild(contentDiv);
+            }
+
+            if (citations && citations.length > 0) {
+              const citeDiv = document.createElement("div");
+              citeDiv.className = "citations";
+              citeDiv.textContent = "Citations:";
+              citations.forEach((c, i) => {
+                const link = document.createElement("a");
+                link.className = "citation-link";
+                link.href = c.url;
+                link.target = "_blank";
+                link.textContent = `[${i+1}] ${c.url}`;
+                citeDiv.appendChild(link);
+              });
+              messageElem.appendChild(citeDiv);
+            }
+
+            if (responseTime) {
+              const timeElem = document.createElement("div");
+              timeElem.className = "response-time";
+              timeElem.textContent = responseTime;
+              messageElem.appendChild(timeElem);
+            }
+
+                //ADD THIS LINE
+                messageElem.appendChild(trashIcon);
+
+            messageHistory.appendChild(messageElem);
+            cursor.continue();
+          } else {
+                //SCROLL TO THE BOTTOM
+                messageHistory.scrollTop = messageHistory.scrollHeight;
+            }
+        };
+      } catch (err) {
+        console.error("Error loading messages:", err);
+        messageHistory.innerHTML = "<p>Error loading messages. Please reset the database.</p>";
+      }
+    }
+
+    function saveMessage(messageObj) {
+      if (!db) return;
+      messageObj.threadId = currentThreadId;
+      const transaction = db.transaction(["messages"], "readwrite");
+      const store = transaction.objectStore("messages");
+      store.add(messageObj);
+    }
+
+    function deleteSingleMessage(messageId) {
+      if (!confirm("Delete this message?")) return;
+      if (!db) return;
+      const transaction = db.transaction(["messages"], "readwrite");
+      const store = transaction.objectStore("messages");
+      store.delete(messageId);
+      transaction.oncomplete = function() {
+        loadMessages();
+      };
+    }
+
+    async function clearAllMessages() {
+      if (!confirm("Clear all messages for this thread?")) return;
+      if (!db) return;
+      const transaction = db.transaction(["messages"], "readwrite");
+      const store = transaction.objectStore("messages");
+      const index = store.index("threadId");
+      const range = IDBKeyRange.only(currentThreadId);
+      index.openCursor(range).onsuccess = function(e) {
+        const cursor = e.target.result;
+        if (cursor) {
+          store.delete(cursor.primaryKey);
+          cursor.continue();
+        } else {
+          document.getElementById("messageHistory").innerHTML = "";
+        }
+      };
+    }
+
+    async function resetDatabase() {
+      if (!confirm("Are you sure you want to reset the database? This will clear all threads and messages.")) return;
+      try {
+        if (db) {
+          db.close();
+          db = null;
+        }
+        await new Promise((resolve, reject) => {
+          const req = indexedDB.deleteDatabase("OllamaChat");
+          req.onsuccess = () => resolve(true);
+          req.onerror = (e) => reject(e.target.error);
+          req.onblocked = () => reject(new Error("Database deletion blocked"));
+        });
+        alert("Database reset successfully. Reloading page.");
+        location.reload();
+      } catch (error) {
+        console.error("Error resetting database:", error);
+        alert("Error resetting database: " + error.message);
+      }
+    }
+
+    function cancelProcessingFunc() {
+      cancelProcessing = true;
+      const cancelButton = document.getElementById("cancelButton");
+      cancelButton.disabled = true;
+      cancelButton.textContent = "Cancelling...";
+    }
+
+    function showProgressBar() {
+      document.getElementById("processingProgress").textContent = "";
+      document.getElementById("processingProgress").style.display = "block";
+      document.getElementById("cancelButtonContainer").style.display = "block";
+      document.getElementById("cancelButton").disabled = false;
+      document.getElementById("cancelButton").textContent = "Cancel Processing";
+    }
+
+    function hideProgressBar() {
+      document.getElementById("processingProgress").style.display = "none";
+      document.getElementById("cancelButtonContainer").style.display = "none";
+    }
+
+    function updateProgressBar(completed, total) {
+      const progressDiv = document.getElementById("processingProgress");
+      const percent = Math.floor((completed / total) * 100);
+      progressDiv.textContent = `Processing: ${completed} of ${total} chunks (${percent}%)`;
+    }
+
+    // Perplexity switch
+    document.getElementById("perplexitySearchCheckbox").addEventListener("change", function(e) {
+      const isChecked = e.target.checked;
+      document.getElementById("fileInput").disabled = isChecked;
+      document.getElementById("followOnCheckbox").disabled = isChecked;
+      if (isChecked) {
+        clearPendingAttachment();
+      }
+    });
+
+    function clearPendingAttachment() {
+      if (pendingAttachment && pendingAttachment.reader) {
+        pendingAttachment.reader.abort();
+        pendingAttachment.cancelled = true;
+      }
+      pendingAttachment = null;
+      document.getElementById("attachmentPreview").innerHTML = "";
+    }
+
+    // Settings
+    document.getElementById("settingsButton").addEventListener("click", function() {
+      document.getElementById("settingsPanel").style.display = "block";
+
+      document.getElementById("textChunkSizeInput").value = localStorage.getItem("textChunkSize") || "10240";
+      document.getElementById("pdfPagesPerChunkInput").value = localStorage.getItem("pdfPagesPerChunk") || "3";
+
+      const themeSelect = document.getElementById("themeSelect");
+      themeSelect.value = localStorage.getItem("theme") || "light";
+
+      const storedKey = localStorage.getItem("perplexityApiKey") || "";
+      const keyInput = document.getElementById("perplexityApiKeyInput");
+      keyInput.type = "password";
+      if (storedKey) {
+        keyInput.value = "********";
+      } else {
+        keyInput.value = "";
+      }
+    });
+    document.getElementById("cancelSettingsButton").addEventListener("click", function() {
+      document.getElementById("settingsPanel").style.display = "none";
+    });
+    document.getElementById("saveSettingsButton").addEventListener("click", function() {
+      const textSize = document.getElementById("textChunkSizeInput").value;
+      const pdfPages = document.getElementById("pdfPagesPerChunkInput").value;
+      localStorage.setItem("textChunkSize", textSize);
+      localStorage.setItem("pdfPagesPerChunk", pdfPages);
+
+      const themeValue = document.getElementById("themeSelect").value;
+      localStorage.setItem("theme", themeValue);
+      applyTheme(themeValue);
+
+      const keyInput = document.getElementById("perplexityApiKeyInput");
+      if (keyInput.value && keyInput.value !== "********") {
+        localStorage.setItem("perplexityApiKey", keyInput.value.trim());
+      } else if (keyInput.value === "") {
+        localStorage.setItem("perplexityApiKey", "");
+      }
+
+      document.getElementById("settingsPanel").style.display = "none";
+      alert("Settings saved.");
+    });
+
+    // File input
+    document.getElementById("fileInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fileNameLower = file.name.toLowerCase();
+
+      // If there's an existing read
+      if (pendingAttachment && pendingAttachment.reader) {
+        pendingAttachment.reader.abort();
+        pendingAttachment.cancelled = true;
+      }
+
+      if (
+        file.type === "text/html" ||
+        fileNameLower.endsWith(".html") ||
+        fileNameLower.endsWith(".htm")
+      ) {
+        // HTML
+        const reader = new FileReader();
+        pendingAttachment = {
+          type: 'html',
+          fileName: file.name,
+          content: null,
+          file,
+          reader,
+          cancelled: false
+        };
+        reader.onload = function(event) {
+          if (pendingAttachment && !pendingAttachment.cancelled && pendingAttachment.reader === reader) {
+            const rawHtml = event.target.result;
+            // sanitize
+            const sanitizedHtml = DOMPurify.sanitize(rawHtml);
+            pendingAttachment.content = sanitizedHtml;
+            showPendingAttachmentPreview(pendingAttachment);
+          }
+        };
+        reader.onerror = function() {
+          console.error("FileReader error:", reader.error);
+          alert("Error reading HTML file.");
+          clearPendingAttachment();
+        };
+        reader.readAsText(file);
+
+      } else if (file.type === "text/plain" || fileNameLower.endsWith(".txt")) {
+        // .txt
+        pendingAttachment = { type: 'txt', fileName: file.name, file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+
+      } else if (
+        fileNameLower.endsWith(".py") ||
+        file.type === "text/x-python" // sometimes used
+      ) {
+        // Python
+        pendingAttachment = { type: 'python', fileName: file.name, file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+
+      } else if (
+        fileNameLower.endsWith(".csv") ||
+        file.type === "text/csv"
+      ) {
+        // CSV
+        pendingAttachment = { type: 'csv', fileName: file.name, file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+
+      } else if (
+        fileNameLower.endsWith(".json") ||
+        file.type === "application/json"
+      ) {
+        // JSON
+        pendingAttachment = { type: 'json', fileName: file.name, file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+
+      } else if (file.type.startsWith("image/")) {
+        // Image
+        const reader = new FileReader();
+        pendingAttachment = {
+          type: 'image',
+          fileName: file.name,
+          content: null,
+          file,
+          reader,
+          cancelled: false
+        };
+        reader.onload = function(event) {
+          if (pendingAttachment && !pendingAttachment.cancelled && pendingAttachment.reader === reader) {
+            pendingAttachment.content = event.target.result;
+            showPendingAttachmentPreview(pendingAttachment);
+          }
+        };
+        reader.onerror = function() {
+          console.error("FileReader error:", reader.error);
+          alert("Error reading image file.");
+          clearPendingAttachment();
+        };
+        reader.readAsDataURL(file);
+
+      } else if (file.type === "application/pdf") {
+        // PDF
+        pendingAttachment = { type: 'pdf', fileName: file.name, file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+
+      } else {
+        alert("Unsupported file type: " + file.type);
+      }
+
+      e.target.value = "";
+    });
+
+    function showPendingAttachmentPreview(attachment) {
+      const attachmentPreview = document.getElementById("attachmentPreview");
+      attachmentPreview.innerHTML = "";
+      const previewElem = document.createElement("div");
+
+      if (attachment.type === 'txt') {
+        previewElem.textContent = "Attached Text File: " + attachment.fileName;
+
+      } else if (attachment.type === 'html') {
+        // snippet
+        const snippet = attachment.content
+          ? attachment.content.slice(0, 200).replace(/\s+/g, " ")
+          : "";
+        previewElem.textContent = `Attached HTML File: ${attachment.fileName}\nPreview: "${snippet}..."`;
+
+      } else if (attachment.type === 'python') {
+        previewElem.textContent = "Attached Python File: " + attachment.fileName;
+
+      } else if (attachment.type === 'csv') {
+        previewElem.textContent = "Attached CSV File: " + attachment.fileName;
+
+      } else if (attachment.type === 'json') {
+        previewElem.textContent = "Attached JSON File: " + attachment.fileName;
+
+      } else if (attachment.type === 'image') {
+        const label = document.createElement("div");
+        label.textContent = "Attached Image: " + attachment.fileName;
+        previewElem.appendChild(label);
+      } else if (attachment.type === 'pdf') {
+        previewElem.textContent = "Attached PDF: " + attachment.fileName;
+      }
+
+      // Optionally show snippet for python/csv/json:
+      if (attachment.type === 'python' || attachment.type === 'csv' || attachment.type === 'json') {
+        // We'll read it now to show a snippet
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const text = ev.target.result;
+          const snippet = text.slice(0, 200).replace(/\s+/g, " ");
+          previewElem.textContent += `\nPreview: "${snippet}..."`;
+        };
+        reader.onerror = () => {
+          console.error("Error reading snippet for file preview.");
+        };
+        reader.readAsText(attachment.file);
+      }
+
+      const removeButton = document.createElement("button");
+      removeButton.textContent = "Remove Attachment";
+      removeButton.addEventListener("click", clearPendingAttachment);
+      previewElem.appendChild(removeButton);
+
+      attachmentPreview.appendChild(previewElem);
+    }
+
+    async function processAttachmentInChunks(attachment, placeholder) {
+      const chunkSize = parseInt(localStorage.getItem("textChunkSize")) || 10240;
+      const pdfPagesPerChunk = parseInt(localStorage.getItem("pdfPagesPerChunk")) || 3;
+
+      if (
+        attachment.type === 'txt' ||
+        attachment.type === 'html' ||
+        attachment.type === 'python' ||
+        attachment.type === 'csv' ||
+        attachment.type === 'json'
+      ) {
+        return await processTextFileInChunks(attachment.file, placeholder, chunkSize, attachment.type);
+      } else if (attachment.type === 'pdf') {
+        return await processPdfFileInChunks(attachment.file, placeholder, pdfPagesPerChunk);
+      }
+      return null;
+    }
+
+    async function processTextFileInChunks(file, placeholder, chunkSize, fileType = 'txt') {
+      const dontSummarize = document.getElementById("dontSummarizeCheckbox") && document.getElementById("dontSummarizeCheckbox").checked;
+      let rawText = "";
+      let customPrompt = "Summarize the following text:"; 
+      let finalPrompt = "Based on these summaries, provide a final overall summary:";
+
+      switch(fileType) {
+        case 'html':
+          rawText = pendingAttachment.content || "";
+          customPrompt = "Summarize the following HTML content:";
+          finalPrompt = "Based on these summaries, provide a final overall summary of this HTML content:";
+          break;
+        case 'python':
+          customPrompt = "Summarize the following Python code:";
+          finalPrompt = "Based on these summaries, provide a final overall summary of this Python code:";
+          break;
+        case 'csv':
+          customPrompt = "Summarize the following CSV data:";
+          finalPrompt = "Based on these summaries, provide a final overall summary of this CSV data:";
+          break;
+        case 'json':
+          customPrompt = "Summarize the following JSON data:";
+          finalPrompt = "Based on these summaries, provide a final overall summary of this JSON data:";
+          break;
+        default:
+          // txt - use default prompts
+          break;
+      }
+
+      if (fileType === 'html') {
+        // already sanitized in pendingAttachment.content
+      } else {
+        const arrayBuffer = await file.arrayBuffer();
+        const decoder = new TextDecoder("utf-8");
+        rawText = decoder.decode(arrayBuffer);
+      }
+
+      let offset = 0;
+      let chunks = [];
+      let chunkIndex = 0;
+      let totalChunks = Math.ceil(rawText.length / chunkSize);
+
+      showProgressBar();
+      placeholder.innerHTML = (dontSummarize ? "Reading" : customPrompt.replace("Summarize", "Analyzing")) + ` <span class="spinner"></span>`;
+
+      while (offset < rawText.length && !cancelProcessing) {
+        chunkIndex++;
+        placeholder.innerHTML = (dontSummarize ? "Reading" : customPrompt.replace("Summarize the", "Analyzing")) + `: chunk ${chunkIndex} of ${totalChunks} <span class="spinner"></span>`;
+        let chunk = rawText.slice(offset, offset + chunkSize);
+        offset += chunkSize;
+        updateProgressBar(chunkIndex, totalChunks);
+
+        if (dontSummarize) {
+          chunks.push(chunk);
+        } else {
+          let summary = await callSummarizationAPI(chunk, customPrompt);
+          chunks.push(summary);
+        }
+      }
+      hideProgressBar();
+
+      if (cancelProcessing) {
+        cancelProcessing = false;
+        return null;
+      }
+
+      let combinedResult = chunks.join("\n");
+      if (!dontSummarize) {
+        placeholder.innerHTML = customPrompt.replace("Summarize the", "Analyzing") + `: creating final summary... <span class="spinner"></span>`;
+        combinedResult = await callSummarizationAPI(combinedResult, finalPrompt);
+      }
+      return combinedResult;
+    }
+
+    async function processPdfFileInChunks(file, placeholder, pdfPagesPerChunk) {
+      const arrayBuffer = await file.arrayBuffer();
+      const typedArray = new Uint8Array(arrayBuffer);
+      const pdf = await pdfjsLib.getDocument(typedArray).promise;
+      const numPages = pdf.numPages;
+      let summaries = [];
+      let chunkIndex = 0;
+      const totalChunks = Math.ceil(numPages / pdfPagesPerChunk);
+
+      showProgressBar();
+      placeholder.innerHTML = `Analyzing PDF... <span class="spinner"></span>`;
+      let page = 1;
+      while (page <= numPages && !cancelProcessing) {
+        chunkIndex++;
+        placeholder.innerHTML = `Analyzing PDF: chunk ${chunkIndex} of ${totalChunks} <span class="spinner"></span>`;
+        let chunkText = "";
+        for (let i = 0; i < pdfPagesPerChunk && page <= numPages; i++, page++) {
+          const pdfPage = await pdf.getPage(page);
+          const textContent = await pdfPage.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(" ");
+          chunkText += pageText + "\n";
+        }
+        const summary = await callSummarizationAPI(chunkText);
+        summaries.push(summary);
+        updateProgressBar(chunkIndex, totalChunks);
+      }
+      hideProgressBar();
+
+      if (cancelProcessing) {
+        cancelProcessing = false;
+        return null;
+      }
+      const combinedSummaries = summaries.join("\n");
+      placeholder.innerHTML = `Analyzing PDF: creating final summary... <span class="spinner"></span>`;
+      const finalSummary = await callSummarizationAPI(
+        combinedSummaries,
+        "Based on these summaries, provide a final overall summary:"
+      );
+      return finalSummary;
+    }
+
+    async function callSummarizationAPI(text, customPrompt) {
+      const prompt = customPrompt
+        ? `${customPrompt}\n\n${text}`
+        : `Summarize the following text:\n\n${text}`;
+
+      const selectedModel = document.getElementById("modelSelection").value;
+      const payload = {
+        model: selectedModel,
+        stream: false,
+        messages: [{ role: "user", content: prompt }]
+      };
+      try {
+        const response = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const resJson = await response.json();
+        const summary = (resJson.message && resJson.message.content)
+          ? resJson.message.content
+          : "No summary received";
+        return summary;
+      } catch (err) {
+        console.error("Error in summarization API call:", err);
+        return "Error summarizing chunk";
+      }
+    }
+
+    async function sendMessage() {
+      const userInput = document.getElementById("userInput");
+      let promptText = userInput.value.trim();
+      const perplexityChecked = document.getElementById("perplexitySearchCheckbox").checked;
+
+      // Follow-on logic
+      if (document.getElementById("followOnCheckbox").checked && lastQA && !perplexityChecked) {
+        promptText = `Previous conversation:\nUser: ${lastQA.question}\nAssistant: ${lastQA.answer}\n\n` + promptText;
+      }
+
+      if (!promptText && !pendingAttachment) return;
+
+      const messageHistory = document.getElementById("messageHistory");
+      const userMessage = document.createElement("div");
+      userMessage.className = "message user-message";
+
+      if (promptText) {
+        const promptDiv = document.createElement("div");
+        promptDiv.textContent = promptText;
+        userMessage.appendChild(promptDiv);
+      }
+
+      if (pendingAttachment && !perplexityChecked) {
+        const attachDiv = document.createElement("div");
+        if (pendingAttachment.type === 'txt') {
+          attachDiv.textContent = "Attached Text File: " + pendingAttachment.fileName;
+        } else if (pendingAttachment.type === 'html') {
+          attachDiv.textContent = "Attached HTML File: " + pendingAttachment.fileName;
+        } else if (pendingAttachment.type === 'python') {
+          attachDiv.textContent = "Attached Python File: " + pendingAttachment.fileName;
+        } else if (pendingAttachment.type === 'csv') {
+          attachDiv.textContent = "Attached CSV File: " + pendingAttachment.fileName;
+        } else if (pendingAttachment.type === 'json') {
+          attachDiv.textContent = "Attached JSON File: " + pendingAttachment.fileName;
+        } else if (pendingAttachment.type === 'image') {
+          const fileLabel = document.createElement("div");
+          fileLabel.textContent = "Attached Image: " + pendingAttachment.fileName;
+          attachDiv.appendChild(fileLabel);
+
+          const imgElem = document.createElement("img");
+          imgElem.src = pendingAttachment.content;
+          imgElem.style.maxWidth = "150px";
+          imgElem.style.maxHeight = "150px";
+          attachDiv.appendChild(imgElem);
+        } else if (pendingAttachment.type === 'pdf') {
+          attachDiv.textContent = "Attached PDF: " + pendingAttachment.fileName;
+        }
+        userMessage.appendChild(attachDiv);
+      }
+      messageHistory.appendChild(userMessage);
+
+      // Save user message
+      if (pendingAttachment && pendingAttachment.type === 'image' && !perplexityChecked) {
+        saveMessage({
+          role: "user",
+          text: "Attached Image: " + pendingAttachment.fileName,
+          type: 'image',
+          imageData: pendingAttachment.content,
+          timestamp: Date.now()
+        });
+      } else {
+        saveMessage({
+          role: "user",
+          text: userMessage.textContent,
+          type: pendingAttachment ? pendingAttachment.type : 'text',
+          timestamp: Date.now()
+        });
+      }
+
+      userInput.value = "";
+      userInput.disabled = true;
+      userInput.title = "Response is being processed.";
+      document.getElementById("sendButton").disabled = true;
+
+      const placeholder = document.createElement("div");
+      placeholder.className = "message assistant-message";
+      let startTime = Date.now();
+      placeholder.innerHTML = "🤔 Still thinking... <span class='spinner'></span> (0 sec)";
+      messageHistory.appendChild(placeholder);
+
+      let thinkingInterval = setInterval(() => {
+        let elapsed = Math.floor((Date.now() - startTime) / 1000);
+        placeholder.innerHTML = `🤔 Still thinking... <span class='spinner'></span> (${elapsed} sec)`;
+      }, 1000);
+
+      try {
+        let finalReply = "";
+        let finalCitations = [];
+        let modelUsed = "";
+
+        if (perplexityChecked) {
+          const perplexityApiKey = localStorage.getItem("perplexityApiKey") || "";
+          if (!perplexityApiKey) {
+            alert("Please use Settings to enter your Perplexity API Key");
+            throw new Error("No Perplexity API key");
+          }
+          modelUsed = "Perplexity";
+
+          const perplexityPayload = {
+            model: "llama-3.1-sonar-small-128k-online",
+            messages: [
+              { role: "system", content: "Be precise and concise." },
+              { role: "user", content: promptText }
+            ]
+          };
+
+          const response = await fetch(PERPLEXITY_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + perplexityApiKey
+            },
+            body: JSON.stringify(perplexityPayload)
+          });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Perplexity API error: ${errorText}`);
+          }
+          const resJson = await response.json();
+          finalReply = resJson.choices?.[0]?.message?.content || "No response received";
+          if (resJson.citations && Array.isArray(resJson.citations)) {
+            finalCitations = resJson.citations.map((url) => ({ url }));
+          }
+
+        } else {
+          modelUsed = document.getElementById("modelSelection").value;
+          let payload = { model: modelUsed, stream: false, messages: [] };
+          let combinedPrompt = promptText;
+
+          if (pendingAttachment && (
+            pendingAttachment.type === 'txt' ||
+            pendingAttachment.type === 'html' ||
+            pendingAttachment.type === 'python' ||
+            pendingAttachment.type === 'csv' ||
+            pendingAttachment.type === 'json' ||
+            pendingAttachment.type === 'pdf'
+          )) {
+            if (pendingAttachment.type === 'pdf') {
+              const finalSummary = await processAttachmentInChunks(pendingAttachment, placeholder);
+              if (finalSummary === null) {
+                placeholder.textContent = "Processing canceled.";
+                return;
+              }
+              combinedPrompt += "\n\n[SUMMARY OF ATTACHMENT: " + finalSummary + "]";
+            } else {
+              const finalText = await processAttachmentInChunks(pendingAttachment, placeholder);
+              if (finalText === null) {
+                placeholder.textContent = "Processing canceled.";
+                return;
+              }
+              const dontSummarize = document.getElementById("dontSummarizeCheckbox").checked;
+              if (dontSummarize) {
+                combinedPrompt += "\n\n[ATTACHMENT CONTENT: " + finalText + "]";
+              } else {
+                combinedPrompt += "\n\n[SUMMARY OF ATTACHMENT: " + finalText + "]";
+              }
+            }
+
+          } else if (pendingAttachment && pendingAttachment.type === 'image') {
+            let base64Data = pendingAttachment.content;
+            if (base64Data.startsWith("data:image/")) {
+              base64Data = base64Data.substring(base64Data.indexOf("base64,") + 7);
+            }
+            let imagePrompt = promptText || "Extract all text from the image...";
+            payload.messages.push({
+              role: "user",
+              content: imagePrompt,
+              images: [base64Data]
+            });
+          }
+
+          if (!(pendingAttachment && pendingAttachment.type === 'image')) {
+            payload.messages.push({
+              role: "user",
+              content: combinedPrompt
+            });
+          }
+
+          const response = await fetch(OLLAMA_ENDPOINT, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+          });
+          const resJson = await response.json();
+          finalReply = resJson.message?.content || "No response received";
+        }
+
+        clearInterval(thinkingInterval);
+
+        const safeHTML = DOMPurify.sanitize(marked.parse(finalReply));
+        placeholder.innerHTML = safeHTML;
+
+        let endTime = Date.now();
+        let responseTimeSec = Math.floor((endTime - startTime) / 1000);
+        let responseTimeText = `Model: ${modelUsed} Response Time: ${responseTimeSec} sec`;
+        let timeElem = document.createElement("div");
+        timeElem.className = "response-time";
+        timeElem.textContent = responseTimeText;
+        placeholder.appendChild(timeElem);
+
+        if (finalCitations.length > 0) {
+          const citeDiv = document.createElement("div");
+          citeDiv.className = "citations";
+          citeDiv.textContent = "Citations:";
+          finalCitations.forEach((c, i) => {
+            const link = document.createElement("a");
+            link.className = "citation-link";
+            link.href = c.url;
+            link.target = "_blank";
+            link.textContent = `[${i+1}] ${c.url}`;
+            citeDiv.appendChild(link);
+          });
+          placeholder.appendChild(citeDiv);
+        }
+
+        saveMessage({
+          role: "assistant",
+          text: finalReply,
+          type: "text",
+          responseTime: responseTimeText,
+          timestamp: Date.now(),
+          citations: finalCitations
+        });
+
+        if (!perplexityChecked) {
+          lastQA = { question: promptText, answer: finalReply };
+        }
+      } catch (err) {
+        clearInterval(thinkingInterval);
+        placeholder.textContent = "Error: " + err.message;
+        console.error("Error during fetch:", err);
+      } finally {
+        userInput.disabled = false;
+        userInput.title = "";
+        document.getElementById("sendButton").disabled = false;
+        clearPendingAttachment();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        await openDatabase();
+        applyTheme(localStorage.getItem("theme") || "light");
+        await fetchModels();
+
+        const transaction = db.transaction(["threads"], "readonly");
+        const store = transaction.objectStore("threads");
+        const countRequest = store.count();
+        countRequest.onsuccess = function() {
+          if (countRequest.result === 0) {
+            const defaultTransaction = db.transaction(["threads"], "readwrite");
+            const defaultStore = defaultTransaction.objectStore("threads");
+            const defaultThread = { name: "Default", created: Date.now() };
+            const addRequest = defaultStore.add(defaultThread);
+            addRequest.onsuccess = function(e) {
+              currentThreadId = e.target.result;
+              loadThreads();
+              loadMessages();
+            };
+          } else {
+            store.openCursor().onsuccess = function(e) {
+              const cursor = e.target.result;
+              if (cursor) {
+                currentThreadId = cursor.value.id;
+                loadThreads();
+                loadMessages();
+                return;
+              }
+            };
+          }
+        };
+      } catch (err) {
+        console.error("Error during DB init or model fetch:", err);
+        alert("Failed to initialize database or load models. Check console for details.");
+      }
+    });
+
+    document.getElementById("modelSelection").addEventListener("change", function() {
+      localStorage.setItem("defaultModel", this.value);
+    });
+
+    document.getElementById("newThreadBtn").addEventListener("click", createNewThread);
+    document.getElementById("sendButton").addEventListener("click", sendMessage);
     document.getElementById("userInput").addEventListener("keydown", function(e) {
       if (e.key === "Enter") {
         e.preventDefault();
         sendMessage();
       }
     });
-
-    // Model selection: Save last selected model to local storage
-    document.getElementById("modelSelection").addEventListener("change", function() {
-      localStorage.setItem("defaultModel", this.value);
-    });
-
-    // Fetch available models from the API and set default from local storage if available
-    async function fetchModels() {
-      try {
-        const response = await fetch("http://localhost:11434/api/tags");
-        const data = await response.json();
-        const modelDropdown = document.getElementById("modelSelection");
-        modelDropdown.innerHTML = "";
-        if (data.models && data.models.length > 0) {
-          data.models.forEach(model => {
-            let option = document.createElement("option");
-            option.value = model.name;
-            option.textContent = model.name;
-            modelDropdown.appendChild(option);
-          });
-          const savedModel = localStorage.getItem("defaultModel");
-          if (savedModel) {
-            modelDropdown.value = savedModel;
-          } else {
-            modelDropdown.selectedIndex = 0;
-          }
-        } else {
-          modelDropdown.innerHTML = "<option>No models found</option>";
-        }
-      } catch (error) {
-        console.error("Error fetching models:", error);
-        document.getElementById("modelSelection").innerHTML = "<option>Error loading models</option>";
-      }
-    }
-
-    // On page load: open DB, load threads (or create default thread), load messages, and fetch models
-    document.addEventListener("DOMContentLoaded", async () => {
-      await openDatabase();
-      const transaction = db.transaction(["threads"], "readonly");
-      const store = transaction.objectStore("threads");
-      const countRequest = store.count();
-      countRequest.onsuccess = function() {
-        if (countRequest.result === 0) {
-          const defaultTransaction = db.transaction(["threads"], "readwrite");
-          const defaultStore = defaultTransaction.objectStore("threads");
-          const defaultThread = { name: "Default", created: Date.now() };
-          const addRequest = defaultStore.add(defaultThread);
-          addRequest.onsuccess = function(e) {
-            currentThreadId = e.target.result;
-            loadThreads();
-            loadMessages();
-          };
-        } else {
-          store.openCursor().onsuccess = function(e) {
-            const cursor = e.target.result;
-            if (cursor) {
-              currentThreadId = cursor.value.id;
-              loadThreads();
-              loadMessages();
-              return;
-            }
-          };
-        }
-      };
-      await fetchModels();
-    });
-
-    // Attach sendMessage to the Send button
-    document.getElementById("sendButton").addEventListener("click", sendMessage);
   </script>
 </body>
 </html>
