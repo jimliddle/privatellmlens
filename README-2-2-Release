@@ -1,0 +1,9 @@
+- Added Dark Theme Support
+- Added Perplexity Search Support (requires API key)
+- Improved loading of files to Ollama using Chunking and summarization - files are split into chunk, summarized and then submitted to the LLM
+- Added a settings section for Perplexity API key and also to control file chunking sizes
+- Added "Don't summarize" checkbox for when you don't want attached files to be summarized, such as when its a code file.
+- Added support for more different files types - now supports .txt, .pdf, .html, .json, .py, .csv
+- Fixed a race condition with IndexedDB
+- Fixed a race condition with image submittal
+- Added an image icon in the title
