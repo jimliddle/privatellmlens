@@ -263,6 +263,8 @@
     #settingsPanel {
       display: none;
       position: fixed;
+      align-items: flex-start;
+      padding: 10px;
       top: 20%;
       left: 50%;
       transform: translateX(-50%);
@@ -272,6 +274,24 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
     }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .setting-row label {
+      flex: 1;
+      text-align: left;
+      margin-right: 10px;
+    }
+
+    .setting-row input,
+    .setting-row select {
+      flex: 2;
+    }
+
     #settingsPanel h3 {
       margin-bottom: 10px;
     }
@@ -518,24 +538,25 @@
   <!-- Settings Panel -->
   <div id="settingsPanel">
     <h3>Settings</h3>
-    <label for="textChunkSizeInput">Text Chunk Size (bytes): 
+    <div class="setting-row">
+      <label>Theme:</label>
+        <select id="themeSelect">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+      <div class="setting-row">
+    <label for="textChunkSizeInput">Text Chunk Size (bytes):</label>
       <input type="number" id="textChunkSizeInput" value="10240">
-    </label>
-    <br><br>
-    <label for="pdfPagesPerChunkInput">PDF Pages per Chunk: 
+    </div>
+    <div class="setting-row">
+    <label for="pdfPagesPerChunkInput">PDF Pages per Chunk:</label>
       <input type="number" id="pdfPagesPerChunkInput" value="3">
-    </label>
-    <br><br>
-    <label>Theme:
-      <select id="themeSelect">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
-    <br><br>
-    <label for="perplexityApiKeyInput">Perplexity API Key:
+    </div>
+    <div class="setting-row">
+    <label for="perplexityApiKeyInput">Perplexity API Key:</label>
       <input type="password" id="perplexityApiKeyInput">
-    </label>
+    </div>
     <br><br>
     <button id="saveSettingsButton">Save</button>
     <button id="cancelSettingsButton">Cancel</button>
