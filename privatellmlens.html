@@ -587,9 +587,18 @@
     if (!localStorage.getItem("perplexityApiKey")) {
       localStorage.setItem("perplexityApiKey", "");
     }
-    if (!localStorage.getItem("theme")) {
-      localStorage.setItem("theme", "light");
+
+    //Detect system's preferred color scheme
+  function detectSystemColorScheme() {
+    if (typeof window.matchMedia !== 'undefined') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return prefersDark ? 'dark' : 'light';
+    } else {
+      // If the browser doesn't support prefers-color-scheme fallback to light
+      console.log('Browser does not support prefers-color-scheme');
+      return 'light'; 
     }
+  }
 
     function applyTheme(theme) {
       if (theme === "dark") {
@@ -597,6 +606,17 @@
       } else {
         document.body.classList.remove("dark-theme");
       }
+    }
+
+    // Use the theme from localStorage if set, otherwise use system's  color scheme
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme) {
+      applyTheme(storedTheme);
+    } else {
+      // localStorage theme not set, use system color scheme and save that to localStorage 
+      const systemTheme = detectSystemColorScheme();
+      applyTheme(systemTheme);
+      localStorage.setItem("theme", systemTheme);
     }
 
     function openDatabase() {
