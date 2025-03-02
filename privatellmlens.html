@@ -12,6 +12,9 @@
   <!-- DOMPurify for HTML sanitization -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
 
+   <!-- Include Font Awesome -->
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+ 
   <style>
     /*
       ================================
@@ -501,7 +504,12 @@
         <div id="actionRow">
           <a class="action-link delete" onclick="clearAllMessages()">Clear all messages</a>
           <a class="action-link" onclick="resetDatabase()">Reset IndexedDB</a>
-          <select id="modelSelection"><option>Loading models...</option></select>
+          <div style="display: flex; align-items: center;">
+            <button onclick="fetchModels()" style="margin-right: 10px;"><i class="fa-solid fa-rotate"></i></button>
+            <select id="modelSelection" style="width: 200px;">
+              <option>Loading models...</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
