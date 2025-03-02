@@ -36,6 +36,8 @@ Each of the models can easily be changed from the model dropdown in the bottom r
 
 ![Screenshot 2025-03-01 163559](https://github.com/user-attachments/assets/bd9feb03-ea14-4591-bda3-cf9c837f8773)
 
+The last used model will be the auto-selected model next time PrivateLLMLens is refreshed or loaded.
+
 Themes can be switched between light and dark
 
 ![Screenshot 2025-03-01 152320](https://github.com/user-attachments/assets/3d388f21-af27-4222-95f6-2d03f625b43f)
@@ -86,7 +88,30 @@ I have also implemented a feature, which is being able to leverage the prior out
 
 ![Screenshot 2025-03-01 170925](https://github.com/user-attachments/assets/bc3a25dc-96b8-40b9-b367-101274fb5de5)
 
-The 'dont' summarize' feature prevents files being chunked and summarized when being sent to Ollama. This is useful if you are dealing with code files, JSON files or CSV files.
+The 'dont summarize' feature prevents files being chunked and summarized when being sent to Ollama. This is useful if you are dealing with code files, JSON files or CSV files.
+
+An example of using this with a Python code file can be seen below:
+
+![Screenshot 2025-03-01 171623](https://github.com/user-attachments/assets/78cb9a59-c03d-48e7-b9b4-5eaade8fb907)
+
+In the summarization mode (the default) we read each chunk, call the summarization API, and then combine the summaries. In the 'Don’t Summarize' mode we still read the file in chunks (to avoid loading huge files into memory at once), but we skip the API calls and simply concatenate all chunk text into one final raw string.
+
+Chunking helps with memory problems because it prevents PrivateLLMSLens from loading the entire file into memory at once. Instead, we:
+
+(i)   Read and process the file in small slices (chunks).
+(ii)  Handle each chunk (either summarizing it or concatenating it) and then move on to the next chunk.
+(iii) Never store the entire file’s data in memory simultaneously.
+
+Essentially, each chunk is briefly in memory during its processing, and then it’s discarded. The only data that persists between chunks is the (relatively small) partial result (either a short summary or the incrementally growing concatenated text). This is much more memory-efficient than loading the entire file at once—especially as we are summarizing each chunk into something far smaller.
+
+The chunk size setting can be controlled from the settings section:
+
+![Screenshot 2025-03-02 115107](https://github.com/user-attachments/assets/ccda1440-4b48-4256-b8d6-87e6c9b50587)
+
+Note that currently exceeding the context window usually means you’ll get suboptimal or failed results and you should consider a model with a larger context window. One thing I am looking at for a future release is further hierarchical summarization when hitting context window limits.
+
+
+
 
 
 
