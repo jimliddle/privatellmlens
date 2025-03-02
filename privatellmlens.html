@@ -557,6 +557,10 @@
     <label for="perplexityApiKeyInput">Perplexity API Key:</label>
       <input type="password" id="perplexityApiKeyInput">
     </div>
+    <div class="setting-row">
+      <label for="customHostname">Ollama Endpoint:</label>
+      <input type="text" id="customHostname" placeholder="http://localhost:11434">
+    </div>
     <br><br>
     <button id="saveSettingsButton">Save</button>
     <button id="cancelSettingsButton">Cancel</button>
@@ -564,7 +568,8 @@
 
   <script>
     const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
-    const OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+    let OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+    let OLLAMA_TAGS = "http://localhost:11434/api/tags";
 
     let db;
     let currentThreadId = null;
@@ -620,7 +625,7 @@
 
     async function fetchModels() {
       try {
-        const response = await fetch("http://localhost:11434/api/tags");
+        const response = await fetch(OLLAMA_TAGS);
         const data = await response.json();
         const modelDropdown = document.getElementById("modelSelection");
         modelDropdown.innerHTML = "";
@@ -942,6 +947,22 @@ async function loadMessages() {
       document.getElementById("attachmentPreview").innerHTML = "";
     }
 
+    function updateCustomEndpoints(hostname) {
+      hostname = hostname.trim();
+
+      if (hostname === '') {
+        OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+        OLLAMA_TAGS = "http://localhost:11434/api/tags";
+      } else {
+        const ollamaUrl = hostname;
+        OLLAMA_ENDPOINT = `${ollamaUrl}/api/chat`;
+        OLLAMA_TAGS = `${ollamaUrl}/api/tags`;
+      }
+
+      console.log('OLLAMA_ENDPOINT:', OLLAMA_ENDPOINT);
+      console.log('OLLAMA_TAGS:', OLLAMA_TAGS);
+    }
+
     // Settings
     document.getElementById("settingsButton").addEventListener("click", function() {
       document.getElementById("settingsPanel").style.display = "block";
@@ -981,7 +1002,10 @@ async function loadMessages() {
         localStorage.setItem("perplexityApiKey", "");
       }
 
+      const hostnameInput = document.getElementById('customHostname');
+      updateCustomEndpoints(hostnameInput.value);
       document.getElementById("settingsPanel").style.display = "none";
+      fetchModels();
       alert("Settings saved.");
     });
 
