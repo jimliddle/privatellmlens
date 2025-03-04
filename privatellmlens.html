@@ -12,6 +12,9 @@
   <!-- DOMPurify for HTML sanitization -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
 
+   <!-- Include Font Awesome -->
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+ 
   <style>
     /*
       ================================
@@ -260,6 +263,8 @@
     #settingsPanel {
       display: none;
       position: fixed;
+      align-items: flex-start;
+      padding: 10px;
       top: 20%;
       left: 50%;
       transform: translateX(-50%);
@@ -269,6 +274,24 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
     }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .setting-row label {
+      flex: 1;
+      text-align: left;
+      margin-right: 10px;
+    }
+
+    .setting-row input,
+    .setting-row select {
+      flex: 2;
+    }
+
     #settingsPanel h3 {
       margin-bottom: 10px;
     }
@@ -501,7 +524,12 @@
         <div id="actionRow">
           <a class="action-link delete" onclick="clearAllMessages()">Clear all messages</a>
           <a class="action-link" onclick="resetDatabase()">Reset IndexedDB</a>
-          <select id="modelSelection"><option>Loading models...</option></select>
+          <div style="display: flex; align-items: center;">
+            <button onclick="fetchModels()" style="margin-right: 10px;"><i class="fa-solid fa-rotate"></i></button>
+            <select id="modelSelection" style="width: 200px;">
+              <option>Loading models...</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
@@ -510,24 +538,29 @@
   <!-- Settings Panel -->
   <div id="settingsPanel">
     <h3>Settings</h3>
-    <label for="textChunkSizeInput">Text Chunk Size (bytes): 
+    <div class="setting-row">
+      <label>Theme:</label>
+        <select id="themeSelect">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+      <div class="setting-row">
+    <label for="textChunkSizeInput">Text Chunk Size (bytes):</label>
       <input type="number" id="textChunkSizeInput" value="10240">
-    </label>
-    <br><br>
-    <label for="pdfPagesPerChunkInput">PDF Pages per Chunk: 
+    </div>
+    <div class="setting-row">
+    <label for="pdfPagesPerChunkInput">PDF Pages per Chunk:</label>
       <input type="number" id="pdfPagesPerChunkInput" value="3">
-    </label>
-    <br><br>
-    <label>Theme:
-      <select id="themeSelect">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
-    <br><br>
-    <label for="perplexityApiKeyInput">Perplexity API Key:
+    </div>
+    <div class="setting-row">
+    <label for="perplexityApiKeyInput">Perplexity API Key:</label>
       <input type="password" id="perplexityApiKeyInput">
-    </label>
+    </div>
+    <div class="setting-row">
+      <label for="customHostname">Ollama Endpoint:</label>
+      <input type="text" id="customHostname" placeholder="http://localhost:11434">
+    </div>
     <br><br>
     <button id="saveSettingsButton">Save</button>
     <button id="cancelSettingsButton">Cancel</button>
@@ -535,7 +568,8 @@
 
   <script>
     const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
-    const OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+    let OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+    let OLLAMA_TAGS = "http://localhost:11434/api/tags";
 
     let db;
     let currentThreadId = null;
@@ -553,9 +587,18 @@
     if (!localStorage.getItem("perplexityApiKey")) {
       localStorage.setItem("perplexityApiKey", "");
     }
-    if (!localStorage.getItem("theme")) {
-      localStorage.setItem("theme", "light");
+
+    //Detect system's preferred color scheme
+  function detectSystemColorScheme() {
+    if (typeof window.matchMedia !== 'undefined') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return prefersDark ? 'dark' : 'light';
+    } else {
+      // If the browser doesn't support prefers-color-scheme fallback to light
+      console.log('Browser does not support prefers-color-scheme');
+      return 'light'; 
     }
+  }
 
     function applyTheme(theme) {
       if (theme === "dark") {
@@ -563,6 +606,17 @@
       } else {
         document.body.classList.remove("dark-theme");
       }
+    }
+
+    // Use the theme from localStorage if set, otherwise use system's  color scheme
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme) {
+      applyTheme(storedTheme);
+    } else {
+      // localStorage theme not set, use system color scheme and save that to localStorage 
+      const systemTheme = detectSystemColorScheme();
+      applyTheme(systemTheme);
+      localStorage.setItem("theme", systemTheme);
     }
 
     function openDatabase() {
@@ -591,7 +645,7 @@
 
     async function fetchModels() {
       try {
-        const response = await fetch("http://localhost:11434/api/tags");
+        const response = await fetch(OLLAMA_TAGS);
         const data = await response.json();
         const modelDropdown = document.getElementById("modelSelection");
         modelDropdown.innerHTML = "";
@@ -913,6 +967,22 @@ async function loadMessages() {
       document.getElementById("attachmentPreview").innerHTML = "";
     }
 
+    function updateCustomEndpoints(hostname) {
+      hostname = hostname.trim();
+
+      if (hostname === '') {
+        OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
+        OLLAMA_TAGS = "http://localhost:11434/api/tags";
+      } else {
+        const ollamaUrl = hostname;
+        OLLAMA_ENDPOINT = `${ollamaUrl}/api/chat`;
+        OLLAMA_TAGS = `${ollamaUrl}/api/tags`;
+      }
+
+      console.log('OLLAMA_ENDPOINT:', OLLAMA_ENDPOINT);
+      console.log('OLLAMA_TAGS:', OLLAMA_TAGS);
+    }
+
     // Settings
     document.getElementById("settingsButton").addEventListener("click", function() {
       document.getElementById("settingsPanel").style.display = "block";
@@ -952,7 +1022,10 @@ async function loadMessages() {
         localStorage.setItem("perplexityApiKey", "");
       }
 
+      const hostnameInput = document.getElementById('customHostname');
+      updateCustomEndpoints(hostnameInput.value);
       document.getElementById("settingsPanel").style.display = "none";
+      fetchModels();
       alert("Settings saved.");
     });
 
