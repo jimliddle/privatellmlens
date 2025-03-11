@@ -12,8 +12,8 @@
   <!-- DOMPurify for HTML sanitization -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
 
-   <!-- Include Font Awesome -->
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- Include Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
  
   <style>
     /*
@@ -138,7 +138,7 @@
       color: #888;
       cursor: pointer;
       display: none;
-      z-index: 10; /* Added to ensure the trash icon appears above content */
+      z-index: 10;
     }
     .message:hover .delete-msg-icon {
       display: block;
@@ -161,16 +161,17 @@
       margin-bottom: 5px;
       align-items: center;
     }
+    /* Changed from input to textarea for multiline support */
     #userInput {
       flex-grow: 1;
       padding: 8px;
       border: 1px solid #ddd;
       border-radius: 4px;
       height: 40px;
+      font-family: inherit;
     }
-    /* File input tooltip added on fileInput element */
     #fileInput {
-      /* no additional styling required */
+    
     }
     #sendButton {
       padding: 8px 16px;
@@ -256,7 +257,6 @@
       margin-top: 5px;
       font-size: 12px;
     }
-    /* Updated followOnContainer: Added "Don't summarize" checkbox */
     #followOnContainer label {
       margin-right: 10px;
     }
@@ -274,24 +274,20 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
     }
-
     .setting-row {
       display: flex;
       align-items: center;
       margin-bottom: 10px;
     }
-
     .setting-row label {
       flex: 1;
       text-align: left;
       margin-right: 10px;
     }
-
     .setting-row input,
     .setting-row select {
       flex: 2;
     }
-
     #settingsPanel h3 {
       margin-bottom: 10px;
     }
@@ -321,7 +317,6 @@
       margin-top: 3px;
       word-break: break-all;
     }
-    /* Markdown styling for messages */
     .message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
       margin-top: 1em;
       margin-bottom: 0.5em;
@@ -357,7 +352,6 @@
       padding: 10px;
       border-left: 2px solid;
     }
-
     /*
       ================================
       Dark Theme
@@ -367,7 +361,6 @@
       background: #000000;
       color: #ffffff;
     }
-   /* Make the settings icon visible in dark theme */
     body.dark-theme #settingsButton {
       color: #fff;
     }
@@ -395,9 +388,13 @@
     }
     body.dark-theme .user-message {
       background: #333333;
+      margin-left: 20px;
+      border: 1px solid #555;
+      border-radius: 4px;
     }
     body.dark-theme .assistant-message {
-      background: #404040;
+      background: #4f4f4f;
+      margin-right: 20px;
     }
     body.dark-theme #inputSection {
       color: #ffffff;
@@ -438,7 +435,6 @@
       color: #ccc;
       border-top: 1px solid #555;
     }
-    /* fix: code blocks in dark theme */
     body.dark-theme .message pre,
     body.dark-theme .message code {
       background-color: #333;
@@ -449,24 +445,21 @@
       border: 1px solid #555;
       border-radius: 4px;
     }
-   body.dark-theme .user-message {
-     background: #333333; /* Existing color, keep it as is (or slightly darker) */
-     margin-left: 20px;    /* Keep existing styles */
-     border: 1px solid #555; /* visible border */
-     border-radius: 4px;     /* Keeps the rounded corners */
-   }
-
-    body.dark-theme .assistant-message {
-     background: #4f4f4f; /* Lighter gray than user-message */
-     margin-right: 20px;   /* Keep existing styles */
-   }
-  /* Dark theme settings panel */
-    body.dark-theme #settingsPanel {
-        background: #333; /* Dark background */
-        color: #fff;       /* White text */
-        border: 1px solid #555; /* Darker border */
+    body.dark-theme .user-message {
+      background: #333333;
+      margin-left: 20px;
+      border: 1px solid #555;
+      border-radius: 4px;
     }
-
+    body.dark-theme .assistant-message {
+      background: #4f4f4f;
+      margin-right: 20px;
+    }
+    body.dark-theme #settingsPanel {
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+    }
     body.dark-theme #settingsPanel input,
     body.dark-theme #settingsPanel select,
     body.dark-theme #settingsPanel button {
@@ -478,7 +471,7 @@
        background-color:#555;
     }
     body.dark-theme #aiIcon {
-    filter: invert(100%); 
+      filter: invert(100%); 
     }
   </style>
 </head>
@@ -501,19 +494,22 @@
       <div id="messageHistory"></div>
       <div id="inputSection">
         <div id="inputRow">
-          <input type="text" id="userInput" placeholder="Type your message...">
-          <!-- Added title attribute for tooltip on file input -->
+          <!-- Changed input to textarea for multiline support -->
+          <textarea id="userInput" placeholder="Type your message..." style="height: 40px;"></textarea>
+          <!-- Added title attribute for tooltips  -->
           <input type="file" id="fileInput" title="Supports PDF, Text, Python, HTML, CSV and JSON files">
           <button id="sendButton">Send</button>
         </div>
-        <!-- Updated followOnContainer: added "Don't summarize" checkbox -->
         <div id="followOnContainer">
-          <label><input type="checkbox" id="followOnCheckbox"> Follow on question</label>
+          <label><input type="checkbox" id="followOnCheckbox" title="Use the prior response to ask another question"> Follow on question</label>
           <label style="margin-left: 20px;">
             <input type="checkbox" id="dontSummarizeCheckbox"> Don't summarize
           </label>
           <label style="margin-left: 20px;">
             <input type="checkbox" id="perplexitySearchCheckbox"> Perplexity Search
+          </label>
+          <label style="margin-left: 20px;">
+            <input type="checkbox" id="generateImageCheckbox" title="Generate an Image using OpenAI"> Generate Image
           </label>
         </div>
         <div id="attachmentPreview"></div>
@@ -558,6 +554,10 @@
       <input type="password" id="perplexityApiKeyInput">
     </div>
     <div class="setting-row">
+      <label for="openaiApiKeyInput">OpenAI API Key:</label>
+      <input type="password" id="openaiApiKeyInput">
+    </div>
+    <div class="setting-row">
       <label for="customHostname">Ollama Endpoint:</label>
       <input type="text" id="customHostname" placeholder="http://localhost:11434">
     </div>
@@ -577,7 +577,6 @@
     let lastQA = null;
     let cancelProcessing = false;
 
-    // Default localStorage
     if (!localStorage.getItem("textChunkSize")) {
       localStorage.setItem("textChunkSize", "10240");
     }
@@ -588,17 +587,15 @@
       localStorage.setItem("perplexityApiKey", "");
     }
 
-    //Detect system's preferred color scheme
-  function detectSystemColorScheme() {
-    if (typeof window.matchMedia !== 'undefined') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      return prefersDark ? 'dark' : 'light';
-    } else {
-      // If the browser doesn't support prefers-color-scheme fallback to light
-      console.log('Browser does not support prefers-color-scheme');
-      return 'light'; 
+    function detectSystemColorScheme() {
+      if (typeof window.matchMedia !== 'undefined') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+      } else {
+        console.log('Browser does not support prefers-color-scheme');
+        return 'light'; 
+      }
     }
-  }
 
     function applyTheme(theme) {
       if (theme === "dark") {
@@ -608,12 +605,10 @@
       }
     }
 
-    // Use the theme from localStorage if set, otherwise use system's  color scheme
     const storedTheme = localStorage.getItem("theme");
     if (storedTheme) {
       applyTheme(storedTheme);
     } else {
-      // localStorage theme not set, use system color scheme and save that to localStorage 
       const systemTheme = detectSystemColorScheme();
       applyTheme(systemTheme);
       localStorage.setItem("theme", systemTheme);
@@ -671,7 +666,6 @@
       }
     }
 
-    // Threads
     async function loadThreads() {
       const threadsList = document.getElementById("threadsList");
       threadsList.innerHTML = "";
@@ -767,102 +761,95 @@
       };
     }
 
-    // Messages
-async function loadMessages() {
-      const messageHistory = document.getElementById("messageHistory");
-      messageHistory.innerHTML = "";
-      if (!currentThreadId || !db) return;
+    async function loadMessages() {
+      const messageHistory = document.getElementById("messageHistory");
+      messageHistory.innerHTML = "";
+      if (!currentThreadId || !db) return;
 
-      try {
-        const transaction = db.transaction(["messages"], "readonly");
-        const store = transaction.objectStore("messages");
-        const index = store.index("threadId");
-        const range = IDBKeyRange.only(currentThreadId);
-        index.openCursor(range).onsuccess = (e) => {
-          const cursor = e.target.result;
-          if (cursor) {
-            const {
-              id,
-              role,
-              text,
-              type,
-              fileName,
-              imageData,
-              responseTime,
-              citations
-            } = cursor.value;
+      try {
+        const transaction = db.transaction(["messages"], "readonly");
+        const store = transaction.objectStore("messages");
+        const index = store.index("threadId");
+        const range = IDBKeyRange.only(currentThreadId);
+        index.openCursor(range).onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            const {
+              id,
+              role,
+              text,
+              type,
+              fileName,
+              imageData,
+              responseTime,
+              citations
+            } = cursor.value;
 
-            const messageElem = document.createElement("div");
-            messageElem.className = "message " + (role === "user" ? "user-message" : "assistant-message");
+            const messageElem = document.createElement("div");
+            messageElem.className = "message " + (role === "user" ? "user-message" : "assistant-message");
 
-            // Trash icon
-            const trashIcon = document.createElement("span");
-            trashIcon.className = "delete-msg-icon";
-            trashIcon.textContent = "🗑";
-            trashIcon.title = "Delete this message";
-                //THE FIX IS HERE
-            trashIcon.addEventListener("click", (ev) => {
-              ev.stopPropagation();
-              deleteSingleMessage(id);
-            });
-            messageElem.appendChild(trashIcon);
+            const trashIcon = document.createElement("span");
+            trashIcon.className = "delete-msg-icon";
+            trashIcon.textContent = "🗑";
+            trashIcon.title = "Delete this message";
+            trashIcon.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              deleteSingleMessage(id);
+            });
+            messageElem.appendChild(trashIcon);
 
-            if (type === 'image' && imageData) {
-              const fileLabel = document.createElement("div");
-              fileLabel.textContent = fileName ? `Attached Image: ${fileName}` : "Attached Image";
-              messageElem.appendChild(fileLabel);
+            if (type === 'image' && imageData) {
+              const fileLabel = document.createElement("div");
+              fileLabel.textContent = fileName ? `Attached Image: ${fileName}` : "Attached Image";
+              messageElem.appendChild(fileLabel);
 
-              const imgElem = document.createElement("img");
-              imgElem.src = imageData;
-              imgElem.style.maxWidth = "150px";
-              imgElem.style.maxHeight = "150px";
-              messageElem.appendChild(imgElem);
+              const imgElem = document.createElement("img");
+              imgElem.src = imageData;
+              imgElem.style.maxWidth = "150px";
+              imgElem.style.maxHeight = "150px";
+              messageElem.appendChild(imgElem);
 
-            } else {
-              // text-based output
-              const contentDiv = document.createElement("div");
-              const safeHTML = DOMPurify.sanitize(marked.parse(text || ""));
-              contentDiv.innerHTML = safeHTML;
-              messageElem.appendChild(contentDiv);
-            }
-
-            if (citations && citations.length > 0) {
-              const citeDiv = document.createElement("div");
-              citeDiv.className = "citations";
-              citeDiv.textContent = "Citations:";
-              citations.forEach((c, i) => {
-                const link = document.createElement("a");
-                link.className = "citation-link";
-                link.href = c.url;
-                link.target = "_blank";
-                link.textContent = `[${i+1}] ${c.url}`;
-                citeDiv.appendChild(link);
-              });
-              messageElem.appendChild(citeDiv);
-            }
-
-            if (responseTime) {
-              const timeElem = document.createElement("div");
-              timeElem.className = "response-time";
-              timeElem.textContent = responseTime;
-              messageElem.appendChild(timeElem);
-            }
-
-                //ADD THIS LINE
-                messageElem.appendChild(trashIcon);
-
-            messageHistory.appendChild(messageElem);
-            cursor.continue();
-          } else {
-                //SCROLL TO THE BOTTOM
-                messageHistory.scrollTop = messageHistory.scrollHeight;
+            } else {
+              const contentDiv = document.createElement("div");
+              const safeHTML = DOMPurify.sanitize(marked.parse(text || ""));
+              contentDiv.innerHTML = safeHTML;
+              messageElem.appendChild(contentDiv);
             }
-        };
-      } catch (err) {
-        console.error("Error loading messages:", err);
-        messageHistory.innerHTML = "<p>Error loading messages. Please reset the database.</p>";
-      }
-    }
+
+            if (citations && citations.length > 0) {
+              const citeDiv = document.createElement("div");
+              citeDiv.className = "citations";
+              citeDiv.textContent = "Citations:";
+              citations.forEach((c, i) => {
+                const link = document.createElement("a");
+                link.className = "citation-link";
+                link.href = c.url;
+                link.target = "_blank";
+                link.textContent = `[${i+1}] ${c.url}`;
+                citeDiv.appendChild(link);
+              });
+              messageElem.appendChild(citeDiv);
+            }
+
+            if (responseTime) {
+              const timeElem = document.createElement("div");
+              timeElem.className = "response-time";
+              timeElem.textContent = responseTime;
+              messageElem.appendChild(timeElem);
+            }
+
+            messageElem.appendChild(trashIcon);
+            messageHistory.appendChild(messageElem);
+            cursor.continue();
+          } else {
+            messageHistory.scrollTop = messageHistory.scrollHeight;
+          }
+        };
+      } catch (err) {
+        console.error("Error loading messages:", err);
+        messageHistory.innerHTML = "<p>Error loading messages. Please reset the database.</p>";
+      }
+    }
 
     function saveMessage(messageObj) {
       if (!db) return;
@@ -948,15 +935,35 @@ async function loadMessages() {
       progressDiv.textContent = `Processing: ${completed} of ${total} chunks (${percent}%)`;
     }
 
-    // Perplexity switch
+    // Event listener for Perplexity Search checkbox (disables file input and follow-on)
     document.getElementById("perplexitySearchCheckbox").addEventListener("change", function(e) {
       const isChecked = e.target.checked;
+      if(isChecked){
+        document.getElementById("generateImageCheckbox").checked = false;
+      }
       document.getElementById("fileInput").disabled = isChecked;
       document.getElementById("followOnCheckbox").disabled = isChecked;
       if (isChecked) {
         clearPendingAttachment();
       }
     });
+
+    // Event listener for Generate Image checkbox (disables file input but leaves follow-on enabled)
+    document.getElementById("generateImageCheckbox").addEventListener("change", function(e) {
+  const isChecked = e.target.checked;
+  if (isChecked) {
+    document.getElementById("perplexitySearchCheckbox").checked = false;
+    document.getElementById("fileInput").disabled = true;
+    const dontSummarizeCheckbox = document.getElementById("dontSummarizeCheckbox");
+    dontSummarizeCheckbox.checked = false;  // uncheck if it was checked
+    dontSummarizeCheckbox.disabled = true;    // disable it
+    clearPendingAttachment();
+  } else {
+    document.getElementById("fileInput").disabled = false;
+    document.getElementById("dontSummarizeCheckbox").disabled = false;
+  }
+});
+
 
     function clearPendingAttachment() {
       if (pendingAttachment && pendingAttachment.reader) {
@@ -983,7 +990,6 @@ async function loadMessages() {
       console.log('OLLAMA_TAGS:', OLLAMA_TAGS);
     }
 
-    // Settings
     document.getElementById("settingsButton").addEventListener("click", function() {
       document.getElementById("settingsPanel").style.display = "block";
 
@@ -1000,6 +1006,15 @@ async function loadMessages() {
         keyInput.value = "********";
       } else {
         keyInput.value = "";
+      }
+
+      const openaiStoredKey = localStorage.getItem("openaiApiKey") || "";
+      const openaiKeyInput = document.getElementById("openaiApiKeyInput");
+      openaiKeyInput.type = "password";
+      if (openaiStoredKey) {
+        openaiKeyInput.value = "********";
+      } else {
+        openaiKeyInput.value = "";
       }
     });
     document.getElementById("cancelSettingsButton").addEventListener("click", function() {
@@ -1022,6 +1037,13 @@ async function loadMessages() {
         localStorage.setItem("perplexityApiKey", "");
       }
 
+      const openaiKeyInput = document.getElementById("openaiApiKeyInput");
+      if (openaiKeyInput.value && openaiKeyInput.value !== "********") {
+        localStorage.setItem("openaiApiKey", openaiKeyInput.value.trim());
+      } else if (openaiKeyInput.value === "") {
+        localStorage.setItem("openaiApiKey", "");
+      }
+
       const hostnameInput = document.getElementById('customHostname');
       updateCustomEndpoints(hostnameInput.value);
       document.getElementById("settingsPanel").style.display = "none";
@@ -1029,13 +1051,11 @@ async function loadMessages() {
       alert("Settings saved.");
     });
 
-    // File input
     document.getElementById("fileInput").addEventListener("change", function(e) {
       const file = e.target.files[0];
       if (!file) return;
       const fileNameLower = file.name.toLowerCase();
 
-      // If there's an existing read
       if (pendingAttachment && pendingAttachment.reader) {
         pendingAttachment.reader.abort();
         pendingAttachment.cancelled = true;
@@ -1046,7 +1066,6 @@ async function loadMessages() {
         fileNameLower.endsWith(".html") ||
         fileNameLower.endsWith(".htm")
       ) {
-        // HTML
         const reader = new FileReader();
         pendingAttachment = {
           type: 'html',
@@ -1059,7 +1078,6 @@ async function loadMessages() {
         reader.onload = function(event) {
           if (pendingAttachment && !pendingAttachment.cancelled && pendingAttachment.reader === reader) {
             const rawHtml = event.target.result;
-            // sanitize
             const sanitizedHtml = DOMPurify.sanitize(rawHtml);
             pendingAttachment.content = sanitizedHtml;
             showPendingAttachmentPreview(pendingAttachment);
@@ -1073,15 +1091,13 @@ async function loadMessages() {
         reader.readAsText(file);
 
       } else if (file.type === "text/plain" || fileNameLower.endsWith(".txt")) {
-        // .txt
         pendingAttachment = { type: 'txt', fileName: file.name, file, reader: null, cancelled: false };
         showPendingAttachmentPreview(pendingAttachment);
 
       } else if (
         fileNameLower.endsWith(".py") ||
-        file.type === "text/x-python" // sometimes used
+        file.type === "text/x-python"
       ) {
-        // Python
         pendingAttachment = { type: 'python', fileName: file.name, file, reader: null, cancelled: false };
         showPendingAttachmentPreview(pendingAttachment);
 
@@ -1089,7 +1105,6 @@ async function loadMessages() {
         fileNameLower.endsWith(".csv") ||
         file.type === "text/csv"
       ) {
-        // CSV
         pendingAttachment = { type: 'csv', fileName: file.name, file, reader: null, cancelled: false };
         showPendingAttachmentPreview(pendingAttachment);
 
@@ -1097,12 +1112,10 @@ async function loadMessages() {
         fileNameLower.endsWith(".json") ||
         file.type === "application/json"
       ) {
-        // JSON
         pendingAttachment = { type: 'json', fileName: file.name, file, reader: null, cancelled: false };
         showPendingAttachmentPreview(pendingAttachment);
 
       } else if (file.type.startsWith("image/")) {
-        // Image
         const reader = new FileReader();
         pendingAttachment = {
           type: 'image',
@@ -1126,7 +1139,6 @@ async function loadMessages() {
         reader.readAsDataURL(file);
 
       } else if (file.type === "application/pdf") {
-        // PDF
         pendingAttachment = { type: 'pdf', fileName: file.name, file, reader: null, cancelled: false };
         showPendingAttachmentPreview(pendingAttachment);
 
@@ -1144,23 +1156,17 @@ async function loadMessages() {
 
       if (attachment.type === 'txt') {
         previewElem.textContent = "Attached Text File: " + attachment.fileName;
-
       } else if (attachment.type === 'html') {
-        // snippet
         const snippet = attachment.content
           ? attachment.content.slice(0, 200).replace(/\s+/g, " ")
           : "";
         previewElem.textContent = `Attached HTML File: ${attachment.fileName}\nPreview: "${snippet}..."`;
-
       } else if (attachment.type === 'python') {
         previewElem.textContent = "Attached Python File: " + attachment.fileName;
-
       } else if (attachment.type === 'csv') {
         previewElem.textContent = "Attached CSV File: " + attachment.fileName;
-
       } else if (attachment.type === 'json') {
         previewElem.textContent = "Attached JSON File: " + attachment.fileName;
-
       } else if (attachment.type === 'image') {
         const label = document.createElement("div");
         label.textContent = "Attached Image: " + attachment.fileName;
@@ -1169,9 +1175,7 @@ async function loadMessages() {
         previewElem.textContent = "Attached PDF: " + attachment.fileName;
       }
 
-      // Optionally show snippet for python/csv/json:
       if (attachment.type === 'python' || attachment.type === 'csv' || attachment.type === 'json') {
-        // We'll read it now to show a snippet
         const reader = new FileReader();
         reader.onload = (ev) => {
           const text = ev.target.result;
@@ -1235,12 +1239,10 @@ async function loadMessages() {
           finalPrompt = "Based on these summaries, provide a final overall summary of this JSON data:";
           break;
         default:
-          // txt - use default prompts
           break;
       }
 
       if (fileType === 'html') {
-        // already sanitized in pendingAttachment.content
       } else {
         const arrayBuffer = await file.arrayBuffer();
         const decoder = new TextDecoder("utf-8");
@@ -1357,9 +1359,9 @@ async function loadMessages() {
       const userInput = document.getElementById("userInput");
       let promptText = userInput.value.trim();
       const perplexityChecked = document.getElementById("perplexitySearchCheckbox").checked;
+      const generateImageChecked = document.getElementById("generateImageCheckbox").checked;
 
-      // Follow-on logic
-      if (document.getElementById("followOnCheckbox").checked && lastQA && !perplexityChecked) {
+      if (document.getElementById("followOnCheckbox").checked && lastQA) {
         promptText = `Previous conversation:\nUser: ${lastQA.question}\nAssistant: ${lastQA.answer}\n\n` + promptText;
       }
 
@@ -1375,7 +1377,7 @@ async function loadMessages() {
         userMessage.appendChild(promptDiv);
       }
 
-      if (pendingAttachment && !perplexityChecked) {
+      if (pendingAttachment && !perplexityChecked && !generateImageChecked) {
         const attachDiv = document.createElement("div");
         if (pendingAttachment.type === 'txt') {
           attachDiv.textContent = "Attached Text File: " + pendingAttachment.fileName;
@@ -1404,8 +1406,7 @@ async function loadMessages() {
       }
       messageHistory.appendChild(userMessage);
 
-      // Save user message
-      if (pendingAttachment && pendingAttachment.type === 'image' && !perplexityChecked) {
+      if (pendingAttachment && pendingAttachment.type === 'image' && !perplexityChecked && !generateImageChecked) {
         saveMessage({
           role: "user",
           text: "Attached Image: " + pendingAttachment.fileName,
@@ -1430,12 +1431,21 @@ async function loadMessages() {
       const placeholder = document.createElement("div");
       placeholder.className = "message assistant-message";
       let startTime = Date.now();
-      placeholder.innerHTML = "🤔 Still thinking... <span class='spinner'></span> (0 sec)";
+      // Adjust placeholder text based on mode
+      if (generateImageChecked) {
+        placeholder.innerHTML = "🤔 Generating image... <span class='spinner'></span> (0 sec)";
+      } else {
+        placeholder.innerHTML = "🤔 Still thinking... <span class='spinner'></span> (0 sec)";
+      }
       messageHistory.appendChild(placeholder);
 
       let thinkingInterval = setInterval(() => {
         let elapsed = Math.floor((Date.now() - startTime) / 1000);
-        placeholder.innerHTML = `🤔 Still thinking... <span class='spinner'></span> (${elapsed} sec)`;
+        if (generateImageChecked) {
+          placeholder.innerHTML = `🤔 Generating image... <span class='spinner'></span> (${elapsed} sec)`;
+        } else {
+          placeholder.innerHTML = `🤔 Still thinking... <span class='spinner'></span> (${elapsed} sec)`;
+        }
       }, 1000);
 
       try {
@@ -1475,6 +1485,49 @@ async function loadMessages() {
           finalReply = resJson.choices?.[0]?.message?.content || "No response received";
           if (resJson.citations && Array.isArray(resJson.citations)) {
             finalCitations = resJson.citations.map((url) => ({ url }));
+          }
+
+        } else if (generateImageChecked) {
+          const openaiApiKey = localStorage.getItem("openaiApiKey") || "";
+          if (!openaiApiKey) {
+            alert("Please use Settings to enter your OpenAI API Key");
+            throw new Error("No OpenAI API key");
+          }
+          modelUsed = "OpenAI Image API";
+          const openaiPayload = {
+            prompt: promptText,
+            n: 1,
+            size: "512x512",
+            response_format: "b64_json"
+          };
+
+          const response = await fetch("https://api.openai.com/v1/images/generations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + openaiApiKey
+            },
+            body: JSON.stringify(openaiPayload)
+          });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`OpenAI API error: ${errorText}`);
+          }
+          const resJson = await response.json();
+          if (resJson.data && resJson.data.length > 0) {
+            const imageB64 = resJson.data[0].b64_json;
+            const dataUrl = "data:image/png;base64," + imageB64;
+            finalReply = `<div>Generated Image (right-click to download full resolution):</div><img src="${dataUrl}" style="max-width:150px; max-height:150px;" />`;
+            // Save the generated image message
+            saveMessage({
+              role: "assistant",
+              text: finalReply,
+              type: "image",
+              imageData: dataUrl,
+              timestamp: Date.now()
+            });
+          } else {
+            finalReply = "No image received";
           }
 
         } else {
@@ -1568,16 +1621,15 @@ async function loadMessages() {
           placeholder.appendChild(citeDiv);
         }
 
-        saveMessage({
-          role: "assistant",
-          text: finalReply,
-          type: "text",
-          responseTime: responseTimeText,
-          timestamp: Date.now(),
-          citations: finalCitations
-        });
-
-        if (!perplexityChecked) {
+        if (!generateImageChecked && !perplexityChecked) {
+          saveMessage({
+            role: "assistant",
+            text: finalReply,
+            type: "text",
+            responseTime: responseTimeText,
+            timestamp: Date.now(),
+            citations: finalCitations
+          });
           lastQA = { question: promptText, answer: finalReply };
         }
       } catch (err) {
@@ -1591,6 +1643,27 @@ async function loadMessages() {
         clearPendingAttachment();
       }
     }
+
+    // --- New event listeners for the updated prompt input ---
+    // Handle keydown: If Enter without Shift, prevent newline and submit message.
+    document.getElementById("userInput").addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    // Handle paste: If pasted text is large (>500 chars), treat it as an attachment.
+    document.getElementById("userInput").addEventListener("paste", function(e) {
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+      if (pastedText.length > 500) {
+        e.preventDefault();
+        const file = new File([pastedText], "PastedText.txt", { type: "text/plain" });
+        pendingAttachment = { type: 'txt', fileName: "Pasted Text", file: file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+        this.value = "";
+      }
+    });
+    // --- End new event listeners ---
 
     document.addEventListener("DOMContentLoaded", async () => {
       try {
@@ -1636,12 +1709,6 @@ async function loadMessages() {
 
     document.getElementById("newThreadBtn").addEventListener("click", createNewThread);
     document.getElementById("sendButton").addEventListener("click", sendMessage);
-    document.getElementById("userInput").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
   </script>
 </body>
 </html>
