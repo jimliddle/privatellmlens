@@ -106,9 +106,23 @@ Essentially, each chunk is briefly in memory during its processing, and then itâ
 
 The chunk size setting can be controlled from the settings section:
 
-![Screenshot 2025-03-02 115107](https://github.com/user-attachments/assets/ccda1440-4b48-4256-b8d6-87e6c9b50587)
+![Screenshot 2025-03-11 182357](https://github.com/user-attachments/assets/19f3596a-c093-419e-962f-c6eb5548f192)
+
 
 Note that currently exceeding the context window usually means youâ€™ll get suboptimal or failed results and you should consider a model with a larger context window. One thing I am looking at for a future release is further hierarchical summarization when hitting context window limits.
+
+Also note from the screenshot above that the Ollama endpoint can be changed in the settings, if your Ollama deployment is not on your local laptop or mobile and you want to use PrivateLLMLens.
+
+Two extenal services are supported (API keys need to be entered in the settings):
+
+Perplexity AI Search
+
+![Screenshot 2025-03-11 184250](https://github.com/user-attachments/assets/12034c0e-4a4c-4eb1-985b-f04f74287eb4)
+
+OpenAI Search
+
+![Screenshot 2025-03-11 180300](https://github.com/user-attachments/assets/03612a98-e3f5-4045-ad36-bd78e6eef949)
+
 
 
 
