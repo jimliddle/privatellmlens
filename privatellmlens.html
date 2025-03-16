@@ -950,19 +950,31 @@
 
     // Event listener for Generate Image checkbox (disables file input but leaves follow-on enabled)
     document.getElementById("generateImageCheckbox").addEventListener("change", function(e) {
-  const isChecked = e.target.checked;
-  if (isChecked) {
-    document.getElementById("perplexitySearchCheckbox").checked = false;
-    document.getElementById("fileInput").disabled = true;
-    const dontSummarizeCheckbox = document.getElementById("dontSummarizeCheckbox");
-    dontSummarizeCheckbox.checked = false;  // uncheck if it was checked
-    dontSummarizeCheckbox.disabled = true;    // disable it
-    clearPendingAttachment();
-  } else {
-    document.getElementById("fileInput").disabled = false;
-    document.getElementById("dontSummarizeCheckbox").disabled = false;
-  }
+    const isChecked = e.target.checked;
+    if (isChecked) {
+        document.getElementById("perplexitySearchCheckbox").checked = false;
+        document.getElementById("fileInput").disabled = true;
+        const dontSummarizeCheckbox = document.getElementById("dontSummarizeCheckbox");
+        dontSummarizeCheckbox.checked = false;  // Uncheck if it was checked
+        dontSummarizeCheckbox.disabled = true;  // Disable it
+        clearPendingAttachment();
+        
+        const openaiApiKey = localStorage.getItem("openaiApiKey") || "";
+        if (!openaiApiKey) {
+            alert("Please use Settings to enter your OpenAI API Key");
+        }
+    } else {
+        document.getElementById("fileInput").disabled = false;
+        document.getElementById("dontSummarizeCheckbox").disabled = false;
+
+        // **fix: Remove the error message when unchecked**
+        const messageHistory = document.getElementById("messageHistory");
+        if (messageHistory.lastChild && messageHistory.lastChild.textContent.includes("Please use Settings to enter your OpenAI API Key")) {
+            messageHistory.removeChild(messageHistory.lastChild);
+        }
+    }
 });
+
 
 
     function clearPendingAttachment() {
@@ -1666,7 +1678,7 @@
     // --- End new event listeners ---
 
     document.addEventListener("DOMContentLoaded", async () => {
-      try {
+    try {
         await openDatabase();
         applyTheme(localStorage.getItem("theme") || "light");
         await fetchModels();
@@ -1675,33 +1687,62 @@
         const store = transaction.objectStore("threads");
         const countRequest = store.count();
         countRequest.onsuccess = function() {
-          if (countRequest.result === 0) {
-            const defaultTransaction = db.transaction(["threads"], "readwrite");
-            const defaultStore = defaultTransaction.objectStore("threads");
-            const defaultThread = { name: "Default", created: Date.now() };
-            const addRequest = defaultStore.add(defaultThread);
-            addRequest.onsuccess = function(e) {
-              currentThreadId = e.target.result;
-              loadThreads();
-              loadMessages();
-            };
-          } else {
-            store.openCursor().onsuccess = function(e) {
-              const cursor = e.target.result;
-              if (cursor) {
-                currentThreadId = cursor.value.id;
-                loadThreads();
-                loadMessages();
-                return;
-              }
-            };
-          }
+            if (countRequest.result === 0) {
+                const defaultTransaction = db.transaction(["threads"], "readwrite");
+                const defaultStore = defaultTransaction.objectStore("threads");
+                const defaultThread = { name: "Default", created: Date.now() };
+                const addRequest = defaultStore.add(defaultThread);
+                addRequest.onsuccess = function(e) {
+                    currentThreadId = e.target.result;
+                    loadThreads();
+                    loadMessages();
+                };
+            } else {
+                store.openCursor().onsuccess = function(e) {
+                    const cursor = e.target.result;
+                    if (cursor) {
+                        currentThreadId = cursor.value.id;
+                        loadThreads();
+                        loadMessages();
+                        return;
+                    }
+                };
+            }
         };
-      } catch (err) {
+    } catch (err) {
         console.error("Error during DB init or model fetch:", err);
         alert("Failed to initialize database or load models. Check console for details.");
-      }
+    }
+
+    // === NEW FUNCTIONALITY: Paste Image Handling ===
+    document.getElementById("userInput").addEventListener("paste", async function (e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        
+        for (let item of items) {
+            if (item.type.indexOf("image") === 0) {
+                e.preventDefault(); // Prevent pasting raw image data into the text area
+                
+                const file = item.getAsFile();
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    pendingAttachment = {
+                        type: 'image',
+                        fileName: "Pasted Image",
+                        content: event.target.result,
+                        file,
+                        reader,
+                        cancelled: false
+                    };
+                    showPendingAttachmentPreview(pendingAttachment);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
     });
+});
+
 
     document.getElementById("modelSelection").addEventListener("change", function() {
       localStorage.setItem("defaultModel", this.value);
