@@ -38,7 +38,7 @@ Each of the models can easily be changed from the model dropdown in the bottom r
 
 The last used model will be the auto-selected model next time PrivateLLMLens is refreshed or loaded.
 
-Themes can be switched between light and dark
+Themes can be switched between light and dark, and the web page will initially follow the desktop theme.
 
 ![Screenshot 2025-03-01 152320](https://github.com/user-attachments/assets/3d388f21-af27-4222-95f6-2d03f625b43f)
 
@@ -112,6 +112,8 @@ The chunk size setting can be controlled from the settings section:
 Note that currently exceeding the context window usually means you’ll get suboptimal or failed results and you should consider a model with a larger context window. One thing I am looking at for a future release is further hierarchical summarization when hitting context window limits.
 
 Also note from the screenshot above that the Ollama endpoint can be changed in the settings, if your Ollama deployment is not on your local laptop or mobile and you want to use PrivateLLMLens.
+
+The prompt input window can be resized and if you paste in characters above 500 words text will appear as an attachment. If images are pasted into the prompt input windows the will also appear as an attachment but still be visibile in the message history when submitted.
 
 Two extenal services are supported (API keys need to be entered in the settings):
 
