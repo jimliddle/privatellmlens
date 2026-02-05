@@ -1,6 +1,8 @@
 # PrivateLLMLens
 This provides a Zero-Server Web Interface for use with Ollama local LLM's. Also works on mobile if Ollama has been installed using Termux. Please star the repository if you like it.
 
+Accessible at: https://jimliddle.github.io/privatellmlens/ - Everything stored in your client side browser
+
 So what is a zero-server web interface ? It is just a HTML file that you can double-click to launch (and then bookmark for subsequent use). It's served as a file through the web browser rather than through http/https.
 
 ### Configuration
