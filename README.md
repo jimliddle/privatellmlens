@@ -30,19 +30,21 @@ This started out as something that would let me test the different models and re
 
 Below you can see the interface and you can see that every time we interact with a model the model name and response time are noted:
 
-![Screenshot 2025-03-01 153109](https://github.com/user-attachments/assets/00c2770e-a72e-4bb0-8a0d-ef3e2b5d04f0)
+<img width="916" height="508" alt="Private LLM Lens screenshot" src="https://github.com/user-attachments/assets/b86f1b58-e169-4a9a-9f58-ed425c27ea38" />
+
 
 This is really useful when you are checking out the capabilities of the different models.
 
 Each of the models can easily be changed from the model dropdown in the bottom right of the screen. This uses the Ollama Tags feature to be able to interrogate and populate the models.
 
-![Screenshot 2025-03-01 163559](https://github.com/user-attachments/assets/bd9feb03-ea14-4591-bda3-cf9c837f8773)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/b9c591fa-b656-47f2-a76c-b12d893dc15b" />
+
 
 The last used model will be the auto-selected model next time PrivateLLMLens is refreshed or loaded.
 
 Themes can be switched between light and dark, and the web page will initially follow the desktop theme.
 
-![Screenshot 2025-03-01 152320](https://github.com/user-attachments/assets/3d388f21-af27-4222-95f6-2d03f625b43f)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/0f60e594-df9a-40c7-b08a-ba4a4ed5d08a" />
 
 
 So if this is a single web page where is the data being persisted I hear you ask. Well, to keep things very simple and to honor the single page paradigm it is taking advantage of the IndexedDB capabilities from the browser. 
@@ -57,12 +59,13 @@ In the interface you can see at the bottom a 'Reset IndexedDB' link. In the even
 
 Threads enables the user to create different workspaces, for example you could create one for text models and another for vision models:
 
-![image](https://github.com/user-attachments/assets/36c26aeb-2a28-4929-bd40-130ec1ef47b4)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/fe234739-7124-42ff-8b42-b8dee537ef37" />
 
 
 Because Ollama supports vision models we can select a vision model in our workspace and ask it about an image.
 
-![image](https://github.com/user-attachments/assets/208a7c92-6697-4df0-b81c-fcb3325cb4cc)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/ad5a4612-8380-40fb-af81-cd7f56b907dc" />
+
 
 In this case we can see the Lllava-Phi3 image model (the fastest from my testing) took 125 seconds to interrogate the image and respond (I could have no doubt speeded this up substantially by using my external GPU). The image and the response are cached in Indexed DB and will be available in the workspace until you 'clear all messages' or delete the workspace.
 
@@ -72,33 +75,34 @@ This is a nice way to be able to use and test the various images models locally.
 
 Another things I wanted to be able to do was to at least be able to handle small file attachment inputs. This is something I have implemented for text, pdf, csv, html, python and JSON files.
 
-To demonstrate how this works I copied the Wikipedia page for Moby Dick and save it to both a text file and a pdf file.
+To demonstrate how this works we gave it a real sample tender document downloaded from the public internet
 
-We attach the txt file and ask it to provide a brief summary using one the smaller Lllama 3.2 1b models. 
+We attach the PDF file and ask it to:
 
-![Screenshot 2025-03-01 170043](https://github.com/user-attachments/assets/3a6f6b84-1efe-4a69-a5ed-fd2953636dfe)
+:Identify the key conditions, omissions, or administrative actions that CERN considers most relevant to the rejection or disqualification of a bid. [Attached: IT-3824_Tender_Form.pdf]:
 
-The response is a decent summary of the content provided. There is no vector DB or RAG here so technically what we are doing is parsing the text and pre-appending it to the input prompt. The merged prompt  includes a clear delimiter indicating where the attached content starts and ends. 
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/dde910b4-9279-4f24-900c-db80eb9f6f8f" />
 
-We can also do the same with the PDF version of the same content:
 
-Here are we are doing something similar but we are dynamically loading pdf.js (used under the terms of its Apache 2.0 license) to extract the content, chunk it, summarize each chunk, and then append to the prompt the same way as we are doing with the text attachments.
+The response is a decent summary of the content provided. There is no vector DB or RAG here so technically what we are doing is parsing the text in chunks, summarzing each chunk and pre-appending it to the input prompt. The merged prompt  includes a clear delimiter indicating where the attached content starts and ends. 
 
-![Screenshot 2025-03-01 170424](https://github.com/user-attachments/assets/d1b81234-f1e7-4d0f-b4e3-4df189d5e1f6)
+I have also implemented a feature, which is being able to leverage the prior output to ask another question. This takes the prior output and inputs it as a 'prior conversation' along with the prompt input and happens automatically if you ask a follow up question in a thread.
 
-I have also implemented a feature, which is being able to leverage the prior output to ask another question. This takes the prior output and inputs it as a 'prior conversation' along with the prompt input:
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/08520584-5739-41c9-8533-5fd31427dd47" />
 
-![Screenshot 2025-03-01 170925](https://github.com/user-attachments/assets/bc3a25dc-96b8-40b9-b367-101274fb5de5)
+The 'dont summarize' feature prevents files being chunked and summarized when being sent to Ollama. This is useful if you are dealing with code files, JSON files, CSV files, or PDF's / Dpc's where you need precise answers in which you don;t want the chunks to be summarized by the LLM.
 
-The 'dont summarize' feature prevents files being chunked and summarized when being sent to Ollama. This is useful if you are dealing with code files, JSON files or CSV files.
+Below we issue the same tender PDF but this time with 'don't summarize' checked
 
-An example of using this with a Python code file can be seen below:
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/e0ca9653-dc41-43dd-874c-d0acdf6abf85" />
 
-![Screenshot 2025-03-01 171623](https://github.com/user-attachments/assets/78cb9a59-c03d-48e7-b9b4-5eaade8fb907)
+The answer is more comprehensive and for to show the difference I asked it to compare the prior summarized answer with what it provvided and provide an assessment:
 
-In the summarization mode (the default) we read each chunk, call the summarization API, and then combine the summaries. In the 'Don’t Summarize' mode we still read the file in chunks (to avoid loading huge files into memory at once), but we skip the API calls and simply concatenate all chunk text into one final raw string.
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/ce78cdcf-3152-444c-bcd1-01ef1a3cf7d6" />
 
-Chunking helps with memory problems because it prevents PrivateLLMSLens from loading the entire file into memory at once. Instead, we:
+In the summarization mode (the default) we read each chunk, call the summarization API, and then combine the summaries. In the 'Don’t Summarize' mode we still read the file in chunks (to avoid excedding context), but we skip the API calls and simply concatenate all chunk text into one final raw string.
+
+Chunking helps with memory problems because it prevents PrivateLLMSLens from loading the entire file into context. Instead, we:
 
 (i)   Read and process the file in small slices (chunks).
 (ii)  Handle each chunk (either summarizing it or concatenating it) and then move on to the next chunk.
@@ -108,24 +112,31 @@ Essentially, each chunk is briefly in memory during its processing, and then it�
 
 The chunk size setting can be controlled from the settings section:
 
-![Screenshot 2025-03-11 182357](https://github.com/user-attachments/assets/19f3596a-c093-419e-962f-c6eb5548f192)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/c252cfec-cb21-4e1a-b358-232a841400ea" />
 
 
-Note that currently exceeding the context window usually means you’ll get suboptimal or failed results and you should consider a model with a larger context window. One thing I am looking at for a future release is further hierarchical summarization when hitting context window limits.
+Note that currently if you set the chunk ssize higer than the context window you’ll get suboptimal or failed results and you should reduce the chunk size. 
 
 Also note from the screenshot above that the Ollama endpoint can be changed in the settings, if your Ollama deployment is not on your local laptop or mobile and you want to use PrivateLLMLens.
 
 The prompt input window can be resized and if you paste in characters above 500 words text will appear as an attachment. If images are pasted into the prompt input windows the will also appear as an attachment but still be visibile in the message history when submitted.
 
-Two extenal services are supported (API keys need to be entered in the settings):
+THe following extenal services are supported (API keys need to be entered in the settings):
 
-Perplexity AI Search
+Perplexity AI Search:
 
-![Screenshot 2025-03-11 184250](https://github.com/user-attachments/assets/12034c0e-4a4c-4eb1-985b-f04f74287eb4)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/d0023618-5208-45a4-9561-7e7d1feaab03" />
 
-OpenAI Search
+Tavily (non AI) Search:
 
-![Screenshot 2025-03-11 180300](https://github.com/user-attachments/assets/03612a98-e3f5-4045-ad36-bd78e6eef949)
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/cb162d67-a7af-4cea-8c21-8f8667f536ed" />
+
+There is a setting also for enabling the LLM to decide whether it needs to ground its information with a Tavily search. In this sense the LLM is acting more agentic.
+
+OpenAI Image Generation:
+
+<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/7f6ccde1-be9b-4bf8-85f4-a4f45b01550a" />
+
 
 
 
