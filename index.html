@@ -90,7 +90,8 @@
       line-height: 1.6;
       background: var(--bg-primary);
       color: var(--text-primary);
-      height: 100vh;
+      height: 100vh;        /* fallback */
+      height: 100dvh;       /* adapts as mobile browser chrome shows/hides */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -479,26 +480,267 @@
       box-shadow: var(--shadow-sm);
     }
 
-    .delete-msg-icon {
+    .msg-actions {
       position: absolute;
       top: 8px;
       right: 8px;
-      font-size: 12px;
-      color: var(--text-muted);
-      cursor: pointer;
+      display: flex;
+      gap: 2px;
       opacity: 0;
-      transition: opacity 0.2s, color 0.2s;
-      padding: 4px;
-      border-radius: var(--radius-sm);
+      transition: opacity 0.2s;
+      z-index: 10;
     }
 
-    .message:hover .delete-msg-icon {
+    .msg-actions.bottom {
+      top: auto;
+      bottom: 8px;
+    }
+
+    .message:hover .msg-actions {
       opacity: 1;
     }
 
-    .delete-msg-icon:hover {
+    .msg-action-btn {
+      background: transparent;
+      border: none;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      transition: color 0.2s, background 0.2s;
+      line-height: 1;
+    }
+
+    .msg-action-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .msg-action-btn.delete:hover {
       color: var(--danger);
       background: rgba(239, 68, 68, 0.1);
+    }
+
+    .msg-action-btn.edit:hover {
+      color: var(--primary);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .msg-action-btn.regenerate:hover {
+      color: var(--success);
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .msg-action-btn.branch:hover {
+      color: #a855f7;
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .msg-action-btn.copied {
+      color: var(--success);
+    }
+
+    /* Follow-up chips */
+    .follow-up-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .follow-up-chip {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .follow-up-chip:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Fact-check badge */
+    .fact-check-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .fact-check-verified {
+      background: rgba(34, 197, 94, 0.12);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .fact-check-contradicted {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .fact-check-unverified {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Model Parameters Popover */
+    #paramsPopoverWrapper {
+      position: relative;
+    }
+
+    #paramsBtn {
+      padding: 6px 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    #paramsBtn:hover {
+      background: var(--bg-secondary);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    #paramsBtn.customized {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    #paramsTempBadge {
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    #paramsPopover {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      width: 240px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      z-index: 200;
+    }
+
+    #paramsPopover.active {
+      display: block;
+    }
+
+    #paramsPopover h4 {
+      margin: 0 0 12px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .param-row {
+      margin-bottom: 10px;
+    }
+
+    .param-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .param-value {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .param-slider {
+      width: 100%;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .param-reset {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 0 0;
+      text-decoration: underline;
+    }
+
+    .param-reset:hover {
+      color: var(--text-secondary);
+    }
+
+    .answer-now-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 12px;
+      color: var(--primary);
+      cursor: pointer;
+      margin-left: 4px;
+    }
+    .answer-now-btn:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* Memory injection note */
+    .experimental-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 12px 0 6px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .experimental-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #d97706;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 10px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .memory-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 4px;
     }
 
     /* Message Content Styling */
@@ -777,6 +1019,102 @@
       color: var(--text-primary);
     }
 
+    #micButton.listening {
+      color: var(--danger);
+      border-color: var(--danger);
+      background: rgba(239, 68, 68, 0.1);
+      animation: micPulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes micPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Memories Modal */
+    #memoriesOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    #memoriesOverlay.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #memoriesModal {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 90%;
+      max-width: 520px;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    #memoriesModal h3 {
+      margin: 0 0 6px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #memoriesList {
+      overflow-y: auto;
+      margin-top: 12px;
+      flex: 1;
+    }
+
+    .memory-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .memory-item:last-child {
+      border-bottom: none;
+    }
+
+    .memory-fact {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .memory-date {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      padding-top: 2px;
+    }
+
+    .memory-delete-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .memory-delete-btn:hover {
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
     #sendButton {
       padding: 12px 24px;
       background: var(--primary);
@@ -1044,6 +1382,15 @@
     .setting-label {
       font-size: 14px;
       color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .agentic-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 260px;
+      flex-shrink: 0;
     }
 
     .setting-input {
@@ -1060,6 +1407,41 @@
     .setting-input:focus {
       outline: none;
       border-color: var(--primary);
+    }
+
+    .api-key-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .api-key-delete {
+      opacity: 0;
+      background: none;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      padding: 5px 7px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      transition: opacity 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .api-key-row:hover .api-key-delete { opacity: 1; }
+    .api-key-delete:hover { background: rgba(239,68,68,0.1); }
+
+    .api-key-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #16a34a;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 8px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
     }
 
     .setting-select {
@@ -1299,20 +1681,41 @@
         max-width: 95%;
       }
 
+      #inputSection {
+        padding: 10px 12px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+      }
+
       #optionsRow {
+        flex-wrap: nowrap;
+        overflow-x: auto;
         gap: 12px;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      #optionsRow::-webkit-scrollbar {
+        display: none;
       }
 
       .option-group {
         font-size: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
 
       #modelSelection {
-        min-width: 140px;
+        min-width: 120px;
+        max-width: 140px;
       }
 
       #connectionStatus span {
         display: none;
+      }
+
+      #inputRow {
+        gap: 8px;
       }
     }
 
@@ -1446,6 +1849,9 @@
             <i class="fa-solid fa-paperclip"></i>
           </label>
           <input type="file" id="fileInput">
+          <button id="micButton" class="input-btn" title="Voice input" onclick="toggleVoiceInput()">
+            <i class="fa-solid fa-microphone"></i>
+          </button>
           <button id="sendButton" onclick="sendMessage()">
             <i class="fa-solid fa-paper-plane"></i>
             Send
@@ -1468,6 +1874,10 @@
             <input type="checkbox" id="dontSummarizeCheckbox">
             <label for="dontSummarizeCheckbox" title="Pass raw file content to LLM without summarization (slower but more precise)">Don't Summarize</label>
           </div>
+          <div class="option-group">
+            <input type="checkbox" id="longContextCheckbox">
+            <label for="longContextCheckbox" title="Send entire file to Gemini Flash for processing in a single prompt (requires Gemini API key in Settings)">Long Context</label>
+          </div>
           <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
             <button onclick="fetchModels()" class="input-btn" style="padding: 6px 10px;" title="Refresh models">
               <i class="fa-solid fa-rotate"></i>
@@ -1475,6 +1885,43 @@
             <select id="modelSelection">
               <option>Loading models...</option>
             </select>
+            <div id="paramsPopoverWrapper">
+              <button id="paramsBtn" onclick="toggleParamsPopover()" title="Model parameters — only sent to Ollama when changed from defaults (Alt+P)">
+                <i class="fa-solid fa-sliders"></i>
+                <span id="paramsTempBadge">0.7</span>
+              </button>
+              <div id="paramsPopover">
+                <h4>Parameters</h4>
+                <div class="param-row">
+                  <div class="param-label">
+                    <span title="Controls randomness. Lower = more focused and predictable. Higher = more creative and varied.">Temperature ⓘ</span>
+                    <span id="tempValue" class="param-value">0.7</span>
+                  </div>
+                  <input type="range" class="param-slider" id="tempSlider" min="0" max="2" step="0.1" value="0.7" oninput="updateParam('temperature', this.value)">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px;"><span>Precise</span><span>Creative</span></div>
+                </div>
+                <div class="param-row">
+                  <div class="param-label">
+                    <span title="Nucleus sampling — limits token selection to the top P% probability mass. Lower = more focused, higher = more diverse. Usually leave this and tune temperature instead.">Top P ⓘ</span>
+                    <span id="topPValue" class="param-value">0.90</span>
+                  </div>
+                  <input type="range" class="param-slider" id="topPSlider" min="0" max="1" step="0.05" value="0.9" oninput="updateParam('topP', this.value)">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px;"><span>Focused</span><span>Diverse</span></div>
+                </div>
+                <div class="param-row">
+                  <div class="param-label">
+                    <span title="Penalises the model for repeating the same words or phrases. Increase if responses start looping or feel repetitive.">Repeat Penalty ⓘ</span>
+                    <span id="repeatValue" class="param-value">1.10</span>
+                  </div>
+                  <input type="range" class="param-slider" id="repeatSlider" min="1" max="1.5" step="0.05" value="1.1" oninput="updateParam('repeatPenalty', this.value)">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px;"><span>Off</span><span>Strong</span></div>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+                  Parameters are only sent to Ollama when changed from their defaults. Saved per thread.
+                </div>
+                <button class="param-reset" onclick="resetThreadParams()">Reset to defaults</button>
+              </div>
+            </div>
           </div>
         </div>
         <div id="attachmentPreview"></div>
@@ -1528,29 +1975,108 @@
         <div class="settings-section">
           <h3>API Configuration</h3>
           <div class="setting-row">
-            <span class="setting-label">Ollama Endpoint</span>
+            <span class="setting-label" title="Override the default Ollama address. Leave blank for http://localhost:11434. If pointing to a non-localhost Ollama instance, that server must have OLLAMA_ORIGINS=* set (e.g. in its environment variables) to accept requests when this file is opened directly without a web server.">Ollama Endpoint</span>
             <input type="text" id="customHostname" class="setting-input" placeholder="http://localhost:11434">
           </div>
           <div class="setting-row">
-            <span class="setting-label">Perplexity API Key</span>
-            <input type="password" id="perplexityApiKeyInput" class="setting-input" placeholder="Enter API key">
+            <span class="setting-label">Perplexity API Key<span class="api-key-badge" id="perplexityKeyBadge" style="display:none;">Set</span></span>
+            <div class="api-key-row">
+              <input type="password" id="perplexityApiKeyInput" class="setting-input" placeholder="Enter API key">
+              <button class="api-key-delete" onclick="clearApiKey('perplexityApiKey','perplexityApiKeyInput','perplexityKeyBadge')" title="Delete key"><i class="fa-solid fa-trash"></i></button>
+            </div>
           </div>
           <div class="setting-row">
-            <span class="setting-label">OpenAI API Key</span>
-            <input type="password" id="openaiApiKeyInput" class="setting-input" placeholder="Enter API key">
+            <span class="setting-label">OpenAI API Key<span class="api-key-badge" id="openaiKeyBadge" style="display:none;">Set</span></span>
+            <div class="api-key-row">
+              <input type="password" id="openaiApiKeyInput" class="setting-input" placeholder="Enter API key">
+              <button class="api-key-delete" onclick="clearApiKey('openaiApiKey','openaiApiKeyInput','openaiKeyBadge')" title="Delete key"><i class="fa-solid fa-trash"></i></button>
+            </div>
           </div>
           <div class="setting-row">
-            <span class="setting-label">Tavily API Key</span>
-            <input type="password" id="tavilyApiKeyInput" class="setting-input" placeholder="Enter API key">
+            <span class="setting-label">Tavily API Key<span class="api-key-badge" id="tavilyKeyBadge" style="display:none;">Set</span></span>
+            <div class="api-key-row">
+              <input type="password" id="tavilyApiKeyInput" class="setting-input" placeholder="Enter API key">
+              <button class="api-key-delete" onclick="clearApiKey('tavilyApiKey','tavilyApiKeyInput','tavilyKeyBadge')" title="Delete key"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Gemini API Key<span class="api-key-badge" id="geminiKeyBadge" style="display:none;">Set</span></span>
+            <div class="api-key-row">
+              <input type="password" id="geminiApiKeyInput" class="setting-input" placeholder="Enter API key (for Long Context)">
+              <button class="api-key-delete" onclick="clearApiKey('geminiApiKey','geminiApiKeyInput','geminiKeyBadge')" title="Delete key"><i class="fa-solid fa-trash"></i></button>
+            </div>
           </div>
         </div>
         <div class="settings-section">
-          <h3>Search Behavior</h3>
+          <h3>Agentic Functions</h3>
           <div class="setting-row">
-            <span class="setting-label">Agent-style Search</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <input type="checkbox" id="agentSearchCheckbox" style="width: 18px; height: 18px;">
-              <span style="font-size: 12px; color: var(--text-muted);">LLM decides when to search</span>
+            <span class="setting-label">Auto-title Threads</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="autoTitleCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">LLM names thread after first exchange</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label" title="Works best with models 4B parameters and above — smaller models may search unnecessarily or produce poor quality results">Auto-search (Tavily)</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="agentSearchCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">LLM decides when to search (single pass)</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Auto-summarise Context</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="autoSummariseCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">Summarise older messages when context fills</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Auto Fact-check</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="autoFactCheckCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">Verify factual claims via Tavily</span>
+            </div>
+          </div>
+
+          <div class="experimental-divider">
+            <span class="experimental-badge">⚗ Experimental</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Off by default — may affect performance</span>
+          </div>
+
+          <div class="setting-row">
+            <span class="setting-label">Agent Loop</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="agentLoopCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">LLM iteratively searches to refine answer</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Proactive Clarification</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="proactiveClarificationCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">LLM asks if prompt is ambiguous</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Suggested Follow-ups</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="suggestedFollowUpsCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">Show clickable follow-up questions</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Auto-extract Memories</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="autoMemoriesCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">Persist key facts across threads</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Auto-attachment Strategy</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="autoAttachmentCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">LLM picks best processing method</span>
+              <span title="If a Gemini API key is configured, the LLM may choose to route your file to Gemini Flash (a cloud service). Leave the Gemini key blank to keep all processing local." style="cursor: help; color: var(--warning); font-size: 12px; flex-shrink: 0;">&#9888;</span>
             </div>
           </div>
         </div>
@@ -1559,6 +2085,14 @@
           <div class="setting-row">
             <span class="setting-label">Clear all messages in thread</span>
             <button class="settings-btn secondary" onclick="clearAllMessages()">Clear Messages</button>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">View &amp; manage memories</span>
+            <button class="settings-btn secondary" onclick="openMemoriesModal()">View Memories</button>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Clear all memories</span>
+            <button class="settings-btn secondary" onclick="clearAllMemories()">Clear Memories</button>
           </div>
           <div class="setting-row">
             <span class="setting-label">Reset entire database</span>
@@ -1591,6 +2125,20 @@
         <button class="settings-btn secondary" onclick="closeNewThreadModal()">Cancel</button>
         <button class="settings-btn primary" onclick="createNewThread()">Create Thread</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Memories Modal -->
+  <div id="memoriesOverlay">
+    <div id="memoriesModal">
+      <h3>
+        Remembered Facts
+        <button onclick="closeMemoriesModal()" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:0;">Facts injected into every Ollama conversation as context. Delete any that are wrong or no longer relevant.</p>
+      <div id="memoriesList"></div>
     </div>
   </div>
 
@@ -1666,6 +2214,10 @@
     let db;
     let currentThreadId = null;
     let pendingAttachment = null;
+    let pendingAttachments = []; // multi-file, used in Long Context mode only
+    let skipNextClarification = false;
+    const DEFAULT_PARAMS = { temperature: 0.7, topP: 0.9, repeatPenalty: 1.1 };
+    let currentThreadParams = { ...DEFAULT_PARAMS };
     let cancelProcessing = false;
     let connectionCheckInterval = null;
 
@@ -1677,7 +2229,16 @@
       perplexityApiKey: "",
       openaiApiKey: "",
       tavilyApiKey: "",
+      geminiApiKey: "",
       agentSearch: "false",
+      agentLoop: "false",
+      autoAttachment: "false",
+      autoTitle: "true",
+      autoSummarise: "true",
+      proactiveClarification: "false",
+      autoMemories: "false",
+      suggestedFollowUps: "false",
+      autoFactCheck: "true",
       theme: "system"
     };
 
@@ -1728,36 +2289,44 @@
     // ============================================
     function openDatabase() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open("PrivateLLMLensEnhanced", 3);
-        
+        const request = indexedDB.open("PrivateLLMLensEnhanced", 4);
+
         request.onerror = (e) => {
           reject("Database failed to open: " + e.target.error);
         };
-        
+
         request.onsuccess = () => {
           db = request.result;
           resolve(db);
         };
-        
+
         request.onupgradeneeded = (e) => {
           const database = e.target.result;
-          
-          if (!database.objectStoreNames.contains("messages")) {
-            const messagesStore = database.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
-            messagesStore.createIndex("threadId", "threadId", { unique: false });
-            messagesStore.createIndex("timestamp", "timestamp", { unique: false });
+          const oldVersion = e.oldVersion;
+
+          if (oldVersion < 3) {
+            if (!database.objectStoreNames.contains("messages")) {
+              const messagesStore = database.createObjectStore("messages", { keyPath: "id", autoIncrement: true });
+              messagesStore.createIndex("threadId", "threadId", { unique: false });
+              messagesStore.createIndex("timestamp", "timestamp", { unique: false });
+            }
+            if (!database.objectStoreNames.contains("threads")) {
+              const threadsStore = database.createObjectStore("threads", { keyPath: "id", autoIncrement: true });
+              threadsStore.createIndex("name", "name", { unique: false });
+              threadsStore.createIndex("created", "created", { unique: false });
+            }
           }
-          
-          if (!database.objectStoreNames.contains("threads")) {
-            const threadsStore = database.createObjectStore("threads", { keyPath: "id", autoIncrement: true });
-            threadsStore.createIndex("name", "name", { unique: false });
-            threadsStore.createIndex("created", "created", { unique: false });
+
+          if (oldVersion < 4) {
+            if (!database.objectStoreNames.contains("memories")) {
+              const memoriesStore = database.createObjectStore("memories", { keyPath: "id", autoIncrement: true });
+              memoriesStore.createIndex("timestamp", "timestamp", { unique: false });
+            }
           }
         };
       });
     }
 
-    // ============================================
     // CONNECTION STATUS
     // ============================================
     async function checkConnectionStatus() {
@@ -1765,7 +2334,7 @@
       const statusText = document.querySelector("#connectionStatus span:last-child");
       
       try {
-        const response = await fetch(OLLAMA_TAGS, { 
+        const response = await fetch(OLLAMA_TAGS, {
           method: 'GET',
           signal: AbortSignal.timeout(5000)
         });
@@ -1804,15 +2373,19 @@
       }
     }
 
+    function getModelSelection() {
+      return document.getElementById("modelSelection").value;
+    }
+
     async function fetchModels() {
       const modelDropdown = document.getElementById("modelSelection");
       modelDropdown.innerHTML = "<option>Loading...</option>";
-      
+
       try {
         const response = await fetchWithRetry(OLLAMA_TAGS);
         const data = await response.json();
         modelDropdown.innerHTML = "";
-        
+
         if (data.models && data.models.length > 0) {
           data.models.forEach(model => {
             const option = document.createElement("option");
@@ -1820,7 +2393,7 @@
             option.textContent = model.name;
             modelDropdown.appendChild(option);
           });
-          
+
           const savedModel = localStorage.getItem("defaultModel");
           if (savedModel && data.models.some(m => m.name === savedModel)) {
             modelDropdown.value = savedModel;
@@ -1868,6 +2441,16 @@
               const actions = document.createElement("div");
               actions.className = "thread-actions";
               
+              const pdfBtn = document.createElement("button");
+              pdfBtn.className = "thread-action-btn";
+              pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
+              pdfBtn.title = "Export as PDF";
+              pdfBtn.onclick = (ev) => {
+                ev.stopPropagation();
+                exportThreadAsPdf(thread.id, thread.name);
+              };
+              actions.appendChild(pdfBtn);
+
               const editBtn = document.createElement("button");
               editBtn.className = "thread-action-btn";
               editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
@@ -1953,11 +2536,90 @@
       };
     }
 
+    async function exportThreadAsPdf(threadId, threadName) {
+      if (!db) return;
+      try {
+        const messages = await getThreadMessages(threadId, 99999);
+        if (!messages.length) {
+          alert("This thread has no messages to export.");
+          return;
+        }
+
+        const isDark = document.body.classList.contains("dark-theme");
+
+        const msgHtml = messages.map(msg => {
+          const role = msg.role === "user" ? "You" : "Assistant";
+          const roleClass = msg.role === "user" ? "user" : "assistant";
+          let content = "";
+          if (msg.type === "image" && msg.imageData) {
+            content = `<img src="${msg.imageData}" style="max-width:100%;border-radius:6px;">`;
+          } else {
+            // Simple markdown-to-HTML for print (reuse marked if loaded)
+            content = typeof marked !== "undefined"
+              ? marked.parse(msg.text || "")
+              : `<p>${(msg.text || "").replace(/\n/g, "<br>")}</p>`;
+          }
+          const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : "";
+          return `
+            <div class="msg ${roleClass}">
+              <div class="msg-header">
+                <span class="role">${role}</span>
+                ${ts ? `<span class="ts">${ts}</span>` : ""}
+              </div>
+              <div class="msg-body">${content}</div>
+            </div>`;
+        }).join("");
+
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${threadName} — PrivateLLMLens</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; background: #fff; padding: 32px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .meta { font-size: 11px; color: #64748b; margin-bottom: 28px; }
+    .msg { margin-bottom: 20px; padding: 14px 16px; border-radius: 10px; page-break-inside: avoid; }
+    .msg.user { background: #eff6ff; border: 1px solid #bfdbfe; margin-left: 10%; }
+    .msg.assistant { background: #f8fafc; border: 1px solid #e2e8f0; margin-right: 10%; }
+    .msg-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .role { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; }
+    .ts { font-size: 10px; color: #94a3b8; }
+    .msg-body p { margin-bottom: 0.5em; }
+    .msg-body p:last-child { margin-bottom: 0; }
+    .msg-body pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
+    .msg-body code { font-family: 'Courier New', monospace; font-size: 12px; }
+    .msg-body :not(pre) > code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+    .msg-body ul, .msg-body ol { padding-left: 20px; margin: 6px 0; }
+    .msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { margin: 10px 0 4px; font-weight: 600; }
+    @media print {
+      body { padding: 16px; }
+      .msg { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${threadName}</h1>
+  <p class="meta">Exported ${new Date().toLocaleString()} · ${messages.length} message${messages.length !== 1 ? "s" : ""} · PrivateLLMLens</p>
+  ${msgHtml}
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`);
+        printWindow.document.close();
+      } catch (err) {
+        console.error("PDF export error:", err);
+        alert("Failed to export thread.");
+      }
+    }
+
     function selectThread(threadId) {
       currentThreadId = Number(threadId);
       loadMessages();
       updateThreadSelectionUI();
-      
+      loadThreadParams(Number(threadId));
+
       // Close sidebar on mobile
       if (window.innerWidth <= 768) {
         toggleSidebar();
@@ -2115,16 +2777,85 @@
       messageElem.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
       messageElem.dataset.messageId = id;
       
-      // Delete icon
-      const trashIcon = document.createElement("span");
-      trashIcon.className = "delete-msg-icon";
-      trashIcon.innerHTML = '<i class="fa-solid fa-trash"></i>';
-      trashIcon.title = "Delete message";
-      trashIcon.onclick = (ev) => {
-        ev.stopPropagation();
-        deleteSingleMessage(id);
-      };
-      messageElem.appendChild(trashIcon);
+      // Build action buttons — called twice (top + bottom)
+      function makeActionsDiv() {
+        const div = document.createElement("div");
+        div.className = "msg-actions";
+
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "msg-action-btn";
+        copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+        copyBtn.title = "Copy message";
+        copyBtn.onclick = async (ev) => {
+          ev.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(text || "");
+            copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            copyBtn.classList.add("copied");
+            setTimeout(() => {
+              copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+              copyBtn.classList.remove("copied");
+            }, 2000);
+          } catch (err) {
+            console.error("Failed to copy:", err);
+          }
+        };
+        div.appendChild(copyBtn);
+
+        if (role === "user") {
+          const editBtn = document.createElement("button");
+          editBtn.className = "msg-action-btn edit";
+          editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+          editBtn.title = "Edit and resubmit (removes this message and all subsequent)";
+          editBtn.onclick = async (ev) => {
+            ev.stopPropagation();
+            await deleteMessageAndSubsequent(id);
+            const allMsgs = [...document.getElementById("messageHistory").querySelectorAll(".message")];
+            const idx = allMsgs.findIndex(m => m.dataset.messageId == id);
+            if (idx >= 0) allMsgs.slice(idx).forEach(m => m.remove());
+            const userInput = document.getElementById("userInput");
+            userInput.value = text || "";
+            userInput.focus();
+            updateTokenDisplay();
+          };
+          div.appendChild(editBtn);
+        }
+
+        if (role === "assistant") {
+          const regenBtn = document.createElement("button");
+          regenBtn.className = "msg-action-btn regenerate";
+          regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
+          regenBtn.title = "Regenerate (removes this response and all subsequent messages)";
+          regenBtn.onclick = async (ev) => {
+            ev.stopPropagation();
+            if (!confirm("Regenerate this response? This will remove it and any messages after it.")) return;
+            await deleteMessageAndSubsequent(id);
+            const allMsgs = [...document.getElementById("messageHistory").querySelectorAll(".message")];
+            const idx = allMsgs.findIndex(m => m.dataset.messageId == id);
+            if (idx >= 0) allMsgs.slice(idx).forEach(m => m.remove());
+            regenerateResponse(messageElem);
+          };
+          div.appendChild(regenBtn);
+        }
+
+        const branchBtn = document.createElement("button");
+        branchBtn.className = "msg-action-btn branch";
+        branchBtn.innerHTML = '<i class="fa-solid fa-code-branch"></i>';
+        branchBtn.title = "Branch conversation from this point into a new thread";
+        branchBtn.onclick = (ev) => { ev.stopPropagation(); branchFromMessage(id); };
+        div.appendChild(branchBtn);
+
+        const trashBtn = document.createElement("button");
+        trashBtn.className = "msg-action-btn delete";
+        trashBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        trashBtn.title = "Delete message";
+        trashBtn.onclick = (ev) => { ev.stopPropagation(); deleteSingleMessage(id); };
+        div.appendChild(trashBtn);
+
+        return div;
+      }
+
+      messageElem.appendChild(makeActionsDiv()); // top
       
       // Content
       if (type === 'image' && imageData) {
@@ -2213,7 +2944,11 @@
         
         messageElem.appendChild(timeElem);
       }
-      
+
+      const bottomActions = makeActionsDiv();
+      bottomActions.classList.add("bottom");
+      messageElem.appendChild(bottomActions);
+
       return messageElem;
     }
 
@@ -2271,6 +3006,30 @@
       transaction.oncomplete = () => {
         loadMessages();
       };
+    }
+
+    function deleteMessageAndSubsequent(messageId) {
+      return new Promise((resolve) => {
+        // Get the target message first to find its timestamp
+        const readTx = db.transaction(["messages"], "readonly");
+        readTx.objectStore("messages").get(messageId).onsuccess = (e) => {
+          const targetMsg = e.target.result;
+          if (!targetMsg) { resolve(); return; }
+          const cutoff = targetMsg.timestamp;
+
+          // Delete all messages in this thread at or after that timestamp
+          const writeTx = db.transaction(["messages"], "readwrite");
+          const store = writeTx.objectStore("messages");
+          store.index("threadId").openCursor(IDBKeyRange.only(currentThreadId)).onsuccess = (ev) => {
+            const cursor = ev.target.result;
+            if (cursor) {
+              if (cursor.value.timestamp >= cutoff) store.delete(cursor.primaryKey);
+              cursor.continue();
+            }
+          };
+          writeTx.oncomplete = () => resolve();
+        };
+      });
     }
 
     async function clearAllMessages() {
@@ -2472,6 +3231,7 @@
         pendingAttachment.cancelled = true;
       }
       pendingAttachment = null;
+      pendingAttachments = [];
       document.getElementById("attachmentPreview").innerHTML = "";
     }
 
@@ -2504,10 +3264,57 @@
       preview.appendChild(item);
     }
 
+    function showMultiAttachmentPreview() {
+      const preview = document.getElementById("attachmentPreview");
+      preview.innerHTML = "";
+      const icons = { pdf: 'fa-file-pdf', python: 'fa-file-code', csv: 'fa-file-csv', json: 'fa-file-code', html: 'fa-file-code' };
+      pendingAttachments.forEach((att, idx) => {
+        const icon = icons[att.type] || 'fa-file-lines';
+        const item = document.createElement("div");
+        item.className = "attachment-item";
+        item.innerHTML = `
+          <i class="fa-solid ${icon}"></i>
+          <span>${att.fileName}</span>
+          <button class="attachment-remove" title="Remove file" onclick="removeAttachmentAt(${idx})">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        preview.appendChild(item);
+      });
+    }
+
+    function removeAttachmentAt(idx) {
+      pendingAttachments.splice(idx, 1);
+      if (pendingAttachments.length === 0) {
+        document.getElementById("attachmentPreview").innerHTML = "";
+      } else {
+        showMultiAttachmentPreview();
+      }
+    }
+
     document.getElementById("fileInput").addEventListener("change", function(e) {
+      // Multi-file mode — Long Context checkbox is on
+      if (document.getElementById("longContextCheckbox").checked && e.target.files.length > 0) {
+        for (const file of e.target.files) {
+          if (file.type.startsWith("image/")) continue; // images not supported in LC mode
+          const n = file.name.toLowerCase();
+          let type = 'txt';
+          if (file.type === "application/pdf")                                   type = 'pdf';
+          else if (file.type === "text/html" || n.endsWith(".html") || n.endsWith(".htm")) type = 'html';
+          else if (n.endsWith(".py"))                                             type = 'python';
+          else if (n.endsWith(".csv") || file.type === "text/csv")               type = 'csv';
+          else if (n.endsWith(".json") || file.type === "application/json")      type = 'json';
+          pendingAttachments.push({ type, fileName: file.name, file, reader: null, cancelled: false });
+        }
+        showMultiAttachmentPreview();
+        e.target.value = "";
+        return;
+      }
+
+      // Single-file mode (all other paths)
       const file = e.target.files[0];
       if (!file) return;
-      
+
       const fileNameLower = file.name.toLowerCase();
       clearPendingAttachment();
       
@@ -2578,6 +3385,37 @@
       cancelProcessing = true;
       document.getElementById("cancelButton").disabled = true;
       document.getElementById("cancelButton").textContent = "Cancelling...";
+    }
+
+    async function readFullFileContent(attachment, placeholder) {
+      if (['txt', 'html', 'python', 'csv', 'json'].includes(attachment.type)) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.readAsText(attachment.file);
+        });
+      } else if (attachment.type === 'pdf') {
+        const arrayBuffer = await attachment.file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
+        const numPages = pdf.numPages;
+        let fullText = "";
+        showProgressBar();
+        for (let page = 1; page <= numPages; page++) {
+          if (cancelProcessing) {
+            hideProgressBar();
+            cancelProcessing = false;
+            return null;
+          }
+          updateProgressBar(page, numPages);
+          const pdfPage = await pdf.getPage(page);
+          const textContent = await pdfPage.getTextContent();
+          fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+        }
+        hideProgressBar();
+        return fullText;
+      }
+      return null;
     }
 
     async function processAttachmentInChunks(attachment, placeholder) {
@@ -2693,7 +3531,7 @@
 
     async function callSummarizationAPI(text, customPrompt) {
       const prompt = customPrompt ? `${customPrompt}\n\n${text}` : `Summarize the following text:\n\n${text}`;
-      const selectedModel = document.getElementById("modelSelection").value;
+      const selectedModel = getModelSelection();
       
       const payload = {
         model: selectedModel,
@@ -2805,6 +3643,608 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
     }
 
     // ============================================
+    // AGENTIC HELPERS
+    // ============================================
+
+    async function decideAttachmentStrategy(fileName, fileSize, fileType, userQuery, modelName) {
+      const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+      const prompt = `You are deciding how to process a file attachment for an LLM conversation.
+
+File: "${fileName}" (type: ${fileType}, size: ${sizeMB} MB)
+User question: "${userQuery.substring(0, 300)}"
+
+Choose the best processing strategy:
+- SUMMARIZE: chunk the file and summarize each chunk — good for large files when a high-level summary is enough
+- RAW: pass the full raw content — best for precise extraction, code files, or small documents where every word matters
+- LONG_CONTEXT: send the entire file in one prompt to a large-context model — best for deep analysis of large documents when a Gemini API key is configured
+
+Reply with ONLY one word: SUMMARIZE, RAW, or LONG_CONTEXT`;
+
+      try {
+        const response = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
+        });
+        const data = await response.json();
+        const decision = (data.message?.content || "").trim().toUpperCase();
+        if (decision.includes("LONG_CONTEXT")) return "LONG_CONTEXT";
+        if (decision.includes("RAW")) return "RAW";
+        return "SUMMARIZE";
+      } catch (err) {
+        console.error("Attachment strategy error:", err);
+        return "SUMMARIZE";
+      }
+    }
+
+    async function runAgentLoop(messages, modelUsed, placeholder) {
+      const MAX_ITERATIONS = 4;
+      let agentMessages = [...messages];
+      let allSearchResults = [];
+
+      const toolInstructions = `You have access to a web search tool. To search, output on its own line:
+SEARCH: <your query>
+You may search up to 3 times. When you have enough information, write your final answer normally — do NOT include "SEARCH:" in your final answer.`;
+
+      if (agentMessages.length > 0 && agentMessages[0].role === "system") {
+        agentMessages[0] = { ...agentMessages[0], content: agentMessages[0].content + "\n\n" + toolInstructions };
+      } else {
+        agentMessages = [{ role: "system", content: toolInstructions }, ...agentMessages];
+      }
+
+      for (let i = 1; i <= MAX_ITERATIONS; i++) {
+        placeholder.innerHTML = `
+          <span>Agent reasoning</span>
+          <span class="thinking-dots"><span></span><span></span><span></span></span>
+          <span style="color: var(--text-muted); margin-left: 8px;">(step ${i})</span>
+        `;
+
+        const resp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelUsed, stream: false, messages: agentMessages, options: getOllamaOptions() })
+        });
+        if (!resp.ok) throw new Error(`Ollama error: ${resp.status}`);
+        const data = await resp.json();
+        const llmOutput = (data.message?.content || "").trim();
+
+        const searchMatch = llmOutput.match(/^SEARCH:\s*(.+)/im);
+        if (searchMatch && i < MAX_ITERATIONS) {
+          const query = searchMatch[1].trim();
+          placeholder.innerHTML = `
+            <span>Searching</span>
+            <span class="thinking-dots"><span></span><span></span><span></span></span>
+            <span style="color: var(--text-muted); margin-left: 8px;">"${query.substring(0, 50)}"</span>
+          `;
+          try {
+            const results = await searchTavily(query);
+            allSearchResults.push(...results.map(r => ({ ...r, query })));
+            const formatted = formatTavilyResultsForContext(results);
+            agentMessages.push({ role: "assistant", content: llmOutput });
+            agentMessages.push({ role: "user", content: `[Search results for "${query}"]\n${formatted}\n[End results]\n\nContinue your reasoning or give your final answer.` });
+          } catch (err) {
+            agentMessages.push({ role: "assistant", content: llmOutput });
+            agentMessages.push({ role: "user", content: `[Search failed for "${query}". Continue with available knowledge.]` });
+          }
+        } else {
+          // Final answer reached
+          return {
+            finalReply: llmOutput,
+            citations: allSearchResults.map(r => ({ url: r.url, title: r.title })),
+            usedSearch: allSearchResults.length > 0
+          };
+        }
+      }
+
+      // Force final answer after max iterations
+      placeholder.innerHTML = `
+        <span>Synthesizing</span>
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+      `;
+      agentMessages.push({ role: "user", content: "Provide your final comprehensive answer now." });
+      const finalResp = await fetch(OLLAMA_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: modelUsed, stream: false, messages: agentMessages, options: getOllamaOptions() })
+      });
+      const finalData = await finalResp.json();
+      return {
+        finalReply: finalData.message?.content || "",
+        citations: allSearchResults.map(r => ({ url: r.url, title: r.title })),
+        usedSearch: allSearchResults.length > 0
+      };
+    }
+
+    async function autoTitleThread(threadId, userMsg, assistantMsg, modelName) {
+      const prompt = `Generate a concise thread title (3–6 words) for this conversation exchange.
+
+User: ${userMsg.substring(0, 300)}
+Assistant: ${assistantMsg.substring(0, 300)}
+
+Reply with ONLY the title — no quotes, no punctuation at the end.`;
+      try {
+        const response = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
+        });
+        const data = await response.json();
+        const title = (data.message?.content || "").trim().replace(/^["']|["']$/g, "").substring(0, 60);
+        if (!title) return;
+        const tx = db.transaction(["threads"], "readwrite");
+        const store = tx.objectStore("threads");
+        const req = store.get(threadId);
+        req.onsuccess = () => {
+          const thread = req.result;
+          if (thread) {
+            thread.name = title;
+            store.put(thread);
+            tx.oncomplete = () => loadThreads();
+          }
+        };
+      } catch (err) {
+        console.error("Auto-title error:", err);
+      }
+    }
+
+    // ============================================
+    // MEMORY STORE HELPERS
+    // ============================================
+    async function loadAllMemories() {
+      if (!db) return [];
+      return new Promise((resolve) => {
+        const memories = [];
+        const tx = db.transaction(["memories"], "readonly");
+        const store = tx.objectStore("memories");
+        store.openCursor().onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) { memories.push(cursor.value); cursor.continue(); }
+          else resolve(memories);
+        };
+      });
+    }
+
+    async function extractAndSaveMemories(userMsg, assistantMsg, modelName) {
+      const prompt = `Review this conversation exchange and extract facts worth remembering across future conversations.
+
+User: ${userMsg.substring(0, 500)}
+Assistant: ${assistantMsg.substring(0, 500)}
+
+Extract only genuinely useful memories: user preferences, project context, key facts, important decisions.
+Reply with a JSON array of concise memory strings (max 5), or [] if nothing notable.
+Example: ["User prefers TypeScript", "Project is a React app called Lens"]
+Reply with ONLY the JSON array.`;
+
+      try {
+        const resp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
+        });
+        const data = await resp.json();
+        const match = (data.message?.content || "").match(/\[[\s\S]*\]/);
+        if (!match) return;
+        const memories = JSON.parse(match[0]);
+        if (!Array.isArray(memories) || !memories.length) return;
+        const tx = db.transaction(["memories"], "readwrite");
+        const store = tx.objectStore("memories");
+        memories.forEach(m => { if (typeof m === "string" && m.trim()) store.add({ fact: m.trim(), timestamp: Date.now() }); });
+      } catch (err) { console.error("Memory extraction error:", err); }
+    }
+
+    async function clearAllMemories() {
+      if (!confirm("Clear all remembered memories?")) return;
+      if (!db) return;
+      const tx = db.transaction(["memories"], "readwrite");
+      tx.objectStore("memories").clear();
+      tx.oncomplete = () => { closeSettings(); alert("Memories cleared."); };
+    }
+
+    // ============================================
+    // CONTEXT SUMMARISATION
+    // ============================================
+    async function buildContextWithSummary(threadId, contextWindow, systemContent, modelName, placeholder) {
+      const allMessages = await getThreadMessages(threadId);
+      // Exclude the current user message (last item) when counting prior turns
+      const priorMessages = allMessages.slice(0, -1);
+
+      if (priorMessages.length <= contextWindow) {
+        // No summarisation needed — build normally
+        const messages = [];
+        if (systemContent) messages.push({ role: "system", content: systemContent });
+        priorMessages.forEach(msg => messages.push({ role: msg.role, content: msg.text }));
+        return messages;
+      }
+
+      // Split: older (to summarise) vs recent (to keep verbatim)
+      const recentMessages = priorMessages.slice(-contextWindow);
+      const olderMessages = priorMessages.slice(0, priorMessages.length - contextWindow);
+
+      placeholder.innerHTML = `
+        <span>Summarising older context</span>
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+      `;
+
+      const contextText = olderMessages
+        .filter(m => m.role !== "system")
+        .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.text}`)
+        .join("\n\n");
+
+      let summary = "";
+      try {
+        const resp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: modelName, stream: false,
+            messages: [{ role: "user", content: `Concisely summarise the key facts, decisions and context from this earlier conversation. Be brief but preserve all important details:\n\n${contextText}\n\nSummary:` }]
+          })
+        });
+        const data = await resp.json();
+        summary = data.message?.content || "";
+      } catch (err) { console.error("Context summarisation error:", err); }
+
+      const messages = [];
+      let fullSystem = systemContent || "";
+      if (summary) fullSystem += (fullSystem ? "\n\n" : "") + `[EARLIER CONVERSATION SUMMARY]\n${summary}\n[END SUMMARY]`;
+      if (fullSystem) messages.push({ role: "system", content: fullSystem });
+      recentMessages.forEach(msg => messages.push({ role: msg.role, content: msg.text }));
+      return messages;
+    }
+
+    // ============================================
+    // PROACTIVE CLARIFICATION
+    // ============================================
+    async function checkNeedsClarification(prompt, modelName) {
+      const decisionPrompt = `Analyze this user prompt. Does it need clarification before answering?
+
+User prompt: "${prompt}"
+
+Ask for clarification ONLY if genuinely ambiguous and the answer would be materially different depending on interpretation.
+Do NOT ask when: the task is clear, creative licence is fine, or you can give a good answer regardless.
+
+If clarification is needed: CLARIFY: <one focused question>
+If clear enough: PROCEED
+
+Reply with ONLY one of those formats.`;
+
+      try {
+        const resp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: decisionPrompt }] })
+        });
+        const data = await resp.json();
+        const reply = (data.message?.content || "").trim();
+        const m = reply.match(/^CLARIFY:\s*(.+)/i);
+        if (m) return { needsClarification: true, question: m[1].trim() };
+        return { needsClarification: false, question: "" };
+      } catch (err) {
+        console.error("Clarification check error:", err);
+        return { needsClarification: false, question: "" };
+      }
+    }
+
+    // ============================================
+    // SUGGESTED FOLLOW-UPS
+    // ============================================
+    async function generateFollowUps(userMsg, assistantMsg, modelName, targetElement) {
+      try {
+        const resp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: modelName, stream: false,
+            messages: [{ role: "user", content: `Suggest 2-3 short follow-up questions a user might ask next based on this exchange.
+
+User: ${userMsg.substring(0, 300)}
+Assistant: ${assistantMsg.substring(0, 300)}
+
+Reply with ONLY a JSON array of 2-3 question strings (max 70 chars each).
+Example: ["How does X compare to Y?", "Can you show an example?"]
+JSON array:` }]
+          })
+        });
+        const data = await resp.json();
+        const match = (data.message?.content || "").match(/\[[\s\S]*\]/);
+        if (!match) return;
+        const followUps = JSON.parse(match[0]);
+        if (!Array.isArray(followUps) || !followUps.length) return;
+
+        const chipsDiv = document.createElement("div");
+        chipsDiv.className = "follow-up-chips";
+        followUps.slice(0, 3).forEach(q => {
+          if (typeof q !== "string") return;
+          const chip = document.createElement("button");
+          chip.className = "follow-up-chip";
+          chip.textContent = q;
+          chip.onclick = () => {
+            document.getElementById("userInput").value = q;
+            document.getElementById("userInput").focus();
+            chipsDiv.remove();
+          };
+          chipsDiv.appendChild(chip);
+        });
+        targetElement.appendChild(chipsDiv);
+      } catch (err) { console.error("Follow-up generation error:", err); }
+    }
+
+    // ============================================
+    // AUTO FACT-CHECK
+    // ============================================
+    function appendFactCheckBadge(element, verdict) {
+      const cfg = {
+        verified:     { cls: "fact-check-verified",     icon: "✓", label: "Fact-checked: Verified" },
+        contradicted: { cls: "fact-check-contradicted", icon: "✗", label: "Fact-checked: Contradicted" },
+        unverified:   { cls: "fact-check-unverified",   icon: "?", label: "Fact-checked: Unverified" }
+      };
+      const { cls, icon, label } = cfg[verdict] || cfg.unverified;
+      const badge = document.createElement("div");
+      badge.className = `fact-check-badge ${cls}`;
+      badge.textContent = `${icon} ${label}`;
+      element.appendChild(badge);
+    }
+
+    async function autoFactCheck(assistantMsg, modelName, targetElement) {
+      const tavilyKey = localStorage.getItem("tavilyApiKey");
+      if (!tavilyKey) return;
+
+      try {
+        // Step 1: does it contain verifiable claims?
+        const decisionResp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: modelName, stream: false,
+            messages: [{ role: "user", content: `Does this response contain specific verifiable factual claims (dates, statistics, named sources, definitive assertions)?\n\n"${assistantMsg.substring(0, 600)}"\n\nReply with ONLY: YES or NO` }]
+          })
+        });
+        const decisionData = await decisionResp.json();
+        if (!(decisionData.message?.content || "").toUpperCase().includes("YES")) return;
+
+        // Step 2: extract a search query
+        const claimResp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: modelName, stream: false,
+            messages: [{ role: "user", content: `Extract the most important specific factual claim from this response as a search query (max 10 words):\n"${assistantMsg.substring(0, 400)}"\nSearch query:` }]
+          })
+        });
+        const claimData = await claimResp.json();
+        const searchQuery = (claimData.message?.content || "").trim();
+        if (!searchQuery) return appendFactCheckBadge(targetElement, "unverified");
+
+        // Step 3: search and compare
+        const results = await searchTavily(searchQuery);
+        if (!results.length) return appendFactCheckBadge(targetElement, "unverified");
+        const resultsText = results.slice(0, 3).map(r => r.content).join("\n\n").substring(0, 1200);
+
+        const verifyResp = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: modelName, stream: false,
+            messages: [{ role: "user", content: `Compare this response's claims with the search results.\n\nResponse: "${assistantMsg.substring(0, 400)}"\n\nSearch results: "${resultsText}"\n\nReply with ONLY: VERIFIED, CONTRADICTED, or UNVERIFIED` }]
+          })
+        });
+        const verifyData = await verifyResp.json();
+        const verdict = (verifyData.message?.content || "").trim().toUpperCase();
+        if (verdict.includes("VERIFIED")) appendFactCheckBadge(targetElement, "verified");
+        else if (verdict.includes("CONTRADICTED")) appendFactCheckBadge(targetElement, "contradicted");
+        else appendFactCheckBadge(targetElement, "unverified");
+      } catch (err) { console.error("Fact-check error:", err); }
+    }
+
+    // ============================================
+    // REGENERATE RESPONSE
+    // ============================================
+    async function regenerateResponse(afterElement) {
+      const userInput = document.getElementById("userInput");
+      userInput.disabled = true;
+      document.getElementById("sendButton").disabled = true;
+
+      const placeholder = document.createElement("div");
+      placeholder.className = "message assistant-message";
+      placeholder.innerHTML = `
+        <span>Regenerating</span>
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+      `;
+      document.getElementById("messageHistory").appendChild(placeholder);
+      document.getElementById("messageHistory").scrollTop = document.getElementById("messageHistory").scrollHeight;
+
+      try {
+        const modelUsed = getModelSelection();
+        const contextWindow = parseInt(localStorage.getItem("contextWindow")) || 10;
+        const history = await getThreadMessages(currentThreadId, contextWindow);
+        const systemPrompt = await getThreadSystemPrompt(currentThreadId);
+
+        const messages = [];
+        if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+        history.forEach(msg => messages.push({ role: msg.role, content: msg.text }));
+
+        const response = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
+        });
+        if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let finalReply = "";
+        const messageHistory = document.getElementById("messageHistory");
+
+        placeholder.innerHTML = "";
+        const contentDiv = document.createElement("div");
+        placeholder.appendChild(contentDiv);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const line of decoder.decode(value).split("\n").filter(l => l.trim())) {
+            try {
+              const json = JSON.parse(line);
+              if (json.message?.content) {
+                finalReply += json.message.content;
+                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+                messageHistory.scrollTop = messageHistory.scrollHeight;
+              }
+            } catch (e) { /* skip */ }
+          }
+        }
+        enhanceCodeBlocks(placeholder);
+
+        const timeDiv = document.createElement("div");
+        timeDiv.className = "response-time";
+        timeDiv.textContent = `${modelUsed} • regenerated`;
+        placeholder.appendChild(timeDiv);
+
+        await saveMessage({
+          role: "assistant",
+          text: finalReply,
+          type: "text",
+          responseTime: `${modelUsed} • regenerated`,
+          timestamp: Date.now()
+        });
+        updateTokenDisplay();
+      } catch (err) {
+        placeholder.innerHTML = `<span style="color:var(--danger);">Error: ${err.message}</span>`;
+      } finally {
+        userInput.disabled = false;
+        document.getElementById("sendButton").disabled = false;
+        userInput.focus();
+      }
+    }
+
+    // ============================================
+    // CONVERSATION BRANCHING
+    // ============================================
+    async function branchFromMessage(messageId) {
+      // Get current thread metadata
+      const currentThread = await new Promise(resolve => {
+        const tx = db.transaction(["threads"], "readonly");
+        tx.objectStore("threads").get(currentThreadId).onsuccess = e => resolve(e.target.result);
+      });
+
+      // Get target message to find its timestamp
+      const targetMsg = await new Promise(resolve => {
+        const tx = db.transaction(["messages"], "readonly");
+        tx.objectStore("messages").get(messageId).onsuccess = e => resolve(e.target.result);
+      });
+      if (!targetMsg) return;
+
+      // Collect all messages up to and including the target
+      const allMessages = await getThreadMessages(currentThreadId);
+      const messagesToCopy = allMessages.filter(m => m.timestamp <= targetMsg.timestamp);
+
+      // Create the new thread
+      const newThreadId = Date.now();
+      const newThreadName = `${currentThread?.name || "Thread"} (branch)`;
+
+      await new Promise(resolve => {
+        const tx = db.transaction(["threads"], "readwrite");
+        tx.objectStore("threads").add({
+          id: newThreadId,
+          name: newThreadName,
+          systemPrompt: currentThread?.systemPrompt || "",
+          created: Date.now()
+        });
+        tx.oncomplete = () => resolve();
+      });
+
+      // Copy messages into the new thread (preserve timestamps, drop old IDs)
+      await new Promise(resolve => {
+        const tx = db.transaction(["messages"], "readwrite");
+        const store = tx.objectStore("messages");
+        messagesToCopy.forEach(({ id: _drop, ...msg }) => {
+          store.add({ ...msg, threadId: newThreadId });
+        });
+        tx.oncomplete = () => resolve();
+      });
+
+      // Navigate to the new branch thread
+      await loadThreads();
+      selectThread(newThreadId);
+    }
+
+    // ============================================
+    // FORCE ANSWER NOW (bypass clarification)
+    // ============================================
+    async function forceAnswerNow(originalPrompt, modelName, afterElement) {
+      skipNextClarification = false;
+      const userInput = document.getElementById("userInput");
+      userInput.disabled = true;
+      document.getElementById("sendButton").disabled = true;
+
+      const newPlaceholder = document.createElement("div");
+      newPlaceholder.className = "message assistant-message";
+      newPlaceholder.innerHTML = `
+        <span>Thinking</span>
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+      `;
+      afterElement.insertAdjacentElement("afterend", newPlaceholder);
+      const messageHistory = document.getElementById("messageHistory");
+      messageHistory.scrollTop = messageHistory.scrollHeight;
+
+      try {
+        const contextWindow = parseInt(localStorage.getItem("contextWindow")) || 10;
+        const history = await getThreadMessages(currentThreadId, contextWindow);
+        const systemPrompt = await getThreadSystemPrompt(currentThreadId);
+
+        const messages = [];
+        if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+        history.forEach(msg => messages.push({ role: msg.role, content: msg.text }));
+        messages.push({ role: "user", content: `Please answer my original question directly without asking for further clarification: ${originalPrompt}` });
+
+        const response = await fetch(OLLAMA_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelName, stream: true, messages, options: getOllamaOptions() })
+        });
+        if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let finalReply = "";
+
+        newPlaceholder.innerHTML = "";
+        const contentDiv = document.createElement("div");
+        newPlaceholder.appendChild(contentDiv);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          for (const line of chunk.split("\n").filter(l => l.trim())) {
+            try {
+              const json = JSON.parse(line);
+              if (json.message?.content) {
+                finalReply += json.message.content;
+                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+                messageHistory.scrollTop = messageHistory.scrollHeight;
+              }
+            } catch (e) { /* skip */ }
+          }
+        }
+        enhanceCodeBlocks(newPlaceholder);
+
+        const timeDiv = document.createElement("div");
+        timeDiv.className = "response-time";
+        timeDiv.textContent = `${modelName} • direct answer`;
+        newPlaceholder.appendChild(timeDiv);
+
+        await saveMessage({
+          role: "assistant",
+          text: finalReply,
+          type: "text",
+          responseTime: `${modelName} • direct answer`,
+          timestamp: Date.now()
+        });
+        updateTokenDisplay();
+      } catch (err) {
+        newPlaceholder.innerHTML = `<span style="color:var(--danger);">Error: ${err.message}</span>`;
+      } finally {
+        userInput.disabled = false;
+        document.getElementById("sendButton").disabled = false;
+        userInput.focus();
+      }
+    }
+
+    // ============================================
     // SEND MESSAGE (WITH STREAMING)
     // ============================================
     async function sendMessage() {
@@ -2812,6 +4252,7 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       let promptText = userInput.value.trim();
       const perplexityChecked = document.getElementById("perplexitySearchCheckbox").checked;
       const generateImageChecked = document.getElementById("generateImageCheckbox").checked;
+      const longContextChecked = document.getElementById("longContextCheckbox").checked;
       
       if (!promptText && !pendingAttachment) return;
       
@@ -2831,7 +4272,15 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
         userMessage.appendChild(promptDiv);
       }
       
-      if (pendingAttachment && !perplexityChecked && !generateImageChecked) {
+      // Show multi-file list for long context
+      if (longContextChecked && pendingAttachments.length > 0) {
+        const attachDiv = document.createElement("div");
+        attachDiv.style.cssText = "font-size:12px;color:var(--text-muted);margin-top:8px;";
+        attachDiv.textContent = pendingAttachments.map(a => `📎 ${a.fileName}`).join("  ");
+        userMessage.appendChild(attachDiv);
+      }
+
+      if (pendingAttachment && !perplexityChecked && !generateImageChecked && !longContextChecked) {
         const attachDiv = document.createElement("div");
         attachDiv.style.fontSize = "12px";
         attachDiv.style.color = "var(--text-muted)";
@@ -2853,7 +4302,10 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       // Save user message
       const userMsgData = {
         role: "user",
-        text: promptText + (pendingAttachment ? `\n[Attached: ${pendingAttachment.fileName}]` : ""),
+        text: promptText +
+          (pendingAttachments.length > 0
+            ? "\n" + pendingAttachments.map(a => `[Attached: ${a.fileName}]`).join("\n")
+            : pendingAttachment ? `\n[Attached: ${pendingAttachment.fileName}]` : ""),
         type: pendingAttachment?.type || 'text',
         timestamp: Date.now()
       };
@@ -2864,7 +4316,11 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       }
       
       await saveMessage(userMsgData);
-      
+
+      // Capture first-exchange flag for auto-title (1 = only the user msg exists)
+      const allThreadMsgs = await getThreadMessages(currentThreadId);
+      const isFirstExchange = allThreadMsgs.length === 1;
+
       // Clear input
       userInput.value = "";
       userInput.disabled = true;
@@ -2896,8 +4352,69 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
         let modelUsed = "";
         let usedTavilySearch = false;
         let tavilyCitations = [];
-        
-        if (perplexityChecked) {
+        let clarificationAsked = false;
+
+        // Read stage-2 feature flags
+        const autoSummariseEnabled     = localStorage.getItem("autoSummarise")          !== "false";
+        const proactiveClarEnabled      = localStorage.getItem("proactiveClarification") === "true";
+        const autoMemoriesEnabled       = localStorage.getItem("autoMemories")           === "true";
+        const suggestedFollowUpsEnabled = localStorage.getItem("suggestedFollowUps")     === "true";
+        const autoFactCheckEnabled      = localStorage.getItem("autoFactCheck")          === "true";
+
+        // === AUTO-ATTACHMENT STRATEGY ===
+        let effectiveLongContext = longContextChecked;
+        let autoSelectedRaw = false;
+        const autoAttachmentEnabled = localStorage.getItem("autoAttachment") === "true";
+
+        if (
+          pendingAttachment &&
+          pendingAttachment.type !== "image" &&
+          !longContextChecked &&
+          !perplexityChecked &&
+          !generateImageChecked &&
+          !document.getElementById("dontSummarizeCheckbox").checked &&
+          autoAttachmentEnabled
+        ) {
+          const quickModel = getModelSelection();
+          placeholder.innerHTML = `
+            <span>Analyzing file</span>
+            <span class="thinking-dots"><span></span><span></span><span></span></span>
+            <span style="color: var(--text-muted); margin-left: 8px;">(choosing strategy)</span>
+          `;
+          const strategy = await decideAttachmentStrategy(
+            pendingAttachment.fileName,
+            pendingAttachment.file?.size || 0,
+            pendingAttachment.type,
+            promptText,
+            quickModel
+          );
+          if (strategy === "LONG_CONTEXT" && localStorage.getItem("geminiApiKey")) {
+            effectiveLongContext = true;
+          } else if (strategy === "RAW") {
+            autoSelectedRaw = true;
+          }
+          // SUMMARIZE: defaults remain, nothing changes
+        }
+
+        // === PROACTIVE CLARIFICATION (Ollama only, no attachment) ===
+        if (proactiveClarEnabled && !perplexityChecked && !generateImageChecked && !effectiveLongContext && !pendingAttachment) {
+          if (skipNextClarification) {
+            skipNextClarification = false; // consume — answer directly this turn
+          } else {
+            const quickModel = getModelSelection();
+            const clarResult = await checkNeedsClarification(promptText, quickModel);
+            if (clarResult.needsClarification) {
+              finalReply = clarResult.question;
+              clarificationAsked = true;
+              modelUsed = quickModel;
+              skipNextClarification = true; // user's next reply gets answered directly
+            }
+          }
+        }
+
+        if (clarificationAsked) {
+          // Skip all LLM branches — fall through to rendering below
+        } else if (perplexityChecked) {
           // Perplexity API
           const apiKey = localStorage.getItem("perplexityApiKey");
           if (!apiKey) {
@@ -2981,166 +4498,225 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
             });
           }
           
+        } else if (effectiveLongContext) {
+          // Gemini Flash - full file in a single prompt
+          const geminiApiKey = localStorage.getItem("geminiApiKey");
+          if (!geminiApiKey) {
+            throw new Error("Please set your Gemini API key in Settings");
+          }
+
+          modelUsed = "gemini-2.5-flash";
+
+          placeholder.innerHTML = `
+            <span>Reading file</span>
+            <span class="thinking-dots"><span></span><span></span><span></span></span>
+          `;
+
+          let fullPrompt = promptText;
+          const filesToProcess = pendingAttachments.length > 0
+            ? pendingAttachments
+            : (pendingAttachment && pendingAttachment.type !== 'image' ? [pendingAttachment] : []);
+
+          for (const att of filesToProcess) {
+            placeholder.innerHTML = `
+              <span>Reading ${att.fileName}</span>
+              <span class="thinking-dots"><span></span><span></span><span></span></span>
+            `;
+            const fullContent = await readFullFileContent(att, placeholder);
+            if (fullContent === null) {
+              placeholder.innerHTML = "Processing cancelled.";
+              return;
+            }
+            fullPrompt += `\n\n[FILE: ${att.fileName}\n${fullContent}]`;
+          }
+
+          placeholder.innerHTML = `
+            <span>Thinking</span>
+            <span class="thinking-dots"><span></span><span></span><span></span></span>
+            <span style="color: var(--text-muted); margin-left: 8px;">(Gemini Flash)</span>
+          `;
+
+          const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+          const geminiResponse = await fetch(geminiEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: fullPrompt }] }]
+            })
+          });
+
+          if (!geminiResponse.ok) {
+            throw new Error(`Gemini API error: ${await geminiResponse.text()}`);
+          }
+
+          const geminiData = await geminiResponse.json();
+          finalReply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "No response from Gemini";
+
         } else {
-          // Ollama (with streaming, context, and optional Tavily search)
-          modelUsed = document.getElementById("modelSelection").value;
+          // Ollama (with streaming, context, and optional Tavily / agent loop)
+          modelUsed = getModelSelection();
           const tavilyChecked = document.getElementById("tavilySearchCheckbox").checked;
           const agentSearchEnabled = localStorage.getItem("agentSearch") === "true";
-          
+          const agentLoopEnabled = localStorage.getItem("agentLoop") === "true";
+
           // Process attachment if present
           let combinedPrompt = promptText;
           if (pendingAttachment) {
-            if (pendingAttachment.type === 'image') {
-              // Handle image separately
+            if (pendingAttachment.type === "image") {
+              // Handled separately below
             } else {
               const processedContent = await processAttachmentInChunks(pendingAttachment, placeholder);
               if (processedContent === null) {
                 placeholder.innerHTML = "Processing cancelled.";
                 return;
               }
-              const dontSummarize = document.getElementById("dontSummarizeCheckbox").checked;
-              combinedPrompt += dontSummarize 
+              const useRaw = document.getElementById("dontSummarizeCheckbox").checked || autoSelectedRaw;
+              combinedPrompt += useRaw
                 ? `\n\n[ATTACHMENT CONTENT:\n${processedContent}]`
                 : `\n\n[ATTACHMENT SUMMARY:\n${processedContent}]`;
             }
           }
-          
-          // Determine if we should perform a Tavily search
-          let shouldSearch = false;
-          if (tavilyChecked) {
-            // Manual checkbox - always search
-            shouldSearch = true;
-          } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey")) {
-            // Agent-style - ask LLM if search is needed
-            placeholder.innerHTML = `
-              <span>Analyzing query</span>
-              <span class="thinking-dots"><span></span><span></span><span></span></span>
-              <span style="color: var(--text-muted); margin-left: 8px;">(deciding if search needed)</span>
-            `;
-            shouldSearch = await shouldPerformSearch(promptText, modelUsed);
+
+          // Build messages array with context (auto-summarise or plain)
+          const contextWindow = parseInt(localStorage.getItem("contextWindow")) || 10;
+          const systemPrompt = await getThreadSystemPrompt(currentThreadId);
+
+          let messages;
+          if (autoSummariseEnabled) {
+            messages = await buildContextWithSummary(currentThreadId, contextWindow, systemPrompt || "", modelUsed, placeholder);
+          } else {
+            const history = await getThreadMessages(currentThreadId, contextWindow);
+            messages = [];
+            if (systemPrompt) {
+              messages.push({ role: "system", content: systemPrompt });
+            }
+            history.slice(0, -1).forEach(msg => {
+              messages.push({ role: msg.role, content: msg.text });
+            });
           }
-          
-          // Perform Tavily search if needed
-          let searchContext = "";
-          if (shouldSearch) {
-            try {
-              placeholder.innerHTML = `
-                <span>Searching the web</span>
-                <span class="thinking-dots"><span></span><span></span><span></span></span>
-                <span style="color: var(--text-muted); margin-left: 8px;">(via Tavily)</span>
-              `;
-              
-              const searchResults = await searchTavily(promptText);
-              searchContext = formatTavilyResultsForContext(searchResults);
-              usedTavilySearch = true;
-              
-              // Store citations
-              tavilyCitations = searchResults.map(r => ({ 
-                url: r.url, 
-                title: r.title 
-              }));
-              
-              placeholder.innerHTML = `
-                <span>Thinking</span>
-                <span class="thinking-dots"><span></span><span></span><span></span></span>
-                <span style="color: var(--text-muted); margin-left: 8px;">(0s)</span>
-              `;
-            } catch (err) {
-              console.error("Tavily search error:", err);
-              // Continue without search results
-              if (tavilyChecked) {
-                // Only show error if user explicitly requested search
-                throw err;
+
+          // Inject persistent memories into system message
+          if (autoMemoriesEnabled) {
+            const memories = await loadAllMemories();
+            if (memories.length > 0) {
+              const memBlock = "== REMEMBERED FACTS ==\n" + memories.map(m => `- ${m.fact}`).join("\n") + "\n== END MEMORIES ==";
+              if (messages.length > 0 && messages[0].role === "system") {
+                messages[0] = { ...messages[0], content: messages[0].content + "\n\n" + memBlock };
+              } else {
+                messages.unshift({ role: "system", content: memBlock });
               }
             }
           }
-          
-          // Build messages array with context
-          const contextWindow = parseInt(localStorage.getItem("contextWindow")) || 10;
-          const history = await getThreadMessages(currentThreadId, contextWindow);
-          const systemPrompt = await getThreadSystemPrompt(currentThreadId);
-          
-          const messages = [];
-          
-          // Add system prompt
-          let fullSystemPrompt = systemPrompt || "";
-          if (searchContext) {
-            fullSystemPrompt = (fullSystemPrompt ? fullSystemPrompt + "\n\n" : "") + searchContext;
-          }
-          if (fullSystemPrompt) {
-            messages.push({ role: "system", content: fullSystemPrompt });
-          }
-          
-          // Add history (excluding the message we just saved)
-          history.slice(0, -1).forEach(msg => {
-            messages.push({
-              role: msg.role,
-              content: msg.text
-            });
-          });
-          
-          // Handle image attachment
-          if (pendingAttachment?.type === 'image') {
+
+          if (pendingAttachment?.type === "image") {
             let base64Data = pendingAttachment.content;
             if (base64Data.startsWith("data:image/")) {
               base64Data = base64Data.substring(base64Data.indexOf("base64,") + 7);
             }
-            messages.push({
-              role: "user",
-              content: combinedPrompt || "Describe this image",
-              images: [base64Data]
-            });
+            messages.push({ role: "user", content: combinedPrompt || "Describe this image", images: [base64Data] });
           } else {
             messages.push({ role: "user", content: combinedPrompt });
           }
-          
-          // Streaming request
-          const response = await fetch(OLLAMA_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: modelUsed,
-              stream: true,
-              messages: messages
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Ollama error: ${response.status}`);
-          }
-          
-          // Process stream
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          finalReply = "";
-          
-          placeholder.innerHTML = "";
-          const contentDiv = document.createElement("div");
-          placeholder.appendChild(contentDiv);
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n').filter(line => line.trim());
-            
-            for (const line of lines) {
+
+          // === AGENT LOOP (highest priority when enabled + Tavily key present + user didn't manually check Tavily) ===
+          if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked) {
+            placeholder.innerHTML = `
+              <span>Agent starting</span>
+              <span class="thinking-dots"><span></span><span></span><span></span></span>
+            `;
+            const agentResult = await runAgentLoop(messages, modelUsed, placeholder);
+            finalReply = agentResult.finalReply;
+            tavilyCitations = agentResult.citations;
+            usedTavilySearch = agentResult.usedSearch;
+
+          } else {
+            // === SINGLE-PASS SEARCH (manual Tavily or agent-style single-decision) ===
+            let searchContext = "";
+            let shouldSearch = false;
+
+            if (tavilyChecked) {
+              shouldSearch = true;
+            } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey")) {
+              placeholder.innerHTML = `
+                <span>Analyzing query</span>
+                <span class="thinking-dots"><span></span><span></span><span></span></span>
+                <span style="color: var(--text-muted); margin-left: 8px;">(deciding if search needed)</span>
+              `;
+              shouldSearch = await shouldPerformSearch(promptText, modelUsed);
+            }
+
+            if (shouldSearch) {
               try {
-                const json = JSON.parse(line);
-                if (json.message?.content) {
-                  finalReply += json.message.content;
-                  contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
-                  messageHistory.scrollTop = messageHistory.scrollHeight;
-                }
-              } catch (e) {
-                // Skip invalid JSON
+                placeholder.innerHTML = `
+                  <span>Searching the web</span>
+                  <span class="thinking-dots"><span></span><span></span><span></span></span>
+                  <span style="color: var(--text-muted); margin-left: 8px;">(via Tavily)</span>
+                `;
+                const searchResults = await searchTavily(promptText);
+                searchContext = formatTavilyResultsForContext(searchResults);
+                usedTavilySearch = true;
+                tavilyCitations = searchResults.map(r => ({ url: r.url, title: r.title }));
+                placeholder.innerHTML = `
+                  <span>Thinking</span>
+                  <span class="thinking-dots"><span></span><span></span><span></span></span>
+                  <span style="color: var(--text-muted); margin-left: 8px;">(0s)</span>
+                `;
+              } catch (err) {
+                console.error("Tavily search error:", err);
+                if (tavilyChecked) throw err;
               }
             }
+
+            // Prepend search context to system message if we got results
+            if (searchContext) {
+              if (messages.length > 0 && messages[0].role === "system") {
+                messages[0] = { ...messages[0], content: messages[0].content + "\n\n" + searchContext };
+              } else {
+                messages.unshift({ role: "system", content: searchContext });
+              }
+            }
+
+            // Streaming response
+            const response = await fetch(OLLAMA_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
+            });
+
+            if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            finalReply = "";
+
+            placeholder.innerHTML = "";
+            const contentDiv = document.createElement("div");
+            placeholder.appendChild(contentDiv);
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value);
+              const lines = chunk.split("\n").filter(l => l.trim());
+              for (const line of lines) {
+                try {
+                  const json = JSON.parse(line);
+                  if (json.message?.content) {
+                    finalReply += json.message.content;
+                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+                    messageHistory.scrollTop = messageHistory.scrollHeight;
+                  }
+                } catch (e) { /* skip invalid JSON */ }
+              }
+            }
+            enhanceCodeBlocks(placeholder);
           }
-          
-          // Enhance code blocks after streaming completes
-          enhanceCodeBlocks(placeholder);
+
+          // Render agent loop result (non-streaming path)
+          if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked) {
+            placeholder.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+            enhanceCodeBlocks(placeholder);
+          }
         }
         
         clearInterval(timerInterval);
@@ -3192,6 +4768,24 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
           }
         }
         
+        // "Answer now" nudge when clarification was asked
+        if (clarificationAsked) {
+          const answerNowDiv = document.createElement("div");
+          answerNowDiv.style.cssText = "margin-top:10px; font-size:12px; color:var(--text-muted);";
+          const answerBtn = document.createElement("button");
+          answerBtn.className = "answer-now-btn";
+          answerBtn.textContent = "Answer now →";
+          const capturedPrompt = promptText;
+          const capturedModel = modelUsed;
+          answerBtn.onclick = () => {
+            answerNowDiv.remove();
+            forceAnswerNow(capturedPrompt, capturedModel, placeholder);
+          };
+          answerNowDiv.appendChild(document.createTextNode("Just want an answer? "));
+          answerNowDiv.appendChild(answerBtn);
+          placeholder.appendChild(answerNowDiv);
+        }
+
         // Add citations (Perplexity or Tavily)
         const allCitations = [...finalCitations, ...tavilyCitations];
         if (allCitations.length > 0) {
@@ -3240,6 +4834,20 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
             searchGrounded: usedTavilySearch,
             timestamp: Date.now()
           });
+        }
+
+        // Auto-title on first exchange (fire-and-forget, all non-image paths)
+        if (!generateImageChecked && isFirstExchange && finalReply && localStorage.getItem("autoTitle") !== "false") {
+          const titleModel = getModelSelection();
+          autoTitleThread(currentThreadId, promptText, finalReply, titleModel);
+        }
+
+        // Stage-2 fire-and-forget features (Ollama only, no clarification redirect, no image)
+        if (!clarificationAsked && !generateImageChecked && !perplexityChecked && !effectiveLongContext && finalReply) {
+          const agentic2Model = getModelSelection();
+          if (suggestedFollowUpsEnabled) generateFollowUps(promptText, finalReply, agentic2Model, placeholder);
+          if (autoFactCheckEnabled)      autoFactCheck(finalReply, agentic2Model, placeholder);
+          if (autoMemoriesEnabled)       extractAndSaveMemories(promptText, finalReply, agentic2Model);
         }
         
       } catch (err) {
@@ -3395,22 +5003,43 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       document.getElementById("pdfPagesPerChunkInput").value = localStorage.getItem("pdfPagesPerChunk") || "3";
       document.getElementById("contextWindowInput").value = localStorage.getItem("contextWindow") || "10";
       document.getElementById("customHostname").value = localStorage.getItem("ollamaEndpoint") || "";
-      
-      // Agent search checkbox
+
+      // Agentic function checkboxes
       document.getElementById("agentSearchCheckbox").checked = localStorage.getItem("agentSearch") === "true";
+      document.getElementById("agentLoopCheckbox").checked = localStorage.getItem("agentLoop") === "true";
+      document.getElementById("autoAttachmentCheckbox").checked = localStorage.getItem("autoAttachment") === "true";
+      document.getElementById("autoTitleCheckbox").checked = localStorage.getItem("autoTitle") !== "false";
+      document.getElementById("autoSummariseCheckbox").checked = localStorage.getItem("autoSummarise") !== "false";
+      document.getElementById("proactiveClarificationCheckbox").checked = localStorage.getItem("proactiveClarification") === "true";
+      document.getElementById("autoMemoriesCheckbox").checked = localStorage.getItem("autoMemories") === "true";
+      document.getElementById("suggestedFollowUpsCheckbox").checked = localStorage.getItem("suggestedFollowUps") === "true";
+      document.getElementById("autoFactCheckCheckbox").checked = localStorage.getItem("autoFactCheck") !== "false";
       
       const perplexityKey = localStorage.getItem("perplexityApiKey");
       document.getElementById("perplexityApiKeyInput").value = perplexityKey ? "••••••••" : "";
-      
+      document.getElementById("perplexityKeyBadge").style.display = perplexityKey ? "" : "none";
+
       const openaiKey = localStorage.getItem("openaiApiKey");
       document.getElementById("openaiApiKeyInput").value = openaiKey ? "••••••••" : "";
-      
+      document.getElementById("openaiKeyBadge").style.display = openaiKey ? "" : "none";
+
       const tavilyKey = localStorage.getItem("tavilyApiKey");
       document.getElementById("tavilyApiKeyInput").value = tavilyKey ? "••••••••" : "";
+      document.getElementById("tavilyKeyBadge").style.display = tavilyKey ? "" : "none";
+
+      const geminiKey = localStorage.getItem("geminiApiKey");
+      document.getElementById("geminiApiKeyInput").value = geminiKey ? "••••••••" : "";
+      document.getElementById("geminiKeyBadge").style.display = geminiKey ? "" : "none";
     }
 
     function closeSettings() {
       document.getElementById("settingsOverlay").classList.remove("active");
+    }
+
+    function clearApiKey(storageKey, inputId, badgeId) {
+      localStorage.removeItem(storageKey);
+      document.getElementById(inputId).value = "";
+      document.getElementById(badgeId).style.display = "none";
     }
 
     function saveSettings() {
@@ -3422,34 +5051,54 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       localStorage.setItem("pdfPagesPerChunk", document.getElementById("pdfPagesPerChunkInput").value);
       localStorage.setItem("contextWindow", document.getElementById("contextWindowInput").value);
       
-      // Agent search setting
+      // Agentic function settings
       localStorage.setItem("agentSearch", document.getElementById("agentSearchCheckbox").checked ? "true" : "false");
+      localStorage.setItem("agentLoop", document.getElementById("agentLoopCheckbox").checked ? "true" : "false");
+      localStorage.setItem("autoAttachment", document.getElementById("autoAttachmentCheckbox").checked ? "true" : "false");
+      localStorage.setItem("autoTitle", document.getElementById("autoTitleCheckbox").checked ? "true" : "false");
+      localStorage.setItem("autoSummarise", document.getElementById("autoSummariseCheckbox").checked ? "true" : "false");
+      localStorage.setItem("proactiveClarification", document.getElementById("proactiveClarificationCheckbox").checked ? "true" : "false");
+      localStorage.setItem("autoMemories", document.getElementById("autoMemoriesCheckbox").checked ? "true" : "false");
+      localStorage.setItem("suggestedFollowUps", document.getElementById("suggestedFollowUpsCheckbox").checked ? "true" : "false");
+      localStorage.setItem("autoFactCheck", document.getElementById("autoFactCheckCheckbox").checked ? "true" : "false");
       
       const hostname = document.getElementById("customHostname").value.trim();
       localStorage.setItem("ollamaEndpoint", hostname);
+
       updateCustomEndpoints(hostname);
       
       const perplexityInput = document.getElementById("perplexityApiKeyInput").value;
       if (perplexityInput && !perplexityInput.includes("•")) {
         localStorage.setItem("perplexityApiKey", perplexityInput);
       } else if (!perplexityInput) {
-        localStorage.setItem("perplexityApiKey", "");
+        localStorage.removeItem("perplexityApiKey");
       }
-      
+      document.getElementById("perplexityKeyBadge").style.display = localStorage.getItem("perplexityApiKey") ? "" : "none";
+
       const openaiInput = document.getElementById("openaiApiKeyInput").value;
       if (openaiInput && !openaiInput.includes("•")) {
         localStorage.setItem("openaiApiKey", openaiInput);
       } else if (!openaiInput) {
-        localStorage.setItem("openaiApiKey", "");
+        localStorage.removeItem("openaiApiKey");
       }
-      
+      document.getElementById("openaiKeyBadge").style.display = localStorage.getItem("openaiApiKey") ? "" : "none";
+
       const tavilyInput = document.getElementById("tavilyApiKeyInput").value;
       if (tavilyInput && !tavilyInput.includes("•")) {
         localStorage.setItem("tavilyApiKey", tavilyInput);
       } else if (!tavilyInput) {
-        localStorage.setItem("tavilyApiKey", "");
+        localStorage.removeItem("tavilyApiKey");
       }
-      
+      document.getElementById("tavilyKeyBadge").style.display = localStorage.getItem("tavilyApiKey") ? "" : "none";
+
+      const geminiInput = document.getElementById("geminiApiKeyInput").value;
+      if (geminiInput && !geminiInput.includes("•")) {
+        localStorage.setItem("geminiApiKey", geminiInput);
+      } else if (!geminiInput) {
+        localStorage.removeItem("geminiApiKey");
+      }
+      document.getElementById("geminiKeyBadge").style.display = localStorage.getItem("geminiApiKey") ? "" : "none";
+
       closeSettings();
       fetchModels();
       checkConnectionStatus();
@@ -3507,6 +5156,8 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
         closeSettings();
         closeNewThreadModal();
         closeShortcuts();
+        closeMemoriesModal();
+        closeParamsPopover();
         document.getElementById("searchResults").classList.remove("active");
         return;
       }
@@ -3522,6 +5173,14 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
         return;
       }
       
+      // Alt + P - model parameters
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleParamsPopover();
+        return;
+      }
+
       // Alt + S - search messages
       if (e.key === "s" || e.key === "S") {
         e.preventDefault();
@@ -3605,6 +5264,224 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       }
     });
 
+    // ============================================
+    // MODEL PARAMETERS
+    // ============================================
+    function getOllamaOptions() {
+      const opts = {};
+      if (currentThreadParams.temperature  !== DEFAULT_PARAMS.temperature)  opts.temperature    = currentThreadParams.temperature;
+      if (currentThreadParams.topP         !== DEFAULT_PARAMS.topP)         opts.top_p          = currentThreadParams.topP;
+      if (currentThreadParams.repeatPenalty !== DEFAULT_PARAMS.repeatPenalty) opts.repeat_penalty = currentThreadParams.repeatPenalty;
+      return Object.keys(opts).length ? opts : undefined;
+    }
+
+    function loadThreadParams(threadId) {
+      if (!db) return;
+      const tx = db.transaction(["threads"], "readonly");
+      tx.objectStore("threads").get(threadId).onsuccess = e => {
+        const thread = e.target.result;
+        currentThreadParams = {
+          temperature: thread?.temperature ?? DEFAULT_PARAMS.temperature,
+          topP:        thread?.topP        ?? DEFAULT_PARAMS.topP,
+          repeatPenalty: thread?.repeatPenalty ?? DEFAULT_PARAMS.repeatPenalty
+        };
+        updateParamsUI();
+      };
+    }
+
+    function saveThreadParams() {
+      if (!db || !currentThreadId) return;
+      const tx = db.transaction(["threads"], "readwrite");
+      const store = tx.objectStore("threads");
+      const req = store.get(currentThreadId);
+      req.onsuccess = () => {
+        const thread = req.result;
+        if (thread) {
+          thread.temperature   = currentThreadParams.temperature;
+          thread.topP          = currentThreadParams.topP;
+          thread.repeatPenalty = currentThreadParams.repeatPenalty;
+          store.put(thread);
+        }
+      };
+    }
+
+    function updateParamsUI() {
+      const { temperature, topP, repeatPenalty } = currentThreadParams;
+      document.getElementById("tempSlider").value    = temperature;
+      document.getElementById("tempValue").textContent = temperature.toFixed(1);
+      document.getElementById("topPSlider").value    = topP;
+      document.getElementById("topPValue").textContent = topP.toFixed(2);
+      document.getElementById("repeatSlider").value  = repeatPenalty;
+      document.getElementById("repeatValue").textContent = repeatPenalty.toFixed(2);
+
+      document.getElementById("paramsTempBadge").textContent = temperature.toFixed(1);
+
+      const isDefault = temperature === DEFAULT_PARAMS.temperature &&
+                        topP === DEFAULT_PARAMS.topP &&
+                        repeatPenalty === DEFAULT_PARAMS.repeatPenalty;
+      document.getElementById("paramsBtn").classList.toggle("customized", !isDefault);
+    }
+
+    function updateParam(param, value) {
+      currentThreadParams[param] = parseFloat(value);
+      updateParamsUI();
+      saveThreadParams();
+    }
+
+    function resetThreadParams() {
+      currentThreadParams = { ...DEFAULT_PARAMS };
+      updateParamsUI();
+      saveThreadParams();
+    }
+
+    function toggleParamsPopover() {
+      document.getElementById("paramsPopover").classList.toggle("active");
+    }
+
+    function closeParamsPopover() {
+      document.getElementById("paramsPopover").classList.remove("active");
+    }
+
+    // Close popover when clicking outside
+    document.addEventListener("click", (e) => {
+      const wrapper = document.getElementById("paramsPopoverWrapper");
+      if (wrapper && !wrapper.contains(e.target)) {
+        closeParamsPopover();
+      }
+    });
+
+    // ============================================
+    // VOICE INPUT
+    // ============================================
+    let recognition = null;
+    let isListening = false;
+
+    function toggleVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Voice input is not supported in this browser. Try Chrome or Edge.");
+        return;
+      }
+
+      const micBtn = document.getElementById("micButton");
+      const userInput = document.getElementById("userInput");
+
+      if (isListening) {
+        recognition.stop();
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      const baseText = userInput.value;
+
+      recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.add("listening");
+        micBtn.title = "Listening… click to stop";
+      };
+
+      recognition.onresult = (event) => {
+        let finalTranscript = "";
+        let interimTranscript = "";
+        for (let i = 0; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        const sep = baseText && (finalTranscript || interimTranscript) ? " " : "";
+        userInput.value = baseText + sep + finalTranscript + interimTranscript;
+        userInput.dispatchEvent(new Event("input"));
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        micBtn.classList.remove("listening");
+        micBtn.title = "Voice input";
+        recognition = null;
+        userInput.dispatchEvent(new Event("input"));
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        isListening = false;
+        micBtn.classList.remove("listening");
+        micBtn.title = "Voice input";
+        recognition = null;
+      };
+
+      recognition.start();
+    }
+
+    // ============================================
+    // MEMORIES MODAL
+    // ============================================
+    function openMemoriesModal() {
+      document.getElementById("memoriesOverlay").classList.add("active");
+      refreshMemoriesList();
+    }
+
+    function closeMemoriesModal() {
+      document.getElementById("memoriesOverlay").classList.remove("active");
+    }
+
+    async function refreshMemoriesList() {
+      const list = document.getElementById("memoriesList");
+      const memories = await loadAllMemories();
+
+      if (!memories.length) {
+        list.innerHTML = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:24px 0;">No memories saved yet.</p>';
+        return;
+      }
+
+      list.innerHTML = "";
+      memories.forEach(mem => {
+        const item = document.createElement("div");
+        item.className = "memory-item";
+
+        const fact = document.createElement("span");
+        fact.className = "memory-fact";
+        fact.textContent = mem.fact;
+
+        const date = document.createElement("span");
+        date.className = "memory-date";
+        date.textContent = new Date(mem.timestamp).toLocaleDateString();
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "memory-delete-btn";
+        delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        delBtn.title = "Delete this memory";
+        delBtn.onclick = async () => {
+          await deleteMemoryById(mem.id);
+          item.remove();
+          if (!list.querySelectorAll(".memory-item").length) {
+            list.innerHTML = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:24px 0;">No memories saved yet.</p>';
+          }
+        };
+
+        item.appendChild(fact);
+        item.appendChild(date);
+        item.appendChild(delBtn);
+        list.appendChild(item);
+      });
+    }
+
+    function deleteMemoryById(memoryId) {
+      return new Promise((resolve) => {
+        const tx = db.transaction(["memories"], "readwrite");
+        tx.objectStore("memories").delete(memoryId);
+        tx.oncomplete = () => resolve();
+      });
+    }
+
+    document.getElementById("memoriesOverlay").addEventListener("click", (e) => {
+      if (e.target.id === "memoriesOverlay") closeMemoriesModal();
+    });
+
     // Search input handling
     let searchTimeout;
     document.getElementById("searchInput").addEventListener("input", async (e) => {
@@ -3650,9 +5527,11 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       if (this.checked) {
         document.getElementById("tavilySearchCheckbox").checked = false;
         document.getElementById("generateImageCheckbox").checked = false;
+        document.getElementById("longContextCheckbox").checked = false;
         document.getElementById("fileInput").disabled = true;
+        document.getElementById("dontSummarizeCheckbox").disabled = false;
         clearPendingAttachment();
-        
+
         if (!localStorage.getItem("perplexityApiKey")) {
           alert("Please set your Perplexity API key in Settings");
         }
@@ -3665,16 +5544,42 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
       if (this.checked) {
         document.getElementById("tavilySearchCheckbox").checked = false;
         document.getElementById("perplexitySearchCheckbox").checked = false;
+        document.getElementById("longContextCheckbox").checked = false;
         document.getElementById("fileInput").disabled = true;
         document.getElementById("dontSummarizeCheckbox").disabled = true;
         clearPendingAttachment();
-        
+
         if (!localStorage.getItem("openaiApiKey")) {
           alert("Please set your OpenAI API key in Settings");
         }
       } else {
         document.getElementById("fileInput").disabled = false;
         document.getElementById("dontSummarizeCheckbox").disabled = false;
+      }
+    });
+
+    document.getElementById("longContextCheckbox").addEventListener("change", function() {
+      const fileInput = document.getElementById("fileInput");
+      if (this.checked) {
+        document.getElementById("perplexitySearchCheckbox").checked = false;
+        document.getElementById("generateImageCheckbox").checked = false;
+        document.getElementById("dontSummarizeCheckbox").disabled = true;
+        fileInput.disabled = false;
+        fileInput.setAttribute("multiple", "");
+        fileInput.title = "Attach files — multiple files supported in Long Context mode";
+
+        if (!localStorage.getItem("geminiApiKey")) {
+          alert("Please set your Gemini API key in Settings");
+        }
+      } else {
+        document.getElementById("dontSummarizeCheckbox").disabled = false;
+        fileInput.removeAttribute("multiple");
+        fileInput.title = "";
+        // Clear any queued multi-file attachments
+        pendingAttachments = [];
+        if (!pendingAttachment) {
+          document.getElementById("attachmentPreview").innerHTML = "";
+        }
       }
     });
 
@@ -3692,33 +5597,27 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         await openDatabase();
-        
+
         // Apply saved endpoint
         const savedEndpoint = localStorage.getItem("ollamaEndpoint");
         if (savedEndpoint) {
           updateCustomEndpoints(savedEndpoint);
         }
-        
-        await fetchModels();
-        checkConnectionStatus();
-        
-        // Start connection monitoring
-        connectionCheckInterval = setInterval(checkConnectionStatus, 30000);
-        
-        // Load threads
+
+        // Load threads immediately after DB is ready — do not block on network calls
         const transaction = db.transaction(["threads"], "readonly");
         const store = transaction.objectStore("threads");
         const countRequest = store.count();
-        
+
         countRequest.onsuccess = async function() {
           if (countRequest.result === 0) {
             // Create default thread
             const defaultTransaction = db.transaction(["threads"], "readwrite");
             const defaultStore = defaultTransaction.objectStore("threads");
-            const defaultThread = { 
-              name: "General", 
+            const defaultThread = {
+              name: "General",
               systemPrompt: "",
-              created: Date.now() 
+              created: Date.now()
             };
             const addRequest = defaultStore.add(defaultThread);
             addRequest.onsuccess = (e) => {
@@ -3738,10 +5637,15 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
             };
           }
         };
-        
+
         // Initial token display
         updateTokenDisplay();
-        
+
+        // Fetch models and start connection checks in background — don't await
+        fetchModels();
+        checkConnectionStatus();
+        connectionCheckInterval = setInterval(checkConnectionStatus, 30000);
+
       } catch (err) {
         console.error("Initialization error:", err);
         alert("Failed to initialize. Please refresh the page.");
