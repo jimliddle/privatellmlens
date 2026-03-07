@@ -1576,6 +1576,28 @@
       justify-content: flex-end;
     }
 
+    /* Image Lightbox */
+    #imageLightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    #imageLightbox.active {
+      display: flex;
+    }
+    #imageLightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 6px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      object-fit: contain;
+    }
+
     /* Keyboard Shortcuts Modal */
     #shortcutsOverlay {
       display: none;
@@ -1644,6 +1666,98 @@
     .shortcut-desc {
       font-size: 13px;
       color: var(--text-primary);
+    }
+
+    /* === Sidebar & Input Panel Toggles (desktop) === */
+    #sidebarToggleBtn {
+      display: none;
+    }
+    @media (min-width: 769px) {
+      #sidebarToggleBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      body.sidebar-hidden #sidebar {
+        display: none;
+      }
+    }
+
+    #inputCollapseBtn {
+      display: block;
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 3px 0;
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+      margin-bottom: 8px;
+    }
+    #inputCollapseBtn:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+    body.input-collapsed #tokenDisplay,
+    body.input-collapsed #optionsRow {
+      display: none;
+    }
+
+    /* === Fullscreen Mode === */
+    .fullscreen-exit-btn {
+      display: none;
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 500;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 16px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .fullscreen-exit-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    body.fullscreen .fullscreen-exit-btn {
+      display: block;
+    }
+    body.fullscreen #headerSection {
+      display: none;
+    }
+    body.fullscreen #sidebar {
+      display: none;
+    }
+    body.fullscreen #tokenDisplay {
+      display: none;
+    }
+    body.fullscreen #optionsRow {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      margin-top: 0;
+      transition: max-height 0.2s ease, opacity 0.2s ease, margin-top 0.2s ease;
+    }
+    body.fullscreen #inputSection:hover #optionsRow {
+      max-height: 80px;
+      opacity: 1;
+      margin-top: 12px;
+    }
+    #fullscreenBtn {
+      display: none;
+    }
+    @media (min-width: 769px) {
+      #fullscreenBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
     }
 
     /* Mobile Responsive */
@@ -1773,10 +1887,18 @@
   <!-- Sidebar Overlay (mobile) -->
   <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
+  <!-- Image Lightbox -->
+  <div id="imageLightbox" onclick="closeImageLightbox()">
+    <img id="imageLightboxImg" src="" alt="Full size image">
+  </div>
+
   <!-- Header -->
   <header id="headerSection">
     <div id="headerLeft">
       <button id="menuToggle" onclick="toggleSidebar()" title="Toggle sidebar">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <button class="header-btn" id="sidebarToggleBtn" onclick="toggleSidebarDesktop()" title="Toggle sidebar">
         <i class="fa-solid fa-bars"></i>
       </button>
       <div id="headerLogo">
@@ -1792,11 +1914,17 @@
       <button class="header-btn" onclick="showShortcuts()" title="Keyboard shortcuts (Ctrl+/)">
         <i class="fa-regular fa-keyboard"></i>
       </button>
+      <button class="header-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="Fullscreen (F11)">
+        <i class="fa-solid fa-expand"></i>
+      </button>
       <button class="header-btn" id="settingsButton" title="Settings">
         <i class="fa-solid fa-gear"></i>
       </button>
     </div>
   </header>
+  <button class="fullscreen-exit-btn" onclick="toggleFullscreen()" title="Exit fullscreen (Esc)">
+    <i class="fa-solid fa-compress"></i>
+  </button>
 
   <!-- Main Container -->
   <div id="mainContainer">
@@ -1837,6 +1965,9 @@
         </div>
       </div>
       <div id="inputSection">
+        <button id="inputCollapseBtn" onclick="toggleInputCollapse()" title="Toggle options">
+          <i class="fa-solid fa-chevron-up"></i>
+        </button>
         <div id="tokenDisplay">
           <i class="fa-solid fa-calculator"></i>
           <span id="tokenCount">~0 tokens</span>
@@ -2194,6 +2325,12 @@
           </div>
         </div>
         <div class="shortcut-item">
+          <span class="shortcut-desc">Toggle fullscreen</span>
+          <div class="shortcut-keys">
+            <span class="shortcut-key">F11</span>
+          </div>
+        </div>
+        <div class="shortcut-item">
           <span class="shortcut-desc">Close modal</span>
           <div class="shortcut-keys">
             <span class="shortcut-key">Esc</span>
@@ -2210,6 +2347,18 @@
     const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
     let OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
     let OLLAMA_TAGS = "http://localhost:11434/api/tags";
+
+    // Wrapper for all Ollama chat API calls.
+    // We do not send think:false — compatibility varies widely across models and
+    // Ollama versions. stripThinkTags() handles cleanup universally instead.
+    function fetchOllamaChat(options = {}) {
+      return fetch(OLLAMA_ENDPOINT, options);
+    }
+
+    // Strip residual <think>…</think> blocks from model output (safety net)
+    function stripThinkTags(text) {
+      return (text || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    }
 
     let db;
     let currentThreadId = null;
@@ -2893,13 +3042,14 @@
           
           messageElem.appendChild(container);
         } else {
-          // User-uploaded image - keep existing behavior
+          // User-uploaded image — click to open lightbox
           const imgElem = document.createElement("img");
           imgElem.src = imageData;
           imgElem.style.maxWidth = "300px";
           imgElem.style.maxHeight = "300px";
-          imgElem.style.cursor = "pointer";
-          imgElem.onclick = () => window.open(imageData, '_blank');
+          imgElem.style.cursor = "zoom-in";
+          imgElem.style.borderRadius = "6px";
+          imgElem.onclick = () => openImageLightbox(imageData);
           messageElem.appendChild(imgElem);
         }
       } else {
@@ -2947,7 +3097,14 @@
 
       const bottomActions = makeActionsDiv();
       bottomActions.classList.add("bottom");
+      bottomActions.style.display = "none"; // hidden until height confirmed
       messageElem.appendChild(bottomActions);
+
+      // Only show bottom actions when message is tall enough (~5 lines)
+      const ro = new ResizeObserver(() => {
+        bottomActions.style.display = messageElem.offsetHeight > 150 ? "" : "none";
+      });
+      ro.observe(messageElem);
 
       return messageElem;
     }
@@ -3540,7 +3697,7 @@
       };
       
       try {
-        const response = await fetch(OLLAMA_ENDPOINT, {
+        const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -3623,7 +3780,7 @@ A web search is NOT needed if:
 Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
 
       try {
-        const response = await fetch(OLLAMA_ENDPOINT, {
+        const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -3634,7 +3791,7 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
         });
         
         const data = await response.json();
-        const decision = (data.message?.content || "").trim().toUpperCase();
+        const decision = stripThinkTags(data.message?.content || "").trim().toUpperCase();
         return decision.includes("SEARCH") && !decision.includes("NO_SEARCH");
       } catch (err) {
         console.error("Error in search decision:", err);
@@ -3661,13 +3818,13 @@ Choose the best processing strategy:
 Reply with ONLY one word: SUMMARIZE, RAW, or LONG_CONTEXT`;
 
       try {
-        const response = await fetch(OLLAMA_ENDPOINT, {
+        const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
         });
         const data = await response.json();
-        const decision = (data.message?.content || "").trim().toUpperCase();
+        const decision = stripThinkTags(data.message?.content || "").trim().toUpperCase();
         if (decision.includes("LONG_CONTEXT")) return "LONG_CONTEXT";
         if (decision.includes("RAW")) return "RAW";
         return "SUMMARIZE";
@@ -3699,14 +3856,14 @@ You may search up to 3 times. When you have enough information, write your final
           <span style="color: var(--text-muted); margin-left: 8px;">(step ${i})</span>
         `;
 
-        const resp = await fetch(OLLAMA_ENDPOINT, {
+        const resp = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelUsed, stream: false, messages: agentMessages, options: getOllamaOptions() })
         });
         if (!resp.ok) throw new Error(`Ollama error: ${resp.status}`);
         const data = await resp.json();
-        const llmOutput = (data.message?.content || "").trim();
+        const llmOutput = stripThinkTags(data.message?.content || "").trim();
 
         const searchMatch = llmOutput.match(/^SEARCH:\s*(.+)/im);
         if (searchMatch && i < MAX_ITERATIONS) {
@@ -3742,7 +3899,7 @@ You may search up to 3 times. When you have enough information, write your final
         <span class="thinking-dots"><span></span><span></span><span></span></span>
       `;
       agentMessages.push({ role: "user", content: "Provide your final comprehensive answer now." });
-      const finalResp = await fetch(OLLAMA_ENDPOINT, {
+      const finalResp = await fetchOllamaChat({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: modelUsed, stream: false, messages: agentMessages, options: getOllamaOptions() })
@@ -3763,13 +3920,13 @@ Assistant: ${assistantMsg.substring(0, 300)}
 
 Reply with ONLY the title — no quotes, no punctuation at the end.`;
       try {
-        const response = await fetch(OLLAMA_ENDPOINT, {
+        const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
         });
         const data = await response.json();
-        const title = (data.message?.content || "").trim().replace(/^["']|["']$/g, "").substring(0, 60);
+        const title = stripThinkTags(data.message?.content || "").trim().replace(/^["']|["']$/g, "").substring(0, 60);
         if (!title) return;
         const tx = db.transaction(["threads"], "readwrite");
         const store = tx.objectStore("threads");
@@ -3816,12 +3973,12 @@ Example: ["User prefers TypeScript", "Project is a React app called Lens"]
 Reply with ONLY the JSON array.`;
 
       try {
-        const resp = await fetch(OLLAMA_ENDPOINT, {
+        const resp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
         });
         const data = await resp.json();
-        const match = (data.message?.content || "").match(/\[[\s\S]*\]/);
+        const match = stripThinkTags(data.message?.content || "").match(/\[[\s\S]*\]/);
         if (!match) return;
         const memories = JSON.parse(match[0]);
         if (!Array.isArray(memories) || !memories.length) return;
@@ -3871,7 +4028,7 @@ Reply with ONLY the JSON array.`;
 
       let summary = "";
       try {
-        const resp = await fetch(OLLAMA_ENDPOINT, {
+        const resp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
@@ -3907,12 +4064,12 @@ If clear enough: PROCEED
 Reply with ONLY one of those formats.`;
 
       try {
-        const resp = await fetch(OLLAMA_ENDPOINT, {
+        const resp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: decisionPrompt }] })
         });
         const data = await resp.json();
-        const reply = (data.message?.content || "").trim();
+        const reply = stripThinkTags(data.message?.content || "").trim();
         const m = reply.match(/^CLARIFY:\s*(.+)/i);
         if (m) return { needsClarification: true, question: m[1].trim() };
         return { needsClarification: false, question: "" };
@@ -3927,7 +4084,7 @@ Reply with ONLY one of those formats.`;
     // ============================================
     async function generateFollowUps(userMsg, assistantMsg, modelName, targetElement) {
       try {
-        const resp = await fetch(OLLAMA_ENDPOINT, {
+        const resp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
@@ -3942,7 +4099,7 @@ JSON array:` }]
           })
         });
         const data = await resp.json();
-        const match = (data.message?.content || "").match(/\[[\s\S]*\]/);
+        const match = stripThinkTags(data.message?.content || "").match(/\[[\s\S]*\]/);
         if (!match) return;
         const followUps = JSON.parse(match[0]);
         if (!Array.isArray(followUps) || !followUps.length) return;
@@ -3987,7 +4144,7 @@ JSON array:` }]
 
       try {
         // Step 1: does it contain verifiable claims?
-        const decisionResp = await fetch(OLLAMA_ENDPOINT, {
+        const decisionResp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
@@ -3995,10 +4152,10 @@ JSON array:` }]
           })
         });
         const decisionData = await decisionResp.json();
-        if (!(decisionData.message?.content || "").toUpperCase().includes("YES")) return;
+        if (!stripThinkTags(decisionData.message?.content || "").toUpperCase().includes("YES")) return;
 
         // Step 2: extract a search query
-        const claimResp = await fetch(OLLAMA_ENDPOINT, {
+        const claimResp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
@@ -4006,7 +4163,7 @@ JSON array:` }]
           })
         });
         const claimData = await claimResp.json();
-        const searchQuery = (claimData.message?.content || "").trim();
+        const searchQuery = stripThinkTags(claimData.message?.content || "").trim();
         if (!searchQuery) return appendFactCheckBadge(targetElement, "unverified");
 
         // Step 3: search and compare
@@ -4014,7 +4171,7 @@ JSON array:` }]
         if (!results.length) return appendFactCheckBadge(targetElement, "unverified");
         const resultsText = results.slice(0, 3).map(r => r.content).join("\n\n").substring(0, 1200);
 
-        const verifyResp = await fetch(OLLAMA_ENDPOINT, {
+        const verifyResp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
@@ -4022,7 +4179,7 @@ JSON array:` }]
           })
         });
         const verifyData = await verifyResp.json();
-        const verdict = (verifyData.message?.content || "").trim().toUpperCase();
+        const verdict = stripThinkTags(verifyData.message?.content || "").trim().toUpperCase();
         if (verdict.includes("VERIFIED")) appendFactCheckBadge(targetElement, "verified");
         else if (verdict.includes("CONTRADICTED")) appendFactCheckBadge(targetElement, "contradicted");
         else appendFactCheckBadge(targetElement, "unverified");
@@ -4056,7 +4213,7 @@ JSON array:` }]
         if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
         history.forEach(msg => messages.push({ role: msg.role, content: msg.text }));
 
-        const response = await fetch(OLLAMA_ENDPOINT, {
+        const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
@@ -4080,7 +4237,7 @@ JSON array:` }]
               const json = JSON.parse(line);
               if (json.message?.content) {
                 finalReply += json.message.content;
-                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
                 messageHistory.scrollTop = messageHistory.scrollHeight;
               }
             } catch (e) { /* skip */ }
@@ -4190,7 +4347,7 @@ JSON array:` }]
         history.forEach(msg => messages.push({ role: msg.role, content: msg.text }));
         messages.push({ role: "user", content: `Please answer my original question directly without asking for further clarification: ${originalPrompt}` });
 
-        const response = await fetch(OLLAMA_ENDPOINT, {
+        const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: modelName, stream: true, messages, options: getOllamaOptions() })
@@ -4214,7 +4371,7 @@ JSON array:` }]
               const json = JSON.parse(line);
               if (json.message?.content) {
                 finalReply += json.message.content;
-                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
                 messageHistory.scrollTop = messageHistory.scrollHeight;
               }
             } catch (e) { /* skip */ }
@@ -4255,23 +4412,24 @@ JSON array:` }]
       const longContextChecked = document.getElementById("longContextCheckbox").checked;
       
       if (!promptText && !pendingAttachment) return;
-      
+      if (!currentThreadId) return;
+
       // Clear empty state
       const emptyState = document.getElementById("emptyState");
       if (emptyState) emptyState.remove();
-      
+
       const messageHistory = document.getElementById("messageHistory");
-      
+
       // Create user message
       const userMessage = document.createElement("div");
       userMessage.className = "message user-message";
-      
+
       if (promptText) {
         const promptDiv = document.createElement("div");
         promptDiv.textContent = promptText;
         userMessage.appendChild(promptDiv);
       }
-      
+
       // Show multi-file list for long context
       if (longContextChecked && pendingAttachments.length > 0) {
         const attachDiv = document.createElement("div");
@@ -4287,7 +4445,7 @@ JSON array:` }]
         attachDiv.style.marginTop = "8px";
         attachDiv.textContent = `📎 ${pendingAttachment.fileName}`;
         userMessage.appendChild(attachDiv);
-        
+
         if (pendingAttachment.type === 'image' && pendingAttachment.content) {
           const img = document.createElement("img");
           img.src = pendingAttachment.content;
@@ -4296,32 +4454,10 @@ JSON array:` }]
           userMessage.appendChild(img);
         }
       }
-      
+
       messageHistory.appendChild(userMessage);
-      
-      // Save user message
-      const userMsgData = {
-        role: "user",
-        text: promptText +
-          (pendingAttachments.length > 0
-            ? "\n" + pendingAttachments.map(a => `[Attached: ${a.fileName}]`).join("\n")
-            : pendingAttachment ? `\n[Attached: ${pendingAttachment.fileName}]` : ""),
-        type: pendingAttachment?.type || 'text',
-        timestamp: Date.now()
-      };
-      
-      if (pendingAttachment?.type === 'image') {
-        userMsgData.imageData = pendingAttachment.content;
-        userMsgData.fileName = pendingAttachment.fileName;
-      }
-      
-      await saveMessage(userMsgData);
 
-      // Capture first-exchange flag for auto-title (1 = only the user msg exists)
-      const allThreadMsgs = await getThreadMessages(currentThreadId);
-      const isFirstExchange = allThreadMsgs.length === 1;
-
-      // Clear input
+      // Clear input and disable while processing
       userInput.value = "";
       userInput.disabled = true;
       document.getElementById("sendButton").disabled = true;
@@ -4347,6 +4483,24 @@ JSON array:` }]
       }, 1000);
       
       try {
+        // Save user message and capture first-exchange flag (inside try so errors are caught)
+        const userMsgData = {
+          role: "user",
+          text: promptText +
+            (pendingAttachments.length > 0
+              ? "\n" + pendingAttachments.map(a => `[Attached: ${a.fileName}]`).join("\n")
+              : pendingAttachment ? `\n[Attached: ${pendingAttachment.fileName}]` : ""),
+          type: pendingAttachment?.type || 'text',
+          timestamp: Date.now()
+        };
+        if (pendingAttachment?.type === 'image') {
+          userMsgData.imageData = pendingAttachment.content;
+          userMsgData.fileName = pendingAttachment.fileName;
+        }
+        await saveMessage(userMsgData);
+        const allThreadMsgs = await getThreadMessages(currentThreadId);
+        const isFirstExchange = allThreadMsgs.length === 1;
+
         let finalReply = "";
         let finalCitations = [];
         let modelUsed = "";
@@ -4619,7 +4773,7 @@ JSON array:` }]
           }
 
           // === AGENT LOOP (highest priority when enabled + Tavily key present + user didn't manually check Tavily) ===
-          if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked) {
+          if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked && !pendingAttachment && pendingAttachments.length === 0) {
             placeholder.innerHTML = `
               <span>Agent starting</span>
               <span class="thinking-dots"><span></span><span></span><span></span></span>
@@ -4636,7 +4790,7 @@ JSON array:` }]
 
             if (tavilyChecked) {
               shouldSearch = true;
-            } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey")) {
+            } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey") && !pendingAttachment && pendingAttachments.length === 0) {
               placeholder.innerHTML = `
                 <span>Analyzing query</span>
                 <span class="thinking-dots"><span></span><span></span><span></span></span>
@@ -4677,7 +4831,7 @@ JSON array:` }]
             }
 
             // Streaming response
-            const response = await fetch(OLLAMA_ENDPOINT, {
+            const response = await fetchOllamaChat({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
@@ -4703,7 +4857,7 @@ JSON array:` }]
                   const json = JSON.parse(line);
                   if (json.message?.content) {
                     finalReply += json.message.content;
-                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
                     messageHistory.scrollTop = messageHistory.scrollHeight;
                   }
                 } catch (e) { /* skip invalid JSON */ }
@@ -5126,6 +5280,53 @@ JSON array:` }]
       overlay.classList.toggle("active");
     }
 
+    function openImageLightbox(src) {
+      document.getElementById("imageLightboxImg").src = src;
+      document.getElementById("imageLightbox").classList.add("active");
+    }
+
+    function closeImageLightbox() {
+      document.getElementById("imageLightbox").classList.remove("active");
+      document.getElementById("imageLightboxImg").src = "";
+    }
+
+    function toggleSidebarDesktop() {
+      const hidden = document.body.classList.toggle("sidebar-hidden");
+      localStorage.setItem("sidebarHidden", hidden);
+    }
+
+    function toggleInputCollapse() {
+      const collapsed = document.body.classList.toggle("input-collapsed");
+      localStorage.setItem("inputCollapsed", collapsed);
+      updateInputCollapseIcon();
+    }
+
+    function updateInputCollapseIcon() {
+      const btn = document.getElementById("inputCollapseBtn");
+      if (!btn) return;
+      const collapsed = document.body.classList.contains("input-collapsed");
+      btn.querySelector("i").className = collapsed ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down";
+      btn.title = collapsed ? "Show options" : "Hide options";
+    }
+
+    function toggleFullscreen() {
+      const isFullscreen = document.body.classList.contains("fullscreen");
+      if (isFullscreen) {
+        document.body.classList.remove("fullscreen");
+        if (document.exitFullscreen) document.exitFullscreen();
+      } else {
+        document.body.classList.add("fullscreen");
+        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+      }
+    }
+
+    // Sync state if user exits fullscreen via ESC key
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement && document.body.classList.contains("fullscreen")) {
+        document.body.classList.remove("fullscreen");
+      }
+    });
+
     function showShortcuts() {
       document.getElementById("shortcutsOverlay").classList.add("active");
     }
@@ -5158,10 +5359,18 @@ JSON array:` }]
         closeShortcuts();
         closeMemoriesModal();
         closeParamsPopover();
+        closeImageLightbox();
         document.getElementById("searchResults").classList.remove("active");
         return;
       }
       
+      // F11 - toggle fullscreen (desktop only)
+      if (e.key === "F11") {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+
       // Only process if Alt key is pressed
       if (!e.altKey) return;
       
@@ -5637,6 +5846,15 @@ JSON array:` }]
             };
           }
         };
+
+        // Restore sidebar / input collapsed states
+        if (localStorage.getItem("sidebarHidden") === "true") {
+          document.body.classList.add("sidebar-hidden");
+        }
+        if (localStorage.getItem("inputCollapsed") === "true") {
+          document.body.classList.add("input-collapsed");
+        }
+        updateInputCollapseIcon();
 
         // Initial token display
         updateTokenDisplay();
