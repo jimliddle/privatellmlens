@@ -1828,8 +1828,28 @@
         display: none;
       }
 
+      /* Input area: full-width textarea on top, buttons row beneath */
+      #inputCollapseBtn {
+        display: none;
+      }
+
       #inputRow {
+        flex-wrap: wrap;
         gap: 8px;
+        align-items: center;
+      }
+
+      #inputWrapper {
+        flex: 0 0 100%;
+        width: 100%;
+      }
+
+      #userInput {
+        min-height: 76px;
+      }
+
+      #sendButton {
+        flex: 1;
       }
     }
 
