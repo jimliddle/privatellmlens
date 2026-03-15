@@ -2510,12 +2510,39 @@ self.onmessage = async (e) => {
     }
   } else if (msg.type === 'generate') {
     try {
-      const { TextStreamer } = lib;
-      const text = processor.apply_chat_template(msg.messages, {
+      const { TextStreamer, RawImage } = lib;
+
+      let messages = msg.messages;
+      let image = null;
+
+      if (msg.imageData) {
+        // Load image from data URL
+        image = await RawImage.read(msg.imageData);
+
+        // Rewrite the last user message from Ollama format { content: string, images: [] }
+        // to the multimodal array format the processor expects: [{ type:'image' }, { type:'text' }]
+        messages = messages.map((m, i) => {
+          if (i === messages.length - 1 && m.role === 'user') {
+            const textContent = typeof m.content === 'string'
+              ? m.content
+              : (m.content?.find?.(c => c.type === 'text')?.text || '');
+            return {
+              role: 'user',
+              content: [
+                { type: 'image' },
+                { type: 'text', text: textContent || 'Describe this image.' }
+              ]
+            };
+          }
+          return m;
+        });
+      }
+
+      const text = processor.apply_chat_template(messages, {
         add_generation_prompt: true,
         tokenizer_kwargs: { enable_thinking: false },
       });
-      const inputs = await processor(text);
+      const inputs = image ? await processor(text, image) : await processor(text);
       const streamer = new TextStreamer(processor.tokenizer, {
         skip_prompt: true,
         skip_special_tokens: true,
@@ -2636,7 +2663,7 @@ self.onmessage = async (e) => {
       }
     }
 
-    async function generateWithWebGPU(messages, placeholder) {
+    async function generateWithWebGPU(messages, placeholder, imageDataUrl) {
       await ensureWebGPUReady(placeholder);
       webgpuProgressPlaceholder = null;
       return new Promise((resolve, reject) => {
@@ -2652,7 +2679,7 @@ self.onmessage = async (e) => {
         };
         webgpuDoneCallback = () => resolve(finalReply);
         webgpuErrorCallback = (err) => reject(new Error(err));
-        webgpuWorker.postMessage({ type: 'generate', messages });
+        webgpuWorker.postMessage({ type: 'generate', messages, imageData: imageDataUrl || null });
       });
     }
 
@@ -5064,7 +5091,8 @@ JSON array:` }]
 
           if (modelUsed === WEBGPU_MODEL_VALUE) {
             // === WEBGPU IN-BROWSER MODEL ===
-            finalReply = await generateWithWebGPU(messages, placeholder);
+            const webgpuImage = pendingAttachment?.type === 'image' ? pendingAttachment.content : null;
+            finalReply = await generateWithWebGPU(messages, placeholder, webgpuImage);
             enhanceCodeBlocks(placeholder);
             modelUsed = "Qwen3.5:0.8b (WebGPU)";
 
