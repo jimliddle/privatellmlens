@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>PrivateLLMLens Enhanced</title>
+  <!-- Cross-Origin Isolation service worker — enables SharedArrayBuffer for WebGPU/ONNX Runtime -->
+  <script src="https://cdn.jsdelivr.net/npm/coi-serviceworker@0.1.7/coi-serviceworker.min.js"></script>
+
+  <!-- Import map: resolves onnxruntime-web bare specifiers used inside transformers.js.
+       Module workers created by this document inherit this map. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.25.0-dev.20260228-6e72d31970/dist/ort.webgpu.bundle.min.mjs",
+      "onnxruntime-web/webgpu": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.25.0-dev.20260228-6e72d31970/dist/ort.webgpu.bundle.min.mjs"
+    }
+  }
+  </script>
 
   <!-- pdf.js for PDF chunking -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -1167,6 +1180,11 @@
       cursor: pointer;
     }
 
+    .option-group.webgpu-disabled {
+      opacity: 0.38;
+      pointer-events: none;
+    }
+
     #modelSelection {
       padding: 6px 12px;
       border: 1px solid var(--border);
@@ -2232,6 +2250,21 @@
           </div>
         </div>
         <div class="settings-section">
+          <h3>WebGPU Model <span style="font-size:11px;font-weight:normal;color:var(--warning);">&#9675; Chrome / Edge only</span> <i class="fa-solid fa-circle-info" style="font-size:12px;color:var(--text-muted);cursor:help;vertical-align:middle;" title="Agentic functions (agent loop, auto-search) and Web Search are not available when the WebGPU model is selected — these options are disabled in the toolbar while WebGPU is active."></i></h3>
+          <div class="setting-row">
+            <span class="setting-label" title="Runs Qwen3.5:0.8b fully in-browser using WebGPU — no Ollama required. Model is cached by the browser after the first download.">Enable Qwen3.5:0.8b (WebGPU)</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="webgpuEnabledCheckbox" style="width:18px;height:18px;flex-shrink:0;">
+              <span style="font-size:12px;color:var(--text-muted);">Runs entirely in-browser, no Ollama needed</span>
+            </div>
+          </div>
+          <div style="padding:2px 0 6px;font-size:11px;color:var(--text-muted);">~850MB download, cached by browser after first use. Appears in model selector when enabled.</div>
+          <div class="setting-row">
+            <span class="setting-label">Model status</span>
+            <span id="webgpuStatusText" style="font-size:12px;color:var(--text-muted);">Not loaded</span>
+          </div>
+        </div>
+        <div class="settings-section">
           <h3>Danger Zone</h3>
           <div class="setting-row">
             <span class="setting-label">Clear all messages in thread</span>
@@ -2390,6 +2423,17 @@
     let cancelProcessing = false;
     let connectionCheckInterval = null;
 
+    // WebGPU in-browser model state
+    const WEBGPU_MODEL_VALUE = "__webgpu_qwen3__";
+    let webgpuWorker = null;
+    let webgpuReady = false;
+    let webgpuLoadingActive = false;
+    let webgpuLoadResolvers = [];
+    let webgpuProgressPlaceholder = null;
+    let webgpuTokenCallback = null;
+    let webgpuDoneCallback = null;
+    let webgpuErrorCallback = null;
+
     // Initialize defaults
     const defaults = {
       textChunkSize: "10240",
@@ -2408,6 +2452,7 @@
       autoMemories: "false",
       suggestedFollowUps: "false",
       autoFactCheck: "true",
+      webgpuEnabled: "false",
       theme: "system"
     };
 
@@ -2418,6 +2463,198 @@
     });
 
     const TAVILY_ENDPOINT = "https://api.tavily.com/search";
+
+    // ============================================
+    // WEBGPU IN-BROWSER MODEL
+    // ============================================
+    function initWebGPUWorker() {
+      if (webgpuWorker) return;
+
+      const workerSrc = `
+// Classic worker — module workers from null-origin (file://) can't do any
+// cross-origin imports. Classic workers allow dynamic import() which follows
+// CORS, and esm.sh pre-resolves all bare specifiers to absolute URLs so
+// there are no bare-specifier errors in the loaded module graph.
+const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-ONNX';
+let processor = null;
+let model = null;
+let lib = null;
+
+function progressCallback(info) {
+  if (info.status === 'progress' && typeof info.progress === 'number') {
+    self.postMessage({ type: 'progress', file: info.file, progress: info.progress });
+  }
+}
+
+self.onmessage = async (e) => {
+  const msg = e.data;
+  if (msg.type === 'load') {
+    try {
+      if (!lib) {
+        lib = await import('https://esm.sh/@huggingface/transformers@4.0.0-next.5');
+      }
+      const { AutoProcessor, Qwen3_5ForConditionalGeneration } = lib;
+      processor = await AutoProcessor.from_pretrained(MODEL_ID, { progress_callback: progressCallback });
+      model = await Qwen3_5ForConditionalGeneration.from_pretrained(MODEL_ID, {
+        dtype: {
+          embed_tokens: 'q4',
+          vision_encoder: 'fp16',
+          decoder_model_merged: 'q4',
+        },
+        device: 'webgpu',
+        progress_callback: progressCallback,
+      });
+      self.postMessage({ type: 'ready' });
+    } catch (err) {
+      self.postMessage({ type: 'error', error: err.message || String(err) });
+    }
+  } else if (msg.type === 'generate') {
+    try {
+      const { TextStreamer } = lib;
+      const text = processor.apply_chat_template(msg.messages, {
+        add_generation_prompt: true,
+        tokenizer_kwargs: { enable_thinking: false },
+      });
+      const inputs = await processor(text);
+      const streamer = new TextStreamer(processor.tokenizer, {
+        skip_prompt: true,
+        skip_special_tokens: true,
+        callback_function: (token) => {
+          self.postMessage({ type: 'token', token });
+        },
+      });
+      await model.generate({ ...inputs, max_new_tokens: 2048, do_sample: false, streamer });
+      self.postMessage({ type: 'done' });
+    } catch (err) {
+      self.postMessage({ type: 'error', error: err.message || String(err) });
+    }
+  }
+};
+`;
+      const blob = new Blob([workerSrc], { type: 'application/javascript' });
+      webgpuWorker = new Worker(URL.createObjectURL(blob)); // classic worker, not module
+
+      webgpuWorker.onerror = (e) => {
+        webgpuLoadingActive = false;
+        webgpuProgressPlaceholder = null;
+        const msg = e.message || 'Worker failed to load';
+        const statusEl = document.getElementById('webgpuStatusText');
+        if (statusEl) statusEl.textContent = 'Error: ' + msg;
+        webgpuLoadResolvers.splice(0).forEach(r => r.reject(new Error(msg)));
+      };
+
+      webgpuWorker.onmessage = (e) => {
+        const { type, file, progress, token, error } = e.data;
+        if (type === 'progress') {
+          const pct = typeof progress === 'number' ? Math.round(progress) : 0;
+          const label = file ? file.split('/').pop() : '';
+          if (webgpuProgressPlaceholder) {
+            webgpuProgressPlaceholder.innerHTML = `
+              <span>Loading WebGPU model</span>
+              <span class="thinking-dots"><span></span><span></span><span></span></span>
+              <span style="color:var(--text-muted);margin-left:8px;">${label} ${pct > 0 ? pct + '%' : '(~850MB, first load only)'}</span>
+            `;
+          }
+          const statusEl = document.getElementById('webgpuStatusText');
+          if (statusEl) statusEl.textContent = `Loading\u2026 ${label} ${pct > 0 ? pct + '%' : ''}`.trim();
+        } else if (type === 'ready') {
+          webgpuReady = true;
+          webgpuLoadingActive = false;
+          webgpuProgressPlaceholder = null;
+          const statusEl = document.getElementById('webgpuStatusText');
+          if (statusEl) statusEl.textContent = 'Ready';
+          webgpuLoadResolvers.splice(0).forEach(r => r.resolve());
+        } else if (type === 'token') {
+          if (webgpuTokenCallback) webgpuTokenCallback(token);
+        } else if (type === 'done') {
+          const cb = webgpuDoneCallback;
+          webgpuTokenCallback = null;
+          webgpuDoneCallback = null;
+          webgpuErrorCallback = null;
+          if (cb) cb();
+        } else if (type === 'error') {
+          if (webgpuLoadingActive) {
+            webgpuLoadingActive = false;
+            webgpuProgressPlaceholder = null;
+            const statusEl = document.getElementById('webgpuStatusText');
+            if (statusEl) statusEl.textContent = 'Error: ' + error;
+            webgpuLoadResolvers.splice(0).forEach(r => r.reject(new Error(error)));
+          } else if (webgpuErrorCallback) {
+            const cb = webgpuErrorCallback;
+            webgpuTokenCallback = null;
+            webgpuDoneCallback = null;
+            webgpuErrorCallback = null;
+            cb(error);
+          }
+        }
+      };
+    }
+
+    async function ensureWebGPUReady(placeholder) {
+      if (webgpuReady) return;
+      initWebGPUWorker();
+      webgpuProgressPlaceholder = placeholder;
+      placeholder.innerHTML = `
+        <span>Loading WebGPU model</span>
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+        <span style="color:var(--text-muted);margin-left:8px;">(~850MB, first load only \u2014 cached after)</span>
+      `;
+      return new Promise((resolve, reject) => {
+        webgpuLoadResolvers.push({ resolve, reject });
+        if (!webgpuLoadingActive) {
+          webgpuLoadingActive = true;
+          webgpuWorker.postMessage({ type: 'load' });
+        }
+      });
+    }
+
+    function updateWebGPUUIState() {
+      const isWebGPU = getModelSelection() === WEBGPU_MODEL_VALUE;
+
+      // Tavily Web Search
+      const tavilyGroup = document.getElementById("tavilySearchCheckbox")?.closest(".option-group");
+      if (tavilyGroup) {
+        tavilyGroup.classList.toggle("webgpu-disabled", isWebGPU);
+        document.getElementById("tavilySearchCheckbox").disabled = isWebGPU;
+        if (isWebGPU) document.getElementById("tavilySearchCheckbox").checked = false;
+      }
+
+      // Don't Summarize (summarisation calls Ollama, unavailable with WebGPU)
+      const summarizeGroup = document.getElementById("dontSummarizeCheckbox")?.closest(".option-group");
+      if (summarizeGroup) {
+        summarizeGroup.classList.toggle("webgpu-disabled", isWebGPU);
+        document.getElementById("dontSummarizeCheckbox").disabled = isWebGPU;
+        if (isWebGPU) document.getElementById("dontSummarizeCheckbox").checked = false;
+      }
+
+      // Model parameters (only passed to Ollama, ignored by WebGPU)
+      const paramsBtn = document.getElementById("paramsBtn");
+      if (paramsBtn) {
+        paramsBtn.disabled = isWebGPU;
+        paramsBtn.style.opacity = isWebGPU ? "0.38" : "";
+        paramsBtn.style.pointerEvents = isWebGPU ? "none" : "";
+      }
+    }
+
+    async function generateWithWebGPU(messages, placeholder) {
+      await ensureWebGPUReady(placeholder);
+      webgpuProgressPlaceholder = null;
+      return new Promise((resolve, reject) => {
+        let finalReply = "";
+        placeholder.innerHTML = "";
+        const contentDiv = document.createElement("div");
+        placeholder.appendChild(contentDiv);
+        const mh = document.getElementById("messageHistory");
+        webgpuTokenCallback = (token) => {
+          finalReply += token;
+          contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
+          mh.scrollTop = mh.scrollHeight;
+        };
+        webgpuDoneCallback = () => resolve(finalReply);
+        webgpuErrorCallback = (err) => reject(new Error(err));
+        webgpuWorker.postMessage({ type: 'generate', messages });
+      });
+    }
 
     // ============================================
     // THEME MANAGEMENT
@@ -2549,11 +2786,20 @@
     async function fetchModels() {
       const modelDropdown = document.getElementById("modelSelection");
       modelDropdown.innerHTML = "<option>Loading...</option>";
+      const webgpuEnabled = localStorage.getItem("webgpuEnabled") === "true";
 
       try {
         const response = await fetchWithRetry(OLLAMA_TAGS);
         const data = await response.json();
         modelDropdown.innerHTML = "";
+
+        // Inject WebGPU option first if enabled
+        if (webgpuEnabled) {
+          const opt = document.createElement("option");
+          opt.value = WEBGPU_MODEL_VALUE;
+          opt.textContent = "Qwen3.5:0.8b (WebGPU)";
+          modelDropdown.appendChild(opt);
+        }
 
         if (data.models && data.models.length > 0) {
           data.models.forEach(model => {
@@ -2562,17 +2808,34 @@
             option.textContent = model.name;
             modelDropdown.appendChild(option);
           });
-
-          const savedModel = localStorage.getItem("defaultModel");
-          if (savedModel && data.models.some(m => m.name === savedModel)) {
-            modelDropdown.value = savedModel;
-          }
-        } else {
+        } else if (!webgpuEnabled) {
           modelDropdown.innerHTML = "<option>No models found</option>";
         }
+
+        const savedModel = localStorage.getItem("defaultModel");
+        if (savedModel) {
+          if (savedModel === WEBGPU_MODEL_VALUE && webgpuEnabled) {
+            modelDropdown.value = savedModel;
+          } else if (data.models && data.models.some(m => m.name === savedModel)) {
+            modelDropdown.value = savedModel;
+          }
+        }
+        if (!modelDropdown.value && modelDropdown.options.length > 0) {
+          modelDropdown.selectedIndex = 0;
+        }
+        updateWebGPUUIState();
       } catch (error) {
         console.error("Error fetching models:", error);
-        modelDropdown.innerHTML = "<option>Error loading models</option>";
+        modelDropdown.innerHTML = "";
+        if (webgpuEnabled) {
+          const opt = document.createElement("option");
+          opt.value = WEBGPU_MODEL_VALUE;
+          opt.textContent = "Qwen3.5:0.8b (WebGPU)";
+          modelDropdown.appendChild(opt);
+        } else {
+          modelDropdown.innerHTML = "<option>Error loading models</option>";
+        }
+        updateWebGPUUIState();
       }
     }
 
@@ -2911,7 +3174,7 @@
 
       try {
         const messages = await getThreadMessages(currentThreadId);
-        
+
         if (messages.length === 0) {
           messageHistory.innerHTML = `
             <div id="emptyState">
@@ -3161,14 +3424,21 @@
 
     function saveMessage(messageObj) {
       if (!db) return Promise.resolve();
-      
+
       return new Promise((resolve) => {
         messageObj.threadId = currentThreadId;
         const transaction = db.transaction(["messages"], "readwrite");
         const store = transaction.objectStore("messages");
         const request = store.add(messageObj);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => resolve(null);
+        transaction.oncomplete = () => resolve(request.result);
+        transaction.onabort = (e) => {
+          console.error("saveMessage transaction aborted:", e.target.error, "threadId:", currentThreadId, "role:", messageObj.role);
+          resolve(null);
+        };
+        transaction.onerror = (e) => {
+          console.error("saveMessage transaction error:", e.target.error, "threadId:", currentThreadId, "role:", messageObj.role);
+          resolve(null);
+        };
       });
     }
 
@@ -4792,104 +5062,122 @@ JSON array:` }]
             messages.push({ role: "user", content: combinedPrompt });
           }
 
-          // === AGENT LOOP (highest priority when enabled + Tavily key present + user didn't manually check Tavily) ===
-          if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked && !pendingAttachment && pendingAttachments.length === 0) {
-            placeholder.innerHTML = `
-              <span>Agent starting</span>
-              <span class="thinking-dots"><span></span><span></span><span></span></span>
-            `;
-            const agentResult = await runAgentLoop(messages, modelUsed, placeholder);
-            finalReply = agentResult.finalReply;
-            tavilyCitations = agentResult.citations;
-            usedTavilySearch = agentResult.usedSearch;
+          if (modelUsed === WEBGPU_MODEL_VALUE) {
+            // === WEBGPU IN-BROWSER MODEL ===
+            finalReply = await generateWithWebGPU(messages, placeholder);
+            enhanceCodeBlocks(placeholder);
+            modelUsed = "Qwen3.5:0.8b (WebGPU)";
 
           } else {
-            // === SINGLE-PASS SEARCH (manual Tavily or agent-style single-decision) ===
-            let searchContext = "";
-            let shouldSearch = false;
-
-            if (tavilyChecked) {
-              shouldSearch = true;
-            } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey") && !pendingAttachment && pendingAttachments.length === 0) {
+            // === AGENT LOOP (highest priority when enabled + Tavily key present + user didn't manually check Tavily) ===
+            if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked && !pendingAttachment && pendingAttachments.length === 0) {
               placeholder.innerHTML = `
-                <span>Analyzing query</span>
+                <span>Agent starting</span>
                 <span class="thinking-dots"><span></span><span></span><span></span></span>
-                <span style="color: var(--text-muted); margin-left: 8px;">(deciding if search needed)</span>
               `;
-              shouldSearch = await shouldPerformSearch(promptText, modelUsed);
-            }
+              const agentResult = await runAgentLoop(messages, modelUsed, placeholder);
+              finalReply = agentResult.finalReply;
+              tavilyCitations = agentResult.citations;
+              usedTavilySearch = agentResult.usedSearch;
 
-            if (shouldSearch) {
-              try {
+            } else {
+              // === SINGLE-PASS SEARCH (manual Tavily or agent-style single-decision) ===
+              let searchContext = "";
+              let shouldSearch = false;
+
+              if (tavilyChecked) {
+                shouldSearch = true;
+              } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey") && !pendingAttachment && pendingAttachments.length === 0) {
                 placeholder.innerHTML = `
-                  <span>Searching the web</span>
+                  <span>Analyzing query</span>
                   <span class="thinking-dots"><span></span><span></span><span></span></span>
-                  <span style="color: var(--text-muted); margin-left: 8px;">(via Tavily)</span>
+                  <span style="color: var(--text-muted); margin-left: 8px;">(deciding if search needed)</span>
                 `;
-                const searchResults = await searchTavily(promptText);
-                searchContext = formatTavilyResultsForContext(searchResults);
-                usedTavilySearch = true;
-                tavilyCitations = searchResults.map(r => ({ url: r.url, title: r.title }));
-                placeholder.innerHTML = `
-                  <span>Thinking</span>
-                  <span class="thinking-dots"><span></span><span></span><span></span></span>
-                  <span style="color: var(--text-muted); margin-left: 8px;">(0s)</span>
-                `;
-              } catch (err) {
-                console.error("Tavily search error:", err);
-                if (tavilyChecked) throw err;
+                shouldSearch = await shouldPerformSearch(promptText, modelUsed);
               }
-            }
 
-            // Prepend search context to system message if we got results
-            if (searchContext) {
-              if (messages.length > 0 && messages[0].role === "system") {
-                messages[0] = { ...messages[0], content: messages[0].content + "\n\n" + searchContext };
-              } else {
-                messages.unshift({ role: "system", content: searchContext });
-              }
-            }
-
-            // Streaming response
-            const response = await fetchOllamaChat({
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
-            });
-
-            if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            finalReply = "";
-
-            placeholder.innerHTML = "";
-            const contentDiv = document.createElement("div");
-            placeholder.appendChild(contentDiv);
-
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              const chunk = decoder.decode(value);
-              const lines = chunk.split("\n").filter(l => l.trim());
-              for (const line of lines) {
+              if (shouldSearch) {
                 try {
-                  const json = JSON.parse(line);
-                  if (json.message?.content) {
-                    finalReply += json.message.content;
-                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
-                    messageHistory.scrollTop = messageHistory.scrollHeight;
-                  }
-                } catch (e) { /* skip invalid JSON */ }
+                  placeholder.innerHTML = `
+                    <span>Searching the web</span>
+                    <span class="thinking-dots"><span></span><span></span><span></span></span>
+                    <span style="color: var(--text-muted); margin-left: 8px;">(via Tavily)</span>
+                  `;
+                  const searchResults = await searchTavily(promptText);
+                  searchContext = formatTavilyResultsForContext(searchResults);
+                  usedTavilySearch = true;
+                  tavilyCitations = searchResults.map(r => ({ url: r.url, title: r.title }));
+                  placeholder.innerHTML = `
+                    <span>Thinking</span>
+                    <span class="thinking-dots"><span></span><span></span><span></span></span>
+                    <span style="color: var(--text-muted); margin-left: 8px;">(0s)</span>
+                  `;
+                } catch (err) {
+                  console.error("Tavily search error:", err);
+                  if (tavilyChecked) throw err;
+                }
               }
-            }
-            enhanceCodeBlocks(placeholder);
-          }
 
-          // Render agent loop result (non-streaming path)
-          if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked) {
-            placeholder.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
-            enhanceCodeBlocks(placeholder);
+              // Prepend search context to system message if we got results
+              if (searchContext) {
+                if (messages.length > 0 && messages[0].role === "system") {
+                  messages[0] = { ...messages[0], content: messages[0].content + "\n\n" + searchContext };
+                } else {
+                  messages.unshift({ role: "system", content: searchContext });
+                }
+              }
+
+              // Streaming response
+              const response = await fetchOllamaChat({
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
+              });
+
+              if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
+              finalReply = "";
+
+              placeholder.innerHTML = "";
+              const contentDiv = document.createElement("div");
+              placeholder.appendChild(contentDiv);
+
+              try {
+                let ndjsonDone = false;
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  const chunk = decoder.decode(value);
+                  const lines = chunk.split("\n").filter(l => l.trim());
+                  for (const line of lines) {
+                    try {
+                      const json = JSON.parse(line);
+                      if (json.message?.content) {
+                        finalReply += json.message.content;
+                        contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
+                        messageHistory.scrollTop = messageHistory.scrollHeight;
+                      }
+                      // Break as soon as the server signals done — don't wait for the
+                      // HTTP connection to physically close (keep-alive would block forever)
+                      if (json.done === true) { ndjsonDone = true; break; }
+                    } catch (e) { /* skip invalid JSON */ }
+                  }
+                  if (ndjsonDone) break;
+                }
+              } catch (streamErr) {
+                // Stream closed unexpectedly — preserve whatever was accumulated
+                console.warn("Stream interrupted:", streamErr.message);
+              }
+              enhanceCodeBlocks(placeholder);
+            }
+
+            // Render agent loop result (non-streaming path)
+            if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked) {
+              placeholder.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
+              enhanceCodeBlocks(placeholder);
+            }
           }
         }
         
@@ -4935,7 +5223,7 @@ JSON array:` }]
             placeholder.appendChild(container);
           }
         } else {
-          const safeHTML = DOMPurify.sanitize(marked.parse(finalReply));
+          const safeHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
           placeholder.innerHTML = safeHTML;
           if (!generateImageChecked) {
             enhanceCodeBlocks(placeholder);
@@ -4997,11 +5285,11 @@ JSON array:` }]
         
         placeholder.appendChild(timeDiv);
         
-        // Save assistant message
+        // Save assistant message (strip think tags so loaded messages render identically to live ones)
         if (!generateImageChecked) {
           await saveMessage({
             role: "assistant",
-            text: finalReply,
+            text: stripThinkTags(finalReply),
             type: "text",
             responseTime: `${modelUsed} • ${elapsed}s`,
             citations: allCitations,
@@ -5188,7 +5476,10 @@ JSON array:` }]
       document.getElementById("autoMemoriesCheckbox").checked = localStorage.getItem("autoMemories") === "true";
       document.getElementById("suggestedFollowUpsCheckbox").checked = localStorage.getItem("suggestedFollowUps") === "true";
       document.getElementById("autoFactCheckCheckbox").checked = localStorage.getItem("autoFactCheck") !== "false";
-      
+      document.getElementById("webgpuEnabledCheckbox").checked = localStorage.getItem("webgpuEnabled") === "true";
+      const webgpuStatus = webgpuReady ? "Ready" : (webgpuLoadingActive ? "Loading\u2026" : "Not loaded");
+      document.getElementById("webgpuStatusText").textContent = webgpuStatus;
+
       const perplexityKey = localStorage.getItem("perplexityApiKey");
       document.getElementById("perplexityApiKeyInput").value = perplexityKey ? "••••••••" : "";
       document.getElementById("perplexityKeyBadge").style.display = perplexityKey ? "" : "none";
@@ -5235,7 +5526,8 @@ JSON array:` }]
       localStorage.setItem("autoMemories", document.getElementById("autoMemoriesCheckbox").checked ? "true" : "false");
       localStorage.setItem("suggestedFollowUps", document.getElementById("suggestedFollowUpsCheckbox").checked ? "true" : "false");
       localStorage.setItem("autoFactCheck", document.getElementById("autoFactCheckCheckbox").checked ? "true" : "false");
-      
+      localStorage.setItem("webgpuEnabled", document.getElementById("webgpuEnabledCheckbox").checked ? "true" : "false");
+
       const hostname = document.getElementById("customHostname").value.trim();
       localStorage.setItem("ollamaEndpoint", hostname);
 
@@ -5737,6 +6029,7 @@ JSON array:` }]
     // Model selection persistence
     document.getElementById("modelSelection").addEventListener("change", function() {
       localStorage.setItem("defaultModel", this.value);
+      updateWebGPUUIState();
     });
 
     // Checkbox interactions
