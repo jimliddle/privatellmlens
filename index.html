@@ -3,7 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <title>PrivateLLMLens Enhanced</title>
+  <meta name="theme-color" content="#111827">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PrivateLLMLens">
+  <title>PrivateLLMLens</title>
+  <script>
+    // Keep the PWA manifest and icon inside this single HTML file.
+    (() => {
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#111827"/><circle cx="256" cy="256" r="156" fill="#3b82f6"/><rect x="150" y="174" width="212" height="176" rx="54" fill="#f8fafc"/><circle cx="218" cy="252" r="22" fill="#111827"/><circle cx="294" cy="252" r="22" fill="#111827"/><path d="M205 302c28 25 74 25 102 0" fill="none" stroke="#111827" stroke-width="18" stroke-linecap="round"/><path d="M256 174v-38" stroke="#f8fafc" stroke-width="18" stroke-linecap="round"/><circle cx="256" cy="122" r="16" fill="#f8fafc"/></svg>`;
+      const icon = `data:image/svg+xml,${encodeURIComponent(iconSvg)}`;
+      const startUrl = location.href.split("#")[0];
+      const manifest = {
+        id: location.pathname || "/privatellmlens",
+        name: "PrivateLLMLens",
+        short_name: "PrivateLLMLens",
+        description: "Private local and cloud LLM chat interface",
+        start_url: startUrl,
+        scope: new URL(".", startUrl).href,
+        display: "standalone",
+        display_override: ["window-controls-overlay", "standalone"],
+        orientation: "any",
+        background_color: "#111827",
+        theme_color: "#111827",
+        icons: [
+          { src: icon, sizes: "192x192", type: "image/svg+xml", purpose: "any" },
+          { src: icon, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+        ]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = manifestUrl;
+      document.head.appendChild(link);
+
+      const appleIcon = document.createElement("link");
+      appleIcon.rel = "apple-touch-icon";
+      appleIcon.href = icon;
+      document.head.appendChild(appleIcon);
+      window.__privateLLMLensManifestUrl = manifestUrl;
+    })();
+  </script>
   <!-- Cross-Origin Isolation service worker — enables SharedArrayBuffer for WebGPU/ONNX Runtime -->
   <script src="https://cdn.jsdelivr.net/npm/coi-serviceworker@0.1.7/coi-serviceworker.min.js"></script>
 
@@ -1848,7 +1890,7 @@
 
       /* Input area: full-width textarea on top, buttons row beneath */
       #inputCollapseBtn {
-        display: none;
+        display: block;
       }
 
       #inputRow {
@@ -1949,6 +1991,9 @@
       </div>
     </div>
     <div id="headerRight">
+      <button class="header-btn" id="installPwaButton" onclick="installPrivateLLMLens()" title="Install PrivateLLMLens" style="display:none;">
+        <i class="fa-solid fa-download"></i>
+      </button>
       <button class="header-btn" onclick="showShortcuts()" title="Keyboard shortcuts (Ctrl+/)">
         <i class="fa-regular fa-keyboard"></i>
       </button>
@@ -2137,8 +2182,19 @@
             <input type="number" id="pdfPagesPerChunkInput" class="setting-input" value="3">
           </div>
           <div class="setting-row">
-            <span class="setting-label">Context Window (messages)</span>
+            <span class="setting-label">Conversation History (messages)</span>
             <input type="number" id="contextWindowInput" class="setting-input" value="10" min="1" max="50">
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Model Context</span>
+            <select id="modelContextSelect" class="setting-select">
+              <option value="8192">8K — Performance</option>
+              <option value="16384" selected>16K — Balanced</option>
+              <option value="32768">32K — Maximum / deep documents</option>
+            </select>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.45;padding-top:4px;">
+            Relative KV-cache use: 8K ≈ 25%, 16K ≈ 50%, 32K = 100%. Actual total RAM depends on the model and quantisation. Larger contexts handle deeper documents but use more memory and can process prompts more slowly. Utility calls use 4K automatically.
           </div>
         </div>
         <div class="settings-section">
@@ -2400,12 +2456,122 @@
     const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
     let OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
     let OLLAMA_TAGS = "http://localhost:11434/api/tags";
+    let activeRequestController = null;
+    let deferredInstallPrompt = null;
+
+    function isRunningStandalone() {
+      return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    }
+
+    function updatePwaInstallButton() {
+      const button = document.getElementById("installPwaButton");
+      if (!button) return;
+      button.style.display = isRunningStandalone() ? "none" : "inline-flex";
+    }
+
+    async function installPrivateLLMLens() {
+      if (isRunningStandalone()) return;
+      if (location.protocol === "file:") {
+        alert("Android browsers cannot install a PWA from file://. Serve this same HTML file from localhost or HTTPS, then open it again and tap Install.");
+        return;
+      }
+      if (!deferredInstallPrompt) {
+        alert("The browser has not offered installation yet. Reload once, then use Chrome’s menu → Add to Home screen if the install prompt does not appear.");
+        return;
+      }
+
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      updatePwaInstallButton();
+    }
+
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      updatePwaInstallButton();
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      updatePwaInstallButton();
+    });
 
     // Wrapper for all Ollama chat API calls.
     // We do not send think:false — compatibility varies widely across models and
     // Ollama versions. stripThinkTags() handles cleanup universally instead.
     function fetchOllamaChat(options = {}) {
-      return fetch(OLLAMA_ENDPOINT, options);
+      const requestOptions = { ...options };
+      if (!requestOptions.signal && activeRequestController) {
+        requestOptions.signal = activeRequestController.signal;
+      }
+      return fetch(OLLAMA_ENDPOINT, requestOptions);
+    }
+
+    function showForegroundCancel(label = "Generating response…") {
+      const progress = document.getElementById("processingProgress");
+      const progressBar = progress.querySelector(".progress-bar");
+      progress.style.display = "block";
+      progressBar.style.display = "none";
+      document.getElementById("progressText").textContent = label;
+      const cancelButton = document.getElementById("cancelButton");
+      cancelButton.disabled = false;
+      cancelButton.textContent = "Cancel";
+    }
+
+    function beginForegroundRequest(label = "Generating response…") {
+      if (activeRequestController) activeRequestController.abort();
+      const controller = new AbortController();
+      activeRequestController = controller;
+      cancelProcessing = false;
+      showForegroundCancel(label);
+      return controller;
+    }
+
+    function endForegroundRequest(controller) {
+      if (activeRequestController !== controller) return;
+      activeRequestController = null;
+      const progress = document.getElementById("processingProgress");
+      progress.style.display = "none";
+      progress.querySelector(".progress-bar").style.display = "block";
+      const cancelButton = document.getElementById("cancelButton");
+      cancelButton.disabled = false;
+      cancelButton.textContent = "Cancel";
+    }
+
+    // Ollama streams newline-delimited JSON. Network chunks can end in the
+    // middle of a JSON object, so retain the unfinished tail for the next read.
+    async function readOllamaStream(response, onMessage) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const consumeLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return false;
+        const message = JSON.parse(trimmed);
+        onMessage(message);
+        return message.done === true;
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (consumeLine(line)) {
+            await reader.cancel();
+            return;
+          }
+        }
+
+        if (done) {
+          if (buffer.trim()) consumeLine(buffer);
+          return;
+        }
+      }
     }
 
     // Strip residual <think>…</think> blocks from model output (safety net)
@@ -2422,6 +2588,85 @@
     let currentThreadParams = { ...DEFAULT_PARAMS };
     let cancelProcessing = false;
     let connectionCheckInterval = null;
+    let vaultKey = null;
+    const apiKeyCache = Object.create(null);
+    const API_KEY_NAMES = ["perplexityApiKey", "openaiApiKey", "tavilyApiKey", "geminiApiKey"];
+
+    function bytesToBase64(bytes) {
+      let binary = "";
+      bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+      return btoa(binary);
+    }
+
+    function base64ToBytes(value) {
+      return Uint8Array.from(atob(value), char => char.charCodeAt(0));
+    }
+
+    function vaultRequest(mode, operation) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(["vault"], mode);
+        const request = operation(tx.objectStore("vault"));
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function initializeSecretVault() {
+      vaultKey = await vaultRequest("readonly", store => store.get("masterKey"));
+      if (!vaultKey) {
+        vaultKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+        await vaultRequest("readwrite", store => store.put(vaultKey, "masterKey"));
+      }
+
+      for (const name of API_KEY_NAMES) {
+        const legacyValue = localStorage.getItem(name);
+        if (legacyValue) {
+          await setApiKey(name, legacyValue);
+          localStorage.removeItem(name);
+          continue;
+        }
+
+        const record = await vaultRequest("readonly", store => store.get(`secret:${name}`));
+        if (!record) continue;
+        try {
+          const plaintext = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: base64ToBytes(record.iv) },
+            vaultKey,
+            base64ToBytes(record.ciphertext)
+          );
+          apiKeyCache[name] = new TextDecoder().decode(plaintext);
+        } catch (error) {
+          console.error(`Could not decrypt ${name}:`, error);
+        }
+      }
+    }
+
+    function getApiKey(name) {
+      return apiKeyCache[name] || "";
+    }
+
+    async function setApiKey(name, value) {
+      if (!API_KEY_NAMES.includes(name)) throw new Error("Unknown API key name");
+      if (!value) {
+        delete apiKeyCache[name];
+        await vaultRequest("readwrite", store => store.delete(`secret:${name}`));
+        localStorage.removeItem(name);
+        return;
+      }
+
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        vaultKey,
+        new TextEncoder().encode(value)
+      );
+      await vaultRequest("readwrite", store => store.put({
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(new Uint8Array(ciphertext))
+      }, `secret:${name}`));
+      apiKeyCache[name] = value;
+      localStorage.removeItem(name);
+    }
 
     // WebGPU in-browser model state
     const WEBGPU_MODEL_VALUE = "__webgpu_qwen3__";
@@ -2439,10 +2684,7 @@
       textChunkSize: "10240",
       pdfPagesPerChunk: "3",
       contextWindow: "10",
-      perplexityApiKey: "",
-      openaiApiKey: "",
-      tavilyApiKey: "",
-      geminiApiKey: "",
+      modelContext: "16384",
       agentSearch: "false",
       agentLoop: "false",
       autoAttachment: "false",
@@ -2722,7 +2964,7 @@ self.onmessage = async (e) => {
     // ============================================
     function openDatabase() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open("PrivateLLMLensEnhanced", 4);
+        const request = indexedDB.open("PrivateLLMLensEnhanced", 5);
 
         request.onerror = (e) => {
           reject("Database failed to open: " + e.target.error);
@@ -2755,6 +2997,10 @@ self.onmessage = async (e) => {
               const memoriesStore = database.createObjectStore("memories", { keyPath: "id", autoIncrement: true });
               memoriesStore.createIndex("timestamp", "timestamp", { unique: false });
             }
+          }
+
+          if (oldVersion < 5 && !database.objectStoreNames.contains("vault")) {
+            database.createObjectStore("vault");
           }
         };
       });
@@ -3617,11 +3863,27 @@ self.onmessage = async (e) => {
       if (start > 0) snippet = "..." + snippet;
       if (end < text.length) snippet = snippet + "...";
       
-      // Highlight matches
-      const regex = new RegExp(`(${query})`, 'gi');
-      snippet = snippet.replace(regex, '<mark>$1</mark>');
-      
       return snippet;
+    }
+
+    function appendHighlightedText(container, text, query) {
+      const lowerText = text.toLowerCase();
+      const lowerQuery = query.toLowerCase();
+      if (!lowerQuery) {
+        container.textContent = text;
+        return;
+      }
+
+      let position = 0;
+      let matchIndex;
+      while ((matchIndex = lowerText.indexOf(lowerQuery, position)) !== -1) {
+        container.appendChild(document.createTextNode(text.slice(position, matchIndex)));
+        const mark = document.createElement("mark");
+        mark.textContent = text.slice(matchIndex, matchIndex + query.length);
+        container.appendChild(mark);
+        position = matchIndex + query.length;
+      }
+      container.appendChild(document.createTextNode(text.slice(position)));
     }
 
     function displaySearchResults(results) {
@@ -3633,12 +3895,24 @@ self.onmessage = async (e) => {
         return;
       }
       
-      container.innerHTML = results.map(result => `
-        <div class="search-result-item" onclick="goToSearchResult(${result.threadId}, ${result.id})">
-          <div class="search-result-thread">${result.threadName}</div>
-          <div class="search-result-snippet">${result.snippet}</div>
-        </div>
-      `).join("");
+      container.replaceChildren();
+      const query = document.getElementById("searchInput").value.trim();
+      results.forEach(result => {
+        const item = document.createElement("div");
+        item.className = "search-result-item";
+        item.addEventListener("click", () => goToSearchResult(result.threadId, result.id));
+
+        const thread = document.createElement("div");
+        thread.className = "search-result-thread";
+        thread.textContent = result.threadName;
+
+        const snippet = document.createElement("div");
+        snippet.className = "search-result-snippet";
+        appendHighlightedText(snippet, result.snippet, query);
+
+        item.append(thread, snippet);
+        container.appendChild(item);
+      });
       
       container.classList.add("active");
     }
@@ -3840,6 +4114,7 @@ self.onmessage = async (e) => {
     function showProgressBar() {
       const progress = document.getElementById("processingProgress");
       progress.style.display = "block";
+      progress.querySelector(".progress-bar").style.display = "block";
       document.getElementById("progressFill").style.width = "0%";
       document.getElementById("progressText").textContent = "Starting...";
       document.getElementById("cancelButton").disabled = false;
@@ -3857,6 +4132,7 @@ self.onmessage = async (e) => {
 
     function cancelProcessingFunc() {
       cancelProcessing = true;
+      if (activeRequestController) activeRequestController.abort();
       document.getElementById("cancelButton").disabled = true;
       document.getElementById("cancelButton").textContent = "Cancelling...";
     }
@@ -4010,7 +4286,8 @@ self.onmessage = async (e) => {
       const payload = {
         model: selectedModel,
         stream: false,
-        messages: [{ role: "user", content: prompt }]
+        messages: [{ role: "user", content: prompt }],
+        options: getOllamaOptions("utility")
       };
       
       try {
@@ -4031,7 +4308,7 @@ self.onmessage = async (e) => {
     // TAVILY SEARCH FUNCTIONS
     // ============================================
     async function searchTavily(query) {
-      const apiKey = localStorage.getItem("tavilyApiKey");
+      const apiKey = getApiKey("tavilyApiKey");
       if (!apiKey) {
         throw new Error("Please set your Tavily API key in Settings");
       }
@@ -4103,7 +4380,8 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
           body: JSON.stringify({
             model: modelName,
             stream: false,
-            messages: [{ role: "user", content: decisionPrompt }]
+            messages: [{ role: "user", content: decisionPrompt }],
+            options: getOllamaOptions("utility")
           })
         });
         
@@ -4138,7 +4416,7 @@ Reply with ONLY one word: SUMMARIZE, RAW, or LONG_CONTEXT`;
         const response = await fetchOllamaChat({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }], options: getOllamaOptions("utility") })
         });
         const data = await response.json();
         const decision = stripThinkTags(data.message?.content || "").trim().toUpperCase();
@@ -4229,36 +4507,29 @@ You may search up to 3 times. When you have enough information, write your final
       };
     }
 
-    async function autoTitleThread(threadId, userMsg, assistantMsg, modelName) {
-      const prompt = `Generate a concise thread title (3–6 words) for this conversation exchange.
+    function autoTitleThread(threadId, userMsg) {
+      const cleaned = (userMsg || "")
+        .replace(/\[Attached:[^\]]+\]/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!cleaned) return;
 
-User: ${userMsg.substring(0, 300)}
-Assistant: ${assistantMsg.substring(0, 300)}
+      const words = cleaned.split(" ");
+      let title = words.slice(0, 8).join(" ");
+      if (title.length > 60) title = title.substring(0, 57).replace(/\s+\S*$/, "") + "…";
+      else if (words.length > 8) title += "…";
 
-Reply with ONLY the title — no quotes, no punctuation at the end.`;
-      try {
-        const response = await fetchOllamaChat({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
-        });
-        const data = await response.json();
-        const title = stripThinkTags(data.message?.content || "").trim().replace(/^["']|["']$/g, "").substring(0, 60);
-        if (!title) return;
-        const tx = db.transaction(["threads"], "readwrite");
-        const store = tx.objectStore("threads");
-        const req = store.get(threadId);
-        req.onsuccess = () => {
-          const thread = req.result;
-          if (thread) {
-            thread.name = title;
-            store.put(thread);
-            tx.oncomplete = () => loadThreads();
-          }
-        };
-      } catch (err) {
-        console.error("Auto-title error:", err);
-      }
+      const tx = db.transaction(["threads"], "readwrite");
+      const store = tx.objectStore("threads");
+      const req = store.get(threadId);
+      req.onsuccess = () => {
+        const thread = req.result;
+        if (thread) {
+          thread.name = title;
+          store.put(thread);
+          tx.oncomplete = () => loadThreads();
+        }
+      };
     }
 
     // ============================================
@@ -4292,7 +4563,7 @@ Reply with ONLY the JSON array.`;
       try {
         const resp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }] })
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: prompt }], options: getOllamaOptions("utility") })
         });
         const data = await resp.json();
         const match = stripThinkTags(data.message?.content || "").match(/\[[\s\S]*\]/);
@@ -4349,7 +4620,8 @@ Reply with ONLY the JSON array.`;
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
-            messages: [{ role: "user", content: `Concisely summarise the key facts, decisions and context from this earlier conversation. Be brief but preserve all important details:\n\n${contextText}\n\nSummary:` }]
+            messages: [{ role: "user", content: `Concisely summarise the key facts, decisions and context from this earlier conversation. Be brief but preserve all important details:\n\n${contextText}\n\nSummary:` }],
+            options: getOllamaOptions("utility")
           })
         });
         const data = await resp.json();
@@ -4383,7 +4655,7 @@ Reply with ONLY one of those formats.`;
       try {
         const resp = await fetchOllamaChat({
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: decisionPrompt }] })
+          body: JSON.stringify({ model: modelName, stream: false, messages: [{ role: "user", content: decisionPrompt }], options: getOllamaOptions("utility") })
         });
         const data = await resp.json();
         const reply = stripThinkTags(data.message?.content || "").trim();
@@ -4412,7 +4684,8 @@ Assistant: ${assistantMsg.substring(0, 300)}
 
 Reply with ONLY a JSON array of 2-3 question strings (max 70 chars each).
 Example: ["How does X compare to Y?", "Can you show an example?"]
-JSON array:` }]
+JSON array:` }],
+            options: getOllamaOptions("utility")
           })
         });
         const data = await resp.json();
@@ -4456,7 +4729,7 @@ JSON array:` }]
     }
 
     async function autoFactCheck(assistantMsg, modelName, targetElement) {
-      const tavilyKey = localStorage.getItem("tavilyApiKey");
+      const tavilyKey = getApiKey("tavilyApiKey");
       if (!tavilyKey) return;
 
       try {
@@ -4465,7 +4738,8 @@ JSON array:` }]
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
-            messages: [{ role: "user", content: `Does this response contain specific verifiable factual claims (dates, statistics, named sources, definitive assertions)?\n\n"${assistantMsg.substring(0, 600)}"\n\nReply with ONLY: YES or NO` }]
+            messages: [{ role: "user", content: `Does this response contain specific verifiable factual claims (dates, statistics, named sources, definitive assertions)?\n\n"${assistantMsg.substring(0, 600)}"\n\nReply with ONLY: YES or NO` }],
+            options: getOllamaOptions("utility")
           })
         });
         const decisionData = await decisionResp.json();
@@ -4476,7 +4750,8 @@ JSON array:` }]
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
-            messages: [{ role: "user", content: `Extract the most important specific factual claim from this response as a search query (max 10 words):\n"${assistantMsg.substring(0, 400)}"\nSearch query:` }]
+            messages: [{ role: "user", content: `Extract the most important specific factual claim from this response as a search query (max 10 words):\n"${assistantMsg.substring(0, 400)}"\nSearch query:` }],
+            options: getOllamaOptions("utility")
           })
         });
         const claimData = await claimResp.json();
@@ -4492,7 +4767,8 @@ JSON array:` }]
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelName, stream: false,
-            messages: [{ role: "user", content: `Compare this response's claims with the search results.\n\nResponse: "${assistantMsg.substring(0, 400)}"\n\nSearch results: "${resultsText}"\n\nReply with ONLY: VERIFIED, CONTRADICTED, or UNVERIFIED` }]
+            messages: [{ role: "user", content: `Compare this response's claims with the search results.\n\nResponse: "${assistantMsg.substring(0, 400)}"\n\nSearch results: "${resultsText}"\n\nReply with ONLY: VERIFIED, CONTRADICTED, or UNVERIFIED` }],
+            options: getOllamaOptions("utility")
           })
         });
         const verifyData = await verifyResp.json();
@@ -4508,6 +4784,7 @@ JSON array:` }]
     // ============================================
     async function regenerateResponse(afterElement) {
       const userInput = document.getElementById("userInput");
+      const requestController = beginForegroundRequest("Regenerating response…");
       userInput.disabled = true;
       document.getElementById("sendButton").disabled = true;
 
@@ -4537,8 +4814,6 @@ JSON array:` }]
         });
         if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
         let finalReply = "";
         const messageHistory = document.getElementById("messageHistory");
 
@@ -4546,20 +4821,13 @@ JSON array:` }]
         const contentDiv = document.createElement("div");
         placeholder.appendChild(contentDiv);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          for (const line of decoder.decode(value).split("\n").filter(l => l.trim())) {
-            try {
-              const json = JSON.parse(line);
-              if (json.message?.content) {
-                finalReply += json.message.content;
-                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
-                messageHistory.scrollTop = messageHistory.scrollHeight;
-              }
-            } catch (e) { /* skip */ }
+        await readOllamaStream(response, json => {
+          if (json.message?.content) {
+            finalReply += json.message.content;
+            contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
+            messageHistory.scrollTop = messageHistory.scrollHeight;
           }
-        }
+        });
         enhanceCodeBlocks(placeholder);
 
         const timeDiv = document.createElement("div");
@@ -4576,8 +4844,9 @@ JSON array:` }]
         });
         updateTokenDisplay();
       } catch (err) {
-        placeholder.innerHTML = `<span style="color:var(--danger);">Error: ${err.message}</span>`;
+        placeholder.textContent = err.name === "AbortError" ? "Generation cancelled." : `Error: ${err.message}`;
       } finally {
+        endForegroundRequest(requestController);
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
         userInput.focus();
@@ -4641,6 +4910,7 @@ JSON array:` }]
     async function forceAnswerNow(originalPrompt, modelName, afterElement) {
       skipNextClarification = false;
       const userInput = document.getElementById("userInput");
+      const requestController = beginForegroundRequest("Generating direct answer…");
       userInput.disabled = true;
       document.getElementById("sendButton").disabled = true;
 
@@ -4671,29 +4941,19 @@ JSON array:` }]
         });
         if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
         let finalReply = "";
 
         newPlaceholder.innerHTML = "";
         const contentDiv = document.createElement("div");
         newPlaceholder.appendChild(contentDiv);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          for (const line of chunk.split("\n").filter(l => l.trim())) {
-            try {
-              const json = JSON.parse(line);
-              if (json.message?.content) {
-                finalReply += json.message.content;
-                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
-                messageHistory.scrollTop = messageHistory.scrollHeight;
-              }
-            } catch (e) { /* skip */ }
+        await readOllamaStream(response, json => {
+          if (json.message?.content) {
+            finalReply += json.message.content;
+            contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
+            messageHistory.scrollTop = messageHistory.scrollHeight;
           }
-        }
+        });
         enhanceCodeBlocks(newPlaceholder);
 
         const timeDiv = document.createElement("div");
@@ -4710,8 +4970,9 @@ JSON array:` }]
         });
         updateTokenDisplay();
       } catch (err) {
-        newPlaceholder.innerHTML = `<span style="color:var(--danger);">Error: ${err.message}</span>`;
+        newPlaceholder.textContent = err.name === "AbortError" ? "Generation cancelled." : `Error: ${err.message}`;
       } finally {
+        endForegroundRequest(requestController);
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
         userInput.focus();
@@ -4730,6 +4991,7 @@ JSON array:` }]
       
       if (!promptText && !pendingAttachment) return;
       if (!currentThreadId) return;
+      const requestController = beginForegroundRequest();
 
       // Clear empty state
       const emptyState = document.getElementById("emptyState");
@@ -4859,7 +5121,7 @@ JSON array:` }]
             promptText,
             quickModel
           );
-          if (strategy === "LONG_CONTEXT" && localStorage.getItem("geminiApiKey")) {
+          if (strategy === "LONG_CONTEXT" && getApiKey("geminiApiKey")) {
             effectiveLongContext = true;
           } else if (strategy === "RAW") {
             autoSelectedRaw = true;
@@ -4887,7 +5149,7 @@ JSON array:` }]
           // Skip all LLM branches — fall through to rendering below
         } else if (perplexityChecked) {
           // Perplexity API
-          const apiKey = localStorage.getItem("perplexityApiKey");
+          const apiKey = getApiKey("perplexityApiKey");
           if (!apiKey) {
             throw new Error("Please set your Perplexity API key in Settings");
           }
@@ -4920,7 +5182,7 @@ JSON array:` }]
           
         } else if (generateImageChecked) {
           // OpenAI Image Generation
-          const apiKey = localStorage.getItem("openaiApiKey");
+          const apiKey = getApiKey("openaiApiKey");
           if (!apiKey) {
             throw new Error("Please set your OpenAI API key in Settings");
           }
@@ -4971,7 +5233,7 @@ JSON array:` }]
           
         } else if (effectiveLongContext) {
           // Gemini Flash - full file in a single prompt
-          const geminiApiKey = localStorage.getItem("geminiApiKey");
+          const geminiApiKey = getApiKey("geminiApiKey");
           if (!geminiApiKey) {
             throw new Error("Please set your Gemini API key in Settings");
           }
@@ -5098,7 +5360,7 @@ JSON array:` }]
 
           } else {
             // === AGENT LOOP (highest priority when enabled + Tavily key present + user didn't manually check Tavily) ===
-            if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked && !pendingAttachment && pendingAttachments.length === 0) {
+            if (agentLoopEnabled && getApiKey("tavilyApiKey") && !tavilyChecked && !pendingAttachment && pendingAttachments.length === 0) {
               placeholder.innerHTML = `
                 <span>Agent starting</span>
                 <span class="thinking-dots"><span></span><span></span><span></span></span>
@@ -5115,7 +5377,7 @@ JSON array:` }]
 
               if (tavilyChecked) {
                 shouldSearch = true;
-              } else if (agentSearchEnabled && localStorage.getItem("tavilyApiKey") && !pendingAttachment && pendingAttachments.length === 0) {
+              } else if (agentSearchEnabled && getApiKey("tavilyApiKey") && !pendingAttachment && pendingAttachments.length === 0) {
                 placeholder.innerHTML = `
                   <span>Analyzing query</span>
                   <span class="thinking-dots"><span></span><span></span><span></span></span>
@@ -5164,8 +5426,6 @@ JSON array:` }]
 
               if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
 
-              const reader = response.body.getReader();
-              const decoder = new TextDecoder();
               finalReply = "";
 
               placeholder.innerHTML = "";
@@ -5173,27 +5433,13 @@ JSON array:` }]
               placeholder.appendChild(contentDiv);
 
               try {
-                let ndjsonDone = false;
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) break;
-                  const chunk = decoder.decode(value);
-                  const lines = chunk.split("\n").filter(l => l.trim());
-                  for (const line of lines) {
-                    try {
-                      const json = JSON.parse(line);
-                      if (json.message?.content) {
-                        finalReply += json.message.content;
-                        contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
-                        messageHistory.scrollTop = messageHistory.scrollHeight;
-                      }
-                      // Break as soon as the server signals done — don't wait for the
-                      // HTTP connection to physically close (keep-alive would block forever)
-                      if (json.done === true) { ndjsonDone = true; break; }
-                    } catch (e) { /* skip invalid JSON */ }
+                await readOllamaStream(response, json => {
+                  if (json.message?.content) {
+                    finalReply += json.message.content;
+                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(stripThinkTags(finalReply)));
+                    messageHistory.scrollTop = messageHistory.scrollHeight;
                   }
-                  if (ndjsonDone) break;
-                }
+                });
               } catch (streamErr) {
                 // Stream closed unexpectedly — preserve whatever was accumulated
                 console.warn("Stream interrupted:", streamErr.message);
@@ -5202,7 +5448,7 @@ JSON array:` }]
             }
 
             // Render agent loop result (non-streaming path)
-            if (agentLoopEnabled && localStorage.getItem("tavilyApiKey") && !tavilyChecked) {
+            if (agentLoopEnabled && getApiKey("tavilyApiKey") && !tavilyChecked) {
               placeholder.innerHTML = DOMPurify.sanitize(marked.parse(finalReply));
               enhanceCodeBlocks(placeholder);
             }
@@ -5326,10 +5572,9 @@ JSON array:` }]
           });
         }
 
-        // Auto-title on first exchange (fire-and-forget, all non-image paths)
+        // Generate the first title locally; no additional model inference.
         if (!generateImageChecked && isFirstExchange && finalReply && localStorage.getItem("autoTitle") !== "false") {
-          const titleModel = getModelSelection();
-          autoTitleThread(currentThreadId, promptText, finalReply, titleModel);
+          autoTitleThread(currentThreadId, promptText);
         }
 
         // Stage-2 fire-and-forget features (Ollama only, no clarification redirect, no image)
@@ -5342,9 +5587,10 @@ JSON array:` }]
         
       } catch (err) {
         clearInterval(timerInterval);
-        placeholder.innerHTML = `<span style="color: var(--danger);">Error: ${err.message}</span>`;
-        console.error("Send error:", err);
+        placeholder.textContent = err.name === "AbortError" ? "Generation cancelled." : `Error: ${err.message}`;
+        if (err.name !== "AbortError") console.error("Send error:", err);
       } finally {
+        endForegroundRequest(requestController);
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
         clearPendingAttachment();
@@ -5492,6 +5738,7 @@ JSON array:` }]
       document.getElementById("textChunkSizeInput").value = localStorage.getItem("textChunkSize") || "10240";
       document.getElementById("pdfPagesPerChunkInput").value = localStorage.getItem("pdfPagesPerChunk") || "3";
       document.getElementById("contextWindowInput").value = localStorage.getItem("contextWindow") || "10";
+      document.getElementById("modelContextSelect").value = localStorage.getItem("modelContext") || "16384";
       document.getElementById("customHostname").value = localStorage.getItem("ollamaEndpoint") || "";
 
       // Agentic function checkboxes
@@ -5508,19 +5755,19 @@ JSON array:` }]
       const webgpuStatus = webgpuReady ? "Ready" : (webgpuLoadingActive ? "Loading\u2026" : "Not loaded");
       document.getElementById("webgpuStatusText").textContent = webgpuStatus;
 
-      const perplexityKey = localStorage.getItem("perplexityApiKey");
+      const perplexityKey = getApiKey("perplexityApiKey");
       document.getElementById("perplexityApiKeyInput").value = perplexityKey ? "••••••••" : "";
       document.getElementById("perplexityKeyBadge").style.display = perplexityKey ? "" : "none";
 
-      const openaiKey = localStorage.getItem("openaiApiKey");
+      const openaiKey = getApiKey("openaiApiKey");
       document.getElementById("openaiApiKeyInput").value = openaiKey ? "••••••••" : "";
       document.getElementById("openaiKeyBadge").style.display = openaiKey ? "" : "none";
 
-      const tavilyKey = localStorage.getItem("tavilyApiKey");
+      const tavilyKey = getApiKey("tavilyApiKey");
       document.getElementById("tavilyApiKeyInput").value = tavilyKey ? "••••••••" : "";
       document.getElementById("tavilyKeyBadge").style.display = tavilyKey ? "" : "none";
 
-      const geminiKey = localStorage.getItem("geminiApiKey");
+      const geminiKey = getApiKey("geminiApiKey");
       document.getElementById("geminiApiKeyInput").value = geminiKey ? "••••••••" : "";
       document.getElementById("geminiKeyBadge").style.display = geminiKey ? "" : "none";
     }
@@ -5529,13 +5776,13 @@ JSON array:` }]
       document.getElementById("settingsOverlay").classList.remove("active");
     }
 
-    function clearApiKey(storageKey, inputId, badgeId) {
-      localStorage.removeItem(storageKey);
+    async function clearApiKey(storageKey, inputId, badgeId) {
+      await setApiKey(storageKey, "");
       document.getElementById(inputId).value = "";
       document.getElementById(badgeId).style.display = "none";
     }
 
-    function saveSettings() {
+    async function saveSettings() {
       const theme = document.getElementById("themeSelect").value;
       localStorage.setItem("theme", theme);
       applyTheme(theme);
@@ -5543,6 +5790,7 @@ JSON array:` }]
       localStorage.setItem("textChunkSize", document.getElementById("textChunkSizeInput").value);
       localStorage.setItem("pdfPagesPerChunk", document.getElementById("pdfPagesPerChunkInput").value);
       localStorage.setItem("contextWindow", document.getElementById("contextWindowInput").value);
+      localStorage.setItem("modelContext", document.getElementById("modelContextSelect").value);
       
       // Agentic function settings
       localStorage.setItem("agentSearch", document.getElementById("agentSearchCheckbox").checked ? "true" : "false");
@@ -5563,35 +5811,35 @@ JSON array:` }]
       
       const perplexityInput = document.getElementById("perplexityApiKeyInput").value;
       if (perplexityInput && !perplexityInput.includes("•")) {
-        localStorage.setItem("perplexityApiKey", perplexityInput);
+        await setApiKey("perplexityApiKey", perplexityInput);
       } else if (!perplexityInput) {
-        localStorage.removeItem("perplexityApiKey");
+        await setApiKey("perplexityApiKey", "");
       }
-      document.getElementById("perplexityKeyBadge").style.display = localStorage.getItem("perplexityApiKey") ? "" : "none";
+      document.getElementById("perplexityKeyBadge").style.display = getApiKey("perplexityApiKey") ? "" : "none";
 
       const openaiInput = document.getElementById("openaiApiKeyInput").value;
       if (openaiInput && !openaiInput.includes("•")) {
-        localStorage.setItem("openaiApiKey", openaiInput);
+        await setApiKey("openaiApiKey", openaiInput);
       } else if (!openaiInput) {
-        localStorage.removeItem("openaiApiKey");
+        await setApiKey("openaiApiKey", "");
       }
-      document.getElementById("openaiKeyBadge").style.display = localStorage.getItem("openaiApiKey") ? "" : "none";
+      document.getElementById("openaiKeyBadge").style.display = getApiKey("openaiApiKey") ? "" : "none";
 
       const tavilyInput = document.getElementById("tavilyApiKeyInput").value;
       if (tavilyInput && !tavilyInput.includes("•")) {
-        localStorage.setItem("tavilyApiKey", tavilyInput);
+        await setApiKey("tavilyApiKey", tavilyInput);
       } else if (!tavilyInput) {
-        localStorage.removeItem("tavilyApiKey");
+        await setApiKey("tavilyApiKey", "");
       }
-      document.getElementById("tavilyKeyBadge").style.display = localStorage.getItem("tavilyApiKey") ? "" : "none";
+      document.getElementById("tavilyKeyBadge").style.display = getApiKey("tavilyApiKey") ? "" : "none";
 
       const geminiInput = document.getElementById("geminiApiKeyInput").value;
       if (geminiInput && !geminiInput.includes("•")) {
-        localStorage.setItem("geminiApiKey", geminiInput);
+        await setApiKey("geminiApiKey", geminiInput);
       } else if (!geminiInput) {
-        localStorage.removeItem("geminiApiKey");
+        await setApiKey("geminiApiKey", "");
       }
-      document.getElementById("geminiKeyBadge").style.display = localStorage.getItem("geminiApiKey") ? "" : "none";
+      document.getElementById("geminiKeyBadge").style.display = getApiKey("geminiApiKey") ? "" : "none";
 
       closeSettings();
       fetchModels();
@@ -5816,12 +6064,14 @@ JSON array:` }]
     // ============================================
     // MODEL PARAMETERS
     // ============================================
-    function getOllamaOptions() {
-      const opts = {};
+    function getOllamaOptions(purpose = "chat") {
+      const configuredContext = parseInt(localStorage.getItem("modelContext"), 10);
+      const chatContext = [8192, 16384, 32768].includes(configuredContext) ? configuredContext : 16384;
+      const opts = { num_ctx: purpose === "utility" ? 4096 : chatContext };
       if (currentThreadParams.temperature  !== DEFAULT_PARAMS.temperature)  opts.temperature    = currentThreadParams.temperature;
       if (currentThreadParams.topP         !== DEFAULT_PARAMS.topP)         opts.top_p          = currentThreadParams.topP;
       if (currentThreadParams.repeatPenalty !== DEFAULT_PARAMS.repeatPenalty) opts.repeat_penalty = currentThreadParams.repeatPenalty;
-      return Object.keys(opts).length ? opts : undefined;
+      return opts;
     }
 
     function loadThreadParams(threadId) {
@@ -6067,7 +6317,7 @@ JSON array:` }]
         document.getElementById("perplexitySearchCheckbox").checked = false;
         document.getElementById("generateImageCheckbox").checked = false;
         
-        if (!localStorage.getItem("tavilyApiKey")) {
+        if (!getApiKey("tavilyApiKey")) {
           alert("Please set your Tavily API key in Settings");
         }
       }
@@ -6082,7 +6332,7 @@ JSON array:` }]
         document.getElementById("dontSummarizeCheckbox").disabled = false;
         clearPendingAttachment();
 
-        if (!localStorage.getItem("perplexityApiKey")) {
+        if (!getApiKey("perplexityApiKey")) {
           alert("Please set your Perplexity API key in Settings");
         }
       } else {
@@ -6099,7 +6349,7 @@ JSON array:` }]
         document.getElementById("dontSummarizeCheckbox").disabled = true;
         clearPendingAttachment();
 
-        if (!localStorage.getItem("openaiApiKey")) {
+        if (!getApiKey("openaiApiKey")) {
           alert("Please set your OpenAI API key in Settings");
         }
       } else {
@@ -6118,7 +6368,7 @@ JSON array:` }]
         fileInput.setAttribute("multiple", "");
         fileInput.title = "Attach files — multiple files supported in Long Context mode";
 
-        if (!localStorage.getItem("geminiApiKey")) {
+        if (!getApiKey("geminiApiKey")) {
           alert("Please set your Gemini API key in Settings");
         }
       } else {
@@ -6146,7 +6396,9 @@ JSON array:` }]
     // ============================================
     document.addEventListener("DOMContentLoaded", async () => {
       try {
+        updatePwaInstallButton();
         await openDatabase();
+        await initializeSecretVault();
 
         // Apply saved endpoint
         const savedEndpoint = localStorage.getItem("ollamaEndpoint");
