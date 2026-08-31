@@ -1,151 +1,237 @@
 # PrivateLLMLens
-This provides a Zero-Server Web Interface for use with Ollama local LLM's. Also works on mobile if Ollama has been installed using Termux. Please star the repository if you like it.
 
-Accessible at: https://jimliddle.github.io/privatellmlens/ - Everything stored in your client side browser, or download the html file and run it yourself.
+PrivateLLMLens is a feature-rich, single-file chat interface for local Ollama models. It runs entirely in the browser, works on desktop and Android/Termux, and requires no application backend.
 
-So what is a zero-server web interface ? It is just a HTML file that you can double-click to launch (and then bookmark for subsequent use). It's served as a file through the web browser rather than through http/https.
+Try the hosted version: **https://jimliddle.github.io/privatellmlens/**
 
-### Configuration
-There is not a lot to configure but you do need to setup the Ollama Origin flag. The Ollama Origins setting is used to whitelist which web origins (domains, protocols, ports) are permitted to access the Ollama server's API. This prevents unauthorized websites from making requests and helps mitigate cross-site request forgery (CSRF) vulnerabilities. In essence, it ensures that only trusted sources (like our local  environment) can interact with your Ollama instance.
+Alternatively, download `index.html` and open it locally. For PWA installation, serve the file from `localhost`, `127.0.0.1`, or HTTPS.
 
-#### Mac
-On Mac you should enter the following for the command prompt:
+## Highlights
 
-<code> launchctl setenv OLLAMA_ORIGINS "*" </code>
+- Direct, streaming chat with any model exposed by Ollama
+- Multiple conversation threads with editable system prompts
+- Local conversation persistence using IndexedDB
+- Text, PDF, CSV, HTML, Python, JSON, and image attachments
+- Vision-model support through Ollama's `images` API
+- Summarised or raw attachment processing
+- Configurable conversation history
+- Explicit 8K, 16K, and 32K Ollama context profiles
+- 4K contexts for lightweight utility inference
+- Real cancellation of active Ollama requests
+- Local automatic thread titles without an extra inference call
+- Markdown rendering, syntax highlighting, copy controls, regeneration, and branching
+- Thread search, export/import, and PDF export
+- Optional persistent memories
+- Optional Tavily search and agent-style search loops
+- Optional Perplexity search, OpenAI image generation, and Gemini long-context processing
+- Optional in-browser WebGPU model
+- Light, dark, and system themes
+- Installable PWA metadata embedded in the single HTML file
 
-After you have done this restart Ollama and verify it is available (http://localhost:11434) and then load the web page
-The tell tale that all is well is that models are loaded in the model configuration in the bottom right.
-If you want the environment variable to persist across system restarts, you can use a Mac LaunchAgent
+## Why a single HTML file?
 
-#### Windows
-On Windows open search and type 'env' and you should see 'edit the system environment variables appear. Click this and the 'System Properties; window will appear. Click the 'Environment Variables' button. 
+PrivateLLMLens is deliberately self-contained. The UI, styles, application logic, PWA manifest, and app icon are all embedded in `index.html`.
 
-<code>Create a new User variable called OLLAMA_ORIGINS with a value of * </code> 
+There is no PrivateLLMLens server and no account system. Local Ollama requests go directly from the browser to Ollama, while conversation data remains in browser storage. Optional cloud features make requests directly to their respective providers only when enabled.
 
-The cleanest way for this to stick is to reboot the windows machine. This will now stick between subsequent reboots.
+Some third-party browser libraries are currently loaded from CDNs, including PDF.js, Marked, DOMPurify, Highlight.js, Font Awesome, and the optional WebGPU runtime.
 
-#### Mobile
-Assuming you have installed Ollama via Termux on Android, ensure that you set OLLAMA_ORIGINS="*" in your .bashrc file
+## Requirements
 
-### Overview
+- A modern Chromium-based browser is recommended
+- Ollama running locally or on a reachable machine
+- At least one Ollama model installed
+- Ollama configured to permit requests from the origin used to open PrivateLLMLens
 
-This started out as something that would let me test the different models and response times but at some point I realized it would be pretty neat to be able to use this as an easy way to interact with Ollama without ever having to fire up the command prompt. 
+## Quick start
 
-Below you can see the interface and you can see that every time we interact with a model the model name and response time are noted:
+1. Start Ollama.
+2. Install a model if needed:
 
-<img width="916" height="508" alt="Private LLM Lens screenshot" src="https://github.com/user-attachments/assets/b86f1b58-e169-4a9a-9f58-ed425c27ea38" />
+   ```sh
+   ollama pull qwen3:4b
+   ```
 
+3. Open the hosted application or download `index.html`.
+4. Confirm that the connection indicator becomes active.
+5. Select a model below the chat input and start a conversation.
 
-This is really useful when you are checking out the capabilities of the different models.
+PrivateLLMLens reads `/api/tags` to populate the model selector and sends chats to `/api/chat`.
 
-Each of the models can easily be changed from the model dropdown in the bottom right of the screen. This uses the Ollama Tags feature to be able to interrogate and populate the models.
+## Ollama origins
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/b9c591fa-b656-47f2-a76c-b12d893dc15b" />
+The browser origin must be allowed to access Ollama. The broadest configuration is:
 
+```sh
+OLLAMA_ORIGINS="*"
+```
 
-The last used model will be the auto-selected model next time PrivateLLMLens is refreshed or loaded.
+This is convenient for a personal machine but permits any website loaded in the browser to attempt requests to the local Ollama API. Where possible, use a narrower list containing only the origin from which you run PrivateLLMLens.
 
-Themes can be switched between light and dark, and the web page will initially follow the desktop theme.
+Restart Ollama after changing the environment.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/0f60e594-df9a-40c7-b08a-ba4a4ed5d08a" />
+### macOS
 
+For the current login session:
 
-So if this is a single web page where is the data being persisted I hear you ask. Well, to keep things very simple and to honor the single page paradigm it is taking advantage of the IndexedDB capabilities from the browser. 
+```sh
+launchctl setenv OLLAMA_ORIGINS "*"
+```
 
-IndexedDB is a low-level API built into modern browsers that provides a transactional database system for storing large amounts of structured data on the client side. It lets you store key-value pairs, and can handle complex objects including files and blobs. Because it supports indexing and transactions, you can efficiently retrieve and update your data. IndexedDB is asynchronous, which helps keep your application responsive even when working with large datasets.
+Restart the Ollama application afterward. Use a LaunchAgent if the setting must survive a reboot.
 
-In terms of compatibility, IndexedDB is supported by all major modern browsers such as Chrome, Firefox, Safari, Edge, and Opera. This makes it a popular choice for offline storage and caching in web applications.
+### Windows
 
-IndexedDB version one refers to the initial, simpler schema that many early web apps used—typically with a single object store for key-value pairs. IndexedDB version two (as used in rhis code) builds on that by allowing schema migrations through a version number. In this implementation, version 2 enabled me to create multiple object stores (such as separate stores for threads and messages) and add indexes (such as the "threadId" index), making it easier to manage multi-threaded chat data.
+Open **Edit the system environment variables**, select **Environment Variables**, and create a user variable:
 
-In the interface you can see at the bottom a 'Reset IndexedDB' link. In the event IndexedDB every becomes corrupted you can use this. It simply runs some Javascript to delete the IndexedDB in cache and re-constructs it.
+```text
+Name:  OLLAMA_ORIGINS
+Value: *
+```
 
-Threads enables the user to create different workspaces, for example you could create one for text models and another for vision models:
+Restart Ollama or reboot Windows.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/fe234739-7124-42ff-8b42-b8dee537ef37" />
+### Android with Termux
 
+Export the variable before starting Ollama:
 
-Because Ollama supports vision models we can select a vision model in our workspace and ask it about an image.
+```sh
+export OLLAMA_ORIGINS="*"
+ollama serve
+```
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/ad5a4612-8380-40fb-af81-cd7f56b907dc" />
+Add the export to the shell startup file used by Termux if you want it applied automatically.
 
+## Model context profiles
 
-In this case we can see the Lllava-Phi3 image model (the fastest from my testing) took 125 seconds to interrogate the image and respond (I could have no doubt speeded this up substantially by using my external GPU). The image and the response are cached in Indexed DB and will be available in the workspace until you 'clear all messages' or delete the workspace.
+The Processing settings separate two different concepts:
 
-From a technical viewpoint we read the image file as a base64 data URL (with the data URL prefix removed), we strip the prefix, and send it to Ollama using the "images" key.
+- **Conversation History** controls how many recent messages are considered.
+- **Model Context** controls the `num_ctx` value sent to Ollama.
 
-This is a nice way to be able to use and test the various images models locally.
+Available model-context profiles:
 
-Another things I wanted to be able to do was to at least be able to handle small file attachment inputs. This is something I have implemented for text, pdf, csv, html, python and JSON files.
+| Profile | Context | Intended use |
+| --- | ---: | --- |
+| Performance | 8K | Faster chat and lower KV-cache memory use |
+| Balanced | 16K | Default profile for general use |
+| Maximum / deep documents | 32K | Long conversations and document-heavy work |
 
-To demonstrate how this works we gave it a real sample tender document downloaded from the public internet
+KV-cache memory grows roughly in proportion to context size. Relative to 32K, an 8K cache is approximately 25% and a 16K cache approximately 50%, although total RAM use depends heavily on the selected model, architecture, and quantisation.
 
-We attach the PDF file and ask it to:
+Small utility calls—such as search decisions, attachment routing, clarification, summarisation, memory extraction, follow-up generation, and fact checking—use a 4K context automatically.
 
-:Identify the key conditions, omissions, or administrative actions that CERN considers most relevant to the rejection or disqualification of a bid. [Attached: IT-3824_Tender_Form.pdf]:
+## Attachments
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/dde910b4-9279-4f24-900c-db80eb9f6f8f" />
+PrivateLLMLens supports:
 
+- Plain text
+- PDF
+- CSV
+- HTML
+- Python
+- JSON
+- Images
 
-The response is a decent summary of the content provided. There is no vector DB or RAG here so technically what we are doing is parsing the text in chunks, summarzing each chunk and pre-appending it to the input prompt. The merged prompt  includes a clear delimiter indicating where the attached content starts and ends. 
+Large text and PDF files can be processed in chunks and summarised before the final request. **Don't Summarize** concatenates the extracted content instead, which is useful when exact text, code, or structured data matters.
 
-I have also implemented a feature, which is being able to leverage the prior output to ask another question. This takes the prior output and inputs it as a 'prior conversation' along with the prompt input and happens automatically if you ask a follow up question in a thread.
+Images are converted to base64 and passed to compatible Ollama vision models through the `images` field.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/08520584-5739-41c9-8533-5fd31427dd47" />
+Gemini long-context processing is optional and sends selected attachment content to Google's API. It is not a local/private operation.
 
-The 'dont summarize' feature prevents files being chunked and summarized when being sent to Ollama. This is useful if you are dealing with code files, JSON files, CSV files, or PDF's / Dpc's where you need precise answers in which you don;t want the chunks to be summarized by the LLM.
+## Web search and cloud features
 
-Below we issue the same tender PDF but this time with 'don't summarize' checked
+All cloud integrations are optional:
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/e0ca9653-dc41-43dd-874c-d0acdf6abf85" />
+- **Tavily**: manual search, automatic search decisions, agent loops, and optional fact checking
+- **Perplexity**: search-grounded answers
+- **OpenAI**: image generation
+- **Gemini**: long-context file processing
 
-The answer is more comprehensive and for to show the difference I asked it to compare the prior summarized answer with what it provvided and provide an assessment:
+These features send prompts, search queries, files, or generated content to the selected external provider. Leave a provider's API key unset to keep that integration disabled.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/ce78cdcf-3152-444c-bcd1-01ef1a3cf7d6" />
+## Local storage and privacy
 
-In the summarization mode (the default) we read each chunk, call the summarization API, and then combine the summaries. In the 'Don’t Summarize' mode we still read the file in chunks (to avoid excedding context), but we skip the API calls and simply concatenate all chunk text into one final raw string.
+PrivateLLMLens currently uses IndexedDB version 5.
 
-Chunking helps with memory problems because it prevents PrivateLLMSLens from loading the entire file into context. Instead, we:
+IndexedDB stores:
 
-(i)   Read and process the file in small slices (chunks).
-(ii)  Handle each chunk (either summarizing it or concatenating it) and then move on to the next chunk.
-(iii) Never store the entire file’s data in memory simultaneously.
+- Threads
+- Messages and attachment data
+- Persistent memories
+- The WebCrypto vault
 
-Essentially, each chunk is briefly in memory during its processing, and then it’s discarded. The only data that persists between chunks is the (relatively small) partial result (either a short summary or the incrementally growing concatenated text). This is much more memory-efficient than loading the entire file at once—especially as we are summarizing each chunk into something far smaller.
+Non-sensitive preferences—such as theme, selected model, context profile, conversation-history length, endpoint, and feature toggles—are stored in `localStorage`.
 
-The chunk size setting can be controlled from the settings section:
+### API-key protection
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/c252cfec-cb21-4e1a-b358-232a841400ea" />
+Provider API keys are encrypted using AES-256-GCM through the WebCrypto API. A non-extractable encryption key is stored in IndexedDB, each encrypted value uses a fresh random IV, and decrypted credentials are retained only in runtime memory.
 
+Older plaintext API keys in `localStorage` are automatically migrated into the encrypted vault and removed.
 
-Note that currently if you set the chunk ssize higer than the context window you’ll get suboptimal or failed results and you should reduce the chunk size. 
+This improves protection against casual inspection and direct `localStorage` extraction. It does not protect unlocked credentials from malicious JavaScript already executing in the same page. Because the application currently loads some dependencies from CDNs, vendoring and pinning all dependencies locally would provide stronger supply-chain protection.
 
-Also note from the screenshot above that the Ollama endpoint can be changed in the settings, if your Ollama deployment is not on your local laptop or mobile and you want to use PrivateLLMLens.
+Browser storage is scoped to the application's origin. Opening the same file through a different hostname, port, protocol, or file path may create a separate storage area.
 
-The prompt input window can be resized and if you paste in characters above 500 words text will appear as an attachment. If images are pasted into the prompt input windows the will also appear as an attachment but still be visibile in the message history when submitted.
+## Streaming and cancellation
 
-THe following extenal services are supported (API keys need to be entered in the settings):
+Ollama returns newline-delimited JSON. PrivateLLMLens buffers incomplete network fragments so that JSON records split across network chunks are not lost.
 
-Perplexity AI Search:
+The Cancel control uses `AbortController` to disconnect the active Ollama request. It covers ordinary chat, regeneration, direct-answer mode, streamed generation, and foreground Ollama preprocessing. Local file-processing loops also observe cancellation.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/d0023618-5208-45a4-9561-7e7d1feaab03" />
+## Memories and conversation summaries
 
-Tavily (non AI) Search:
+Optional automatic memories extract useful preferences, project facts, and decisions into a dedicated IndexedDB store. Memories can be reviewed and deleted in Settings.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/cb162d67-a7af-4cea-8c21-8f8667f536ed" />
+When automatic context summarisation is enabled, older messages can be compressed while recent messages remain verbatim. This helps long-running threads stay within the selected model context.
 
-There is a setting also for enabling the LLM to decide whether it needs to ground its information with a Tavily search. In this sense the LLM is acting more agentic.
+## WebGPU model
 
-OpenAI Image Generation:
+PrivateLLMLens can optionally load a small model directly in a compatible browser using WebGPU. Model assets are downloaded and cached by the browser.
 
-<img width="916" height="508" alt="image" src="https://github.com/user-attachments/assets/7f6ccde1-be9b-4bf8-85f4-a4f45b01550a" />
+The WebGPU path is separate from Ollama and intentionally disables features that depend on the Ollama agent/search workflow. Browser and device support varies.
 
+## PWA installation
 
+The web-app manifest, app icon, standalone metadata, and install-prompt handling are embedded directly in `index.html`.
 
+Installation requires the application to be opened from:
 
+- HTTPS
+- `http://localhost`
+- `http://127.0.0.1`
 
+Browsers do not permit PWA installation from a raw `file://` URL. On Android, use the install button in the header or the browser's **Add to Home screen** command.
 
+A service worker is not required merely to install the application. Reliable offline caching would require a separately served service-worker script, which cannot be registered from inline or `blob:` JavaScript under current browser security rules.
 
+## Backup and portability
 
+Use **Export** to download threads, messages, and portable settings as JSON. API keys are deliberately excluded.
 
+Use **Import** to add an exported backup to the current browser database. Browser storage should not be treated as the only backup for important conversations.
 
+## Security notes
+
+- Rendered model Markdown is sanitised with DOMPurify.
+- Search results are constructed with DOM nodes and `textContent` to prevent stored HTML injection.
+- API keys are encrypted at rest in the browser vault.
+- External provider use is explicit and optional.
+- `OLLAMA_ORIGINS="*"` is convenient but broad; restrict it where practical.
+- CDN-hosted dependencies remain part of the application's trust boundary.
+
+## Development
+
+The project intentionally has no build step. Edit `index.html`, reload the browser, and test against a running Ollama instance.
+
+A useful syntax check for the main inline JavaScript is:
+
+```sh
+sed -n '/^  <script>$/,/^  <\/script>$/p' index.html \
+  | sed '/^  <script>$/d;/^  <\/script>$/d' \
+  | node --check -
+```
+
+## License and contributions
+
+Issues, pull requests, suggestions, and stars are welcome. Before submitting security-sensitive changes, consider the single-file deployment model and the fact that PrivateLLMLens runs with access to local conversations and any unlocked provider credentials.
