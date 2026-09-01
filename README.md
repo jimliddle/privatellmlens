@@ -34,7 +34,7 @@ PrivateLLMLens is deliberately self-contained. The UI, styles, application logic
 
 There is no PrivateLLMLens server and no account system. Local Ollama requests go directly from the browser to Ollama, while conversation data remains in browser storage. Optional cloud features make requests directly to their respective providers only when enabled.
 
-Some third-party browser libraries are currently loaded from CDNs, including PDF.js, Marked, DOMPurify, Highlight.js, Font Awesome, and the optional WebGPU runtime.
+Some third party browser libraries are currently loaded from CDNs, including PDF.js, Marked, DOMPurify, Highlight.js, Font Awesome, and the optional WebGPU runtime.
 
 ## Requirements
 
@@ -119,7 +119,7 @@ Available model-context profiles:
 
 KV-cache memory grows roughly in proportion to context size. Relative to 32K, an 8K cache is approximately 25% and a 16K cache approximately 50%, although total RAM use depends heavily on the selected model, architecture, and quantisation.
 
-Small utility calls—such as search decisions, attachment routing, clarification, summarisation, memory extraction, follow-up generation, and fact checking—use a 4K context automatically.
+Small utility calls such as search decisions, attachment routing, clarification, summarisation, memory extraction, follow up generation, and fact checking use a 4K context automatically.
 
 ## Attachments
 
@@ -137,7 +137,7 @@ Large text and PDF files can be processed in chunks and summarised before the fi
 
 Images are converted to base64 and passed to compatible Ollama vision models through the `images` field.
 
-Gemini long-context processing is optional and sends selected attachment content to Google's API. It is not a local/private operation.
+Gemini long context processing is optional and sends selected attachment content to Google's API. It is not a local/private operation.
 
 ## Web search and cloud features
 
