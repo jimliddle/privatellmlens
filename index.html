@@ -2323,15 +2323,15 @@
           </div>
         </div>
         <div class="settings-section">
-          <h3>WebGPU Model <span style="font-size:11px;font-weight:normal;color:var(--warning);">&#9675; Chrome / Edge only</span> <i class="fa-solid fa-circle-info" style="font-size:12px;color:var(--text-muted);cursor:help;vertical-align:middle;" title="Agentic functions (agent loop, auto-search) and Web Search are not available when the WebGPU model is selected — these options are disabled in the toolbar while WebGPU is active."></i></h3>
+          <h3>WebGPU Models <span style="font-size:11px;font-weight:normal;color:var(--warning);">&#9675; Chrome / Edge only</span> <i class="fa-solid fa-circle-info" style="font-size:12px;color:var(--text-muted);cursor:help;vertical-align:middle;" title="Agentic functions (agent loop, auto-search) and Web Search are not available when a WebGPU model is selected — these options are disabled in the toolbar while WebGPU is active."></i></h3>
           <div class="setting-row">
-            <span class="setting-label" title="Runs Qwen3.5:0.8b fully in-browser using WebGPU — no Ollama required. Model is cached by the browser after the first download.">Enable Qwen3.5:0.8b (WebGPU)</span>
+            <span class="setting-label" title="Adds Fast (0.8B) and Quality (2B) Qwen3.5 models to the selector. Only the selected model is loaded, and it is cached by the browser after download.">Enable Qwen3.5 WebGPU models</span>
             <div class="agentic-toggle">
               <input type="checkbox" id="webgpuEnabledCheckbox" style="width:18px;height:18px;flex-shrink:0;">
               <span style="font-size:12px;color:var(--text-muted);">Runs entirely in-browser, no Ollama needed</span>
             </div>
           </div>
-          <div style="padding:2px 0 6px;font-size:11px;color:var(--text-muted);">~850MB download, cached by browser after first use. Appears in model selector when enabled.</div>
+          <div style="padding:2px 0 6px;font-size:11px;color:var(--text-muted);">Fast: ~850MB. Quality: ~1.8GB and higher memory use. Downloads are cached; only one model occupies GPU memory at a time.</div>
           <div class="setting-row">
             <span class="setting-label">Model status</span>
             <span id="webgpuStatusText" style="font-size:12px;color:var(--text-muted);">Not loaded</span>
@@ -2686,9 +2686,29 @@
     }
 
     // WebGPU in-browser model state
-    const WEBGPU_MODEL_VALUE = "__webgpu_qwen3__";
+    const WEBGPU_FAST_VALUE = "__webgpu_qwen3__";
+    const WEBGPU_QUALITY_VALUE = "__webgpu_qwen35_2b__";
+    const WEBGPU_MODELS = {
+      [WEBGPU_FAST_VALUE]: {
+        modelId: "onnx-community/Qwen3.5-0.8B-ONNX",
+        label: "Qwen3.5 0.8B — WebGPU Fast",
+        download: "~850MB",
+        maxNewTokens: 2048,
+        dtype: { embed_tokens: "q4", vision_encoder: "fp16", decoder_model_merged: "q4" }
+      },
+      [WEBGPU_QUALITY_VALUE]: {
+        modelId: "onnx-community/Qwen3.5-2B-ONNX-OPT",
+        label: "Qwen3.5 2B — WebGPU Quality",
+        download: "~1.8GB",
+        maxNewTokens: 1024,
+        dtype: { embed_tokens: "q4", vision_encoder: "q4", decoder_model_merged: "q4" }
+      }
+    };
+    const isWebGPUModel = value => Boolean(WEBGPU_MODELS[value]);
     let webgpuWorker = null;
     let webgpuReady = false;
+    let webgpuLoadedModelValue = null;
+    let webgpuRequestedModelValue = null;
     let webgpuLoadingActive = false;
     let webgpuLoadResolvers = [];
     let webgpuProgressPlaceholder = null;
@@ -2732,10 +2752,10 @@
       const workerSrc = `
 // Classic worker with a dynamic import from Hugging Face's documented browser
 // CDN entry. This build includes ONNX Runtime's WebGPU execution provider.
-const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-ONNX';
 let processor = null;
 let model = null;
 let lib = null;
+let maxNewTokens = 1024;
 
 function progressCallback(info) {
   if (info.status === 'progress' && typeof info.progress === 'number') {
@@ -2747,21 +2767,19 @@ self.onmessage = async (e) => {
   const msg = e.data;
   if (msg.type === 'load') {
     try {
+      const config = msg.config;
       if (!lib) {
         lib = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0');
       }
       const { AutoProcessor, Qwen3_5ForConditionalGeneration } = lib;
-      processor = await AutoProcessor.from_pretrained(MODEL_ID, { progress_callback: progressCallback });
-      model = await Qwen3_5ForConditionalGeneration.from_pretrained(MODEL_ID, {
-        dtype: {
-          embed_tokens: 'q4',
-          vision_encoder: 'fp16',
-          decoder_model_merged: 'q4',
-        },
+      processor = await AutoProcessor.from_pretrained(config.modelId, { progress_callback: progressCallback });
+      model = await Qwen3_5ForConditionalGeneration.from_pretrained(config.modelId, {
+        dtype: config.dtype,
         device: 'webgpu',
         progress_callback: progressCallback,
       });
-      self.postMessage({ type: 'ready' });
+      maxNewTokens = config.maxNewTokens;
+      self.postMessage({ type: 'ready', modelValue: msg.modelValue });
     } catch (err) {
       self.postMessage({ type: 'error', error: err.message || String(err) });
     }
@@ -2807,7 +2825,7 @@ self.onmessage = async (e) => {
           self.postMessage({ type: 'token', token });
         },
       });
-      await model.generate({ ...inputs, max_new_tokens: 2048, do_sample: false, streamer });
+      await model.generate({ ...inputs, max_new_tokens: maxNewTokens, do_sample: false, streamer });
       self.postMessage({ type: 'done' });
     } catch (err) {
       self.postMessage({ type: 'error', error: err.message || String(err) });
@@ -2828,7 +2846,7 @@ self.onmessage = async (e) => {
       };
 
       webgpuWorker.onmessage = (e) => {
-        const { type, file, progress, token, error } = e.data;
+        const { type, file, progress, token, error, modelValue } = e.data;
         if (type === 'progress') {
           const pct = typeof progress === 'number' ? Math.round(progress) : 0;
           const label = file ? file.split('/').pop() : '';
@@ -2836,17 +2854,18 @@ self.onmessage = async (e) => {
             webgpuProgressPlaceholder.innerHTML = `
               <span>Loading WebGPU model</span>
               <span class="thinking-dots"><span></span><span></span><span></span></span>
-              <span style="color:var(--text-muted);margin-left:8px;">${label} ${pct > 0 ? pct + '%' : '(~850MB, first load only)'}</span>
+              <span style="color:var(--text-muted);margin-left:8px;">${label} ${pct > 0 ? pct + '%' : `(${WEBGPU_MODELS[webgpuRequestedModelValue]?.download || 'first load'})`}</span>
             `;
           }
           const statusEl = document.getElementById('webgpuStatusText');
           if (statusEl) statusEl.textContent = `Loading\u2026 ${label} ${pct > 0 ? pct + '%' : ''}`.trim();
         } else if (type === 'ready') {
           webgpuReady = true;
+          webgpuLoadedModelValue = modelValue;
           webgpuLoadingActive = false;
           webgpuProgressPlaceholder = null;
           const statusEl = document.getElementById('webgpuStatusText');
-          if (statusEl) statusEl.textContent = 'Ready';
+          if (statusEl) statusEl.textContent = `Ready — ${WEBGPU_MODELS[modelValue]?.label || 'WebGPU'}`;
           webgpuLoadResolvers.splice(0).forEach(r => r.resolve());
         } else if (type === 'token') {
           if (webgpuTokenCallback) webgpuTokenCallback(token);
@@ -2874,8 +2893,29 @@ self.onmessage = async (e) => {
       };
     }
 
-    async function ensureWebGPUReady(placeholder) {
-      if (webgpuReady) return;
+    function disposeWebGPUWorker(reason = "Model unloaded") {
+      if (webgpuWorker) webgpuWorker.terminate();
+      webgpuWorker = null;
+      webgpuReady = false;
+      webgpuLoadingActive = false;
+      webgpuLoadedModelValue = null;
+      webgpuRequestedModelValue = null;
+      webgpuProgressPlaceholder = null;
+      webgpuTokenCallback = null;
+      webgpuDoneCallback = null;
+      webgpuErrorCallback = null;
+      webgpuLoadResolvers.splice(0).forEach(r => r.reject(new Error(reason)));
+      const statusEl = document.getElementById('webgpuStatusText');
+      if (statusEl) statusEl.textContent = 'Not loaded';
+    }
+
+    async function ensureWebGPUReady(modelValue, placeholder) {
+      const config = WEBGPU_MODELS[modelValue];
+      if (!config) throw new Error("Unknown WebGPU model selected.");
+      if (webgpuReady && webgpuLoadedModelValue === modelValue) return;
+      if (webgpuWorker && webgpuRequestedModelValue !== modelValue) {
+        disposeWebGPUWorker("WebGPU model changed");
+      }
       if (!navigator.gpu) {
         throw new Error("WebGPU is not exposed by this browser. Open PrivateLLMLens in current Chrome and check chrome://gpu or enable chrome://flags/#enable-unsafe-webgpu.");
       }
@@ -2884,23 +2924,24 @@ self.onmessage = async (e) => {
         throw new Error("The browser exposes WebGPU but could not obtain a GPU adapter. Check chrome://gpu and restart Chrome after enabling WebGPU.");
       }
       initWebGPUWorker();
+      webgpuRequestedModelValue = modelValue;
       webgpuProgressPlaceholder = placeholder;
       placeholder.innerHTML = `
         <span>Loading WebGPU model</span>
         <span class="thinking-dots"><span></span><span></span><span></span></span>
-        <span style="color:var(--text-muted);margin-left:8px;">(~850MB, first load only \u2014 cached after)</span>
+        <span style="color:var(--text-muted);margin-left:8px;">${config.label} (${config.download}, first load only \u2014 cached after)</span>
       `;
       return new Promise((resolve, reject) => {
         webgpuLoadResolvers.push({ resolve, reject });
         if (!webgpuLoadingActive) {
           webgpuLoadingActive = true;
-          webgpuWorker.postMessage({ type: 'load' });
+          webgpuWorker.postMessage({ type: 'load', modelValue, config });
         }
       });
     }
 
     function updateWebGPUUIState() {
-      const isWebGPU = getModelSelection() === WEBGPU_MODEL_VALUE;
+      const isWebGPU = isWebGPUModel(getModelSelection());
 
       // Tavily Web Search
       const tavilyGroup = document.getElementById("tavilySearchCheckbox")?.closest(".option-group");
@@ -2933,8 +2974,8 @@ self.onmessage = async (e) => {
       }
     }
 
-    async function generateWithWebGPU(messages, placeholder, imageDataUrl) {
-      await ensureWebGPUReady(placeholder);
+    async function generateWithWebGPU(modelValue, messages, placeholder, imageDataUrl) {
+      await ensureWebGPUReady(modelValue, placeholder);
       webgpuProgressPlaceholder = null;
       return new Promise((resolve, reject) => {
         let finalReply = "";
@@ -3084,6 +3125,15 @@ self.onmessage = async (e) => {
       return document.getElementById("modelSelection").value;
     }
 
+    function appendWebGPUOptions(modelDropdown) {
+      Object.entries(WEBGPU_MODELS).forEach(([value, config]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = config.label;
+        modelDropdown.appendChild(option);
+      });
+    }
+
     async function fetchModels() {
       const modelDropdown = document.getElementById("modelSelection");
       modelDropdown.innerHTML = "<option>Loading...</option>";
@@ -3096,10 +3146,7 @@ self.onmessage = async (e) => {
 
         // Inject WebGPU option first if enabled
         if (webgpuEnabled) {
-          const opt = document.createElement("option");
-          opt.value = WEBGPU_MODEL_VALUE;
-          opt.textContent = "Qwen3.5:0.8b (WebGPU)";
-          modelDropdown.appendChild(opt);
+          appendWebGPUOptions(modelDropdown);
         }
 
         if (data.models && data.models.length > 0) {
@@ -3115,7 +3162,7 @@ self.onmessage = async (e) => {
 
         const savedModel = localStorage.getItem("defaultModel");
         if (savedModel) {
-          if (savedModel === WEBGPU_MODEL_VALUE && webgpuEnabled) {
+          if (isWebGPUModel(savedModel) && webgpuEnabled) {
             modelDropdown.value = savedModel;
           } else if (data.models && data.models.some(m => m.name === savedModel)) {
             modelDropdown.value = savedModel;
@@ -3129,10 +3176,7 @@ self.onmessage = async (e) => {
         console.error("Error fetching models:", error);
         modelDropdown.innerHTML = "";
         if (webgpuEnabled) {
-          const opt = document.createElement("option");
-          opt.value = WEBGPU_MODEL_VALUE;
-          opt.textContent = "Qwen3.5:0.8b (WebGPU)";
-          modelDropdown.appendChild(opt);
+          appendWebGPUOptions(modelDropdown);
         } else {
           modelDropdown.innerHTML = "<option>Error loading models</option>";
         }
@@ -5389,12 +5433,13 @@ JSON array:` }],
             messages.push({ role: "user", content: combinedPrompt });
           }
 
-          if (modelUsed === WEBGPU_MODEL_VALUE) {
+          if (isWebGPUModel(modelUsed)) {
             // === WEBGPU IN-BROWSER MODEL ===
+            const selectedWebGPUModel = modelUsed;
             const webgpuImage = pendingAttachment?.type === 'image' ? pendingAttachment.content : null;
-            finalReply = await generateWithWebGPU(messages, placeholder, webgpuImage);
+            finalReply = await generateWithWebGPU(selectedWebGPUModel, messages, placeholder, webgpuImage);
             enhanceCodeBlocks(placeholder);
-            modelUsed = "Qwen3.5:0.8b (WebGPU)";
+            modelUsed = WEBGPU_MODELS[selectedWebGPUModel].label;
 
           } else {
             // === AGENT LOOP (highest priority when enabled + Tavily key present + user didn't manually check Tavily) ===
@@ -5790,7 +5835,9 @@ JSON array:` }],
       document.getElementById("suggestedFollowUpsCheckbox").checked = localStorage.getItem("suggestedFollowUps") === "true";
       document.getElementById("autoFactCheckCheckbox").checked = localStorage.getItem("autoFactCheck") !== "false";
       document.getElementById("webgpuEnabledCheckbox").checked = localStorage.getItem("webgpuEnabled") === "true";
-      const webgpuStatus = webgpuReady ? "Ready" : (webgpuLoadingActive ? "Loading\u2026" : "Not loaded");
+      const webgpuStatus = webgpuReady
+        ? `Ready — ${WEBGPU_MODELS[webgpuLoadedModelValue]?.label || "WebGPU"}`
+        : (webgpuLoadingActive ? "Loading\u2026" : "Not loaded");
       document.getElementById("webgpuStatusText").textContent = webgpuStatus;
 
       const perplexityKey = getApiKey("perplexityApiKey");
@@ -6362,6 +6409,10 @@ JSON array:` }],
     // Model selection persistence
     document.getElementById("modelSelection").addEventListener("change", function() {
       localStorage.setItem("defaultModel", this.value);
+      const activeWebGPUModel = webgpuRequestedModelValue || webgpuLoadedModelValue;
+      if (webgpuWorker && this.value !== activeWebGPUModel) {
+        disposeWebGPUWorker("WebGPU model changed");
+      }
       updateWebGPUUIState();
     });
 
