@@ -49,17 +49,6 @@
   <!-- Cross-Origin Isolation service worker — enables SharedArrayBuffer for WebGPU/ONNX Runtime -->
   <script src="https://cdn.jsdelivr.net/npm/coi-serviceworker@0.1.7/coi-serviceworker.min.js"></script>
 
-  <!-- Import map: resolves onnxruntime-web bare specifiers used inside transformers.js.
-       Module workers created by this document inherit this map. -->
-  <script type="importmap">
-  {
-    "imports": {
-      "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.25.0-dev.20260228-6e72d31970/dist/ort.webgpu.bundle.min.mjs",
-      "onnxruntime-web/webgpu": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.25.0-dev.20260228-6e72d31970/dist/ort.webgpu.bundle.min.mjs"
-    }
-  }
-  </script>
-
   <!-- pdf.js for PDF chunking -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <!-- Marked for Markdown parsing -->
@@ -2713,10 +2702,8 @@
       if (webgpuWorker) return;
 
       const workerSrc = `
-// Classic worker — module workers from null-origin (file://) can't do any
-// cross-origin imports. Classic workers allow dynamic import() which follows
-// CORS, and esm.sh pre-resolves all bare specifiers to absolute URLs so
-// there are no bare-specifier errors in the loaded module graph.
+// Classic worker with a dynamic import from Hugging Face's documented browser
+// CDN entry. This build includes ONNX Runtime's WebGPU execution provider.
 const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-ONNX';
 let processor = null;
 let model = null;
@@ -2733,7 +2720,7 @@ self.onmessage = async (e) => {
   if (msg.type === 'load') {
     try {
       if (!lib) {
-        lib = await import('https://esm.sh/@huggingface/transformers@4.0.0-next.5');
+        lib = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0');
       }
       const { AutoProcessor, Qwen3_5ForConditionalGeneration } = lib;
       processor = await AutoProcessor.from_pretrained(MODEL_ID, { progress_callback: progressCallback });
@@ -2861,6 +2848,13 @@ self.onmessage = async (e) => {
 
     async function ensureWebGPUReady(placeholder) {
       if (webgpuReady) return;
+      if (!navigator.gpu) {
+        throw new Error("WebGPU is not exposed by this browser. Open PrivateLLMLens in current Chrome and check chrome://gpu or enable chrome://flags/#enable-unsafe-webgpu.");
+      }
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        throw new Error("The browser exposes WebGPU but could not obtain a GPU adapter. Check chrome://gpu and restart Chrome after enabling WebGPU.");
+      }
       initWebGPUWorker();
       webgpuProgressPlaceholder = placeholder;
       placeholder.innerHTML = `
