@@ -1873,6 +1873,12 @@
         max-width: 140px;
       }
 
+      #modelControls {
+        order: -1;
+        margin-left: 0 !important;
+        flex-shrink: 0;
+      }
+
       #connectionStatus span {
         display: none;
       }
@@ -2081,7 +2087,7 @@
             <input type="checkbox" id="longContextCheckbox">
             <label for="longContextCheckbox" title="Send entire file to Gemini Flash for processing in a single prompt (requires Gemini API key in Settings)">Long Context</label>
           </div>
-          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+          <div id="modelControls" style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
             <button onclick="fetchModels()" class="input-btn" style="padding: 6px 10px;" title="Refresh models">
               <i class="fa-solid fa-rotate"></i>
             </button>
@@ -4843,7 +4849,7 @@ JSON array:` }],
         endForegroundRequest(requestController);
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
-        userInput.focus();
+        focusPromptInputOnDesktop(userInput);
       }
     }
 
@@ -4969,13 +4975,23 @@ JSON array:` }],
         endForegroundRequest(requestController);
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
-        userInput.focus();
+        focusPromptInputOnDesktop(userInput);
       }
     }
 
     // ============================================
     // SEND MESSAGE (WITH STREAMING)
     // ============================================
+    function focusPromptInputOnDesktop(input) {
+      if (window.matchMedia("(pointer: fine)").matches) input.focus();
+    }
+
+    function clearAndResetPromptInput(input) {
+      input.value = "";
+      input.style.height = "auto";
+      input.dispatchEvent(new Event("input"));
+    }
+
     async function sendMessage() {
       const userInput = document.getElementById("userInput");
       let promptText = userInput.value.trim();
@@ -5031,7 +5047,7 @@ JSON array:` }],
       messageHistory.appendChild(userMessage);
 
       // Clear input and disable while processing
-      userInput.value = "";
+      clearAndResetPromptInput(userInput);
       userInput.disabled = true;
       document.getElementById("sendButton").disabled = true;
       
@@ -5588,7 +5604,7 @@ JSON array:` }],
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
         clearPendingAttachment();
-        userInput.focus();
+        focusPromptInputOnDesktop(userInput);
         updateTokenDisplay();
       }
     }
