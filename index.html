@@ -1228,6 +1228,18 @@
       min-width: 180px;
     }
 
+    #chatContextSelection {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      min-width: 112px;
+    }
+
     #attachmentPreview {
       margin-top: 12px;
     }
@@ -1873,6 +1885,11 @@
         max-width: 140px;
       }
 
+      #chatContextSelection {
+        min-width: 104px;
+        max-width: 112px;
+      }
+
       #modelControls {
         order: -1;
         margin-left: 0 !important;
@@ -2093,6 +2110,11 @@
             </button>
             <select id="modelSelection">
               <option>Loading models...</option>
+            </select>
+            <select id="chatContextSelection" title="Ollama context for chat requests" onchange="setModelContext(this.value)">
+              <option value="8192">8K context</option>
+              <option value="16384">16K context</option>
+              <option value="32768">32K context</option>
             </select>
             <div id="paramsPopoverWrapper">
               <button id="paramsBtn" onclick="toggleParamsPopover()" title="Model parameters — only sent to Ollama when changed from defaults (Alt+P)">
@@ -2902,6 +2924,12 @@ self.onmessage = async (e) => {
         paramsBtn.disabled = isWebGPU;
         paramsBtn.style.opacity = isWebGPU ? "0.38" : "";
         paramsBtn.style.pointerEvents = isWebGPU ? "none" : "";
+      }
+
+      const contextSelect = document.getElementById("chatContextSelection");
+      if (contextSelect) {
+        contextSelect.disabled = isWebGPU;
+        contextSelect.style.opacity = isWebGPU ? "0.38" : "";
       }
     }
 
@@ -5748,7 +5776,7 @@ JSON array:` }],
       document.getElementById("textChunkSizeInput").value = localStorage.getItem("textChunkSize") || "10240";
       document.getElementById("pdfPagesPerChunkInput").value = localStorage.getItem("pdfPagesPerChunk") || "3";
       document.getElementById("contextWindowInput").value = localStorage.getItem("contextWindow") || "10";
-      document.getElementById("modelContextSelect").value = localStorage.getItem("modelContext") || "16384";
+      syncModelContextControls();
       document.getElementById("customHostname").value = localStorage.getItem("ollamaEndpoint") || "";
 
       // Agentic function checkboxes
@@ -5800,7 +5828,7 @@ JSON array:` }],
       localStorage.setItem("textChunkSize", document.getElementById("textChunkSizeInput").value);
       localStorage.setItem("pdfPagesPerChunk", document.getElementById("pdfPagesPerChunkInput").value);
       localStorage.setItem("contextWindow", document.getElementById("contextWindowInput").value);
-      localStorage.setItem("modelContext", document.getElementById("modelContextSelect").value);
+      setModelContext(document.getElementById("modelContextSelect").value);
       
       // Agentic function settings
       localStorage.setItem("agentSearch", document.getElementById("agentSearchCheckbox").checked ? "true" : "false");
@@ -6074,9 +6102,26 @@ JSON array:` }],
     // ============================================
     // MODEL PARAMETERS
     // ============================================
+    function normaliseModelContext(value) {
+      const parsed = parseInt(value, 10);
+      return [8192, 16384, 32768].includes(parsed) ? String(parsed) : "16384";
+    }
+
+    function syncModelContextControls() {
+      const value = normaliseModelContext(localStorage.getItem("modelContext"));
+      const quickSelect = document.getElementById("chatContextSelection");
+      const settingsSelect = document.getElementById("modelContextSelect");
+      if (quickSelect) quickSelect.value = value;
+      if (settingsSelect) settingsSelect.value = value;
+    }
+
+    function setModelContext(value) {
+      localStorage.setItem("modelContext", normaliseModelContext(value));
+      syncModelContextControls();
+    }
+
     function getOllamaOptions(purpose = "chat") {
-      const configuredContext = parseInt(localStorage.getItem("modelContext"), 10);
-      const chatContext = [8192, 16384, 32768].includes(configuredContext) ? configuredContext : 16384;
+      const chatContext = parseInt(normaliseModelContext(localStorage.getItem("modelContext")), 10);
       const opts = { num_ctx: purpose === "utility" ? 4096 : chatContext };
       if (currentThreadParams.temperature  !== DEFAULT_PARAMS.temperature)  opts.temperature    = currentThreadParams.temperature;
       if (currentThreadParams.topP         !== DEFAULT_PARAMS.topP)         opts.top_p          = currentThreadParams.topP;
@@ -6407,6 +6452,7 @@ JSON array:` }],
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         updatePwaInstallButton();
+        syncModelContextControls();
         await openDatabase();
         await initializeSecretVault();
 
