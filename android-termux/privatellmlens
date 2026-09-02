@@ -7,6 +7,7 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/privatellmlens"
 STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/privatellmlens"
 PROFILES_FILE="$CONFIG_DIR/profiles.conf"
 PROFILE_FILE="$STATE_DIR/gpu-profile"
+BACKEND_FILE="$STATE_DIR/backend-mode"
 WEB_PORT="${PRIVATE_LLM_LENS_WEB_PORT:-8765}"
 GPU_PORT="${PRIVATE_LLM_LENS_GPU_PORT:-8080}"
 APP_URL="http://127.0.0.1:$WEB_PORT/index.html"
@@ -41,88 +42,93 @@ if [ "${1:-}" = "--stop" ]; then
   stop_pid "PrivateLLMLens web server" "$STATE_DIR/web.pid" "python -m http.server $WEB_PORT"
   stop_pid "llama.cpp GPU server" "$STATE_DIR/llama.pid" "llama-server .*--port $GPU_PORT"
   stop_pid "Ollama" "$STATE_DIR/ollama.pid" '^ollama serve$'
+  termux-wake-unlock >/dev/null 2>&1 || true
   exit 0
 fi
 
-if [ ! -r "$PROFILES_FILE" ]; then
-  echo "Missing $PROFILES_FILE" >&2
-  echo "Copy profiles.example.conf there and set real GGUF paths." >&2
-  exit 1
-fi
-
 if [ "${1:-}" = "--gpu-list" ]; then
+  [ -r "$PROFILES_FILE" ] || { echo "Missing $PROFILES_FILE" >&2; exit 1; }
   sed -n '/^[[:space:]]*#/d;/^[[:space:]]*$/d;s/|.*//p' "$PROFILES_FILE"
   exit 0
 fi
 
+BACKEND="ollama"
+if [ -r "$BACKEND_FILE" ]; then
+  SAVED_BACKEND=$(sed -n '1p' "$BACKEND_FILE")
+  case "$SAVED_BACKEND" in ollama|gpu) BACKEND="$SAVED_BACKEND" ;; esac
+fi
+
 PROFILE="qwen3-4b"
 if [ -r "$PROFILE_FILE" ]; then PROFILE=$(sed -n '1p' "$PROFILE_FILE"); fi
+
 if [ "${1:-}" = "--gpu" ]; then
   [ "$#" -eq 2 ] || { echo "Usage: privatellmlens --gpu PROFILE" >&2; exit 2; }
+  BACKEND="gpu"
   PROFILE="$2"
   printf '%s\n' "$PROFILE" > "$PROFILE_FILE"
+  printf '%s\n' "$BACKEND" > "$BACKEND_FILE"
+elif [ "${1:-}" = "--ollama" ]; then
+  [ "$#" -eq 1 ] || { echo "Usage: privatellmlens --ollama" >&2; exit 2; }
+  BACKEND="ollama"
+  printf '%s\n' "$BACKEND" > "$BACKEND_FILE"
 elif [ "$#" -ne 0 ]; then
-  echo "Usage: privatellmlens [--stop | --gpu-list | --gpu PROFILE]" >&2
+  echo "Usage: privatellmlens [--stop | --ollama | --gpu-list | --gpu PROFILE]" >&2
   exit 2
 fi
 
-PROFILE_LINE=$(awk -F '|' -v profile="$PROFILE" '$1 == profile { print; exit }' "$PROFILES_FILE")
-if [ -z "$PROFILE_LINE" ]; then
-  echo "Unknown GPU profile: $PROFILE" >&2
-  exit 2
-fi
-OLD_IFS="$IFS"
-IFS='|'
-set -- $PROFILE_LINE
-IFS="$OLD_IFS"
-MODEL_PATH="$2"
-MODEL_ALIAS="$3"
-MODEL_CONTEXT="$4"
-KV_TYPE="$5"
+[ -r "$APP_FILE" ] || { echo "PrivateLLMLens was not found at $APP_FILE" >&2; exit 1; }
+termux-wake-lock >/dev/null 2>&1 || true
 
-if [ ! -r "$MODEL_PATH" ]; then
-  echo "Model is not readable: $MODEL_PATH" >&2
-  exit 1
-fi
-if [ ! -r "$APP_FILE" ]; then
-  echo "PrivateLLMLens was not found at $APP_FILE" >&2
-  exit 1
-fi
-
-# A profile change requires only the GPU server to restart.
-RUNNING_ALIAS=""
-if curl -fsS "http://127.0.0.1:$GPU_PORT/v1/models" >/dev/null 2>&1; then
-  RUNNING_ALIAS=$(curl -fsS "http://127.0.0.1:$GPU_PORT/v1/models" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
-fi
-if [ -n "$RUNNING_ALIAS" ] && [ "$RUNNING_ALIAS" != "$MODEL_ALIAS" ]; then
+if [ "$BACKEND" = "ollama" ]; then
   stop_pid "llama.cpp GPU server" "$STATE_DIR/llama.pid" "llama-server .*--port $GPU_PORT"
-fi
+  if ! curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    nohup setsid -f sh -c 'echo "$$" > "$1"; shift; exec "$@"' sh \
+      "$STATE_DIR/ollama.pid" env \
+      OLLAMA_ORIGINS="http://127.0.0.1:$WEB_PORT,http://localhost:$WEB_PORT" \
+      OLLAMA_MAX_LOADED_MODELS="1" OLLAMA_NUM_PARALLEL="1" \
+      ollama serve >"$STATE_DIR/ollama.log" 2>&1
+    ATTEMPT=0
+    while ! curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do
+      ATTEMPT=$((ATTEMPT + 1))
+      [ "$ATTEMPT" -lt 80 ] || { echo "Ollama failed; see $STATE_DIR/ollama.log" >&2; exit 1; }
+      sleep 0.25
+    done
+  fi
+else
+  [ -r "$PROFILES_FILE" ] || { echo "Missing $PROFILES_FILE" >&2; exit 1; }
+  PROFILE_LINE=$(awk -F '|' -v profile="$PROFILE" '$1 == profile { print; exit }' "$PROFILES_FILE")
+  [ -n "$PROFILE_LINE" ] || { echo "Unknown GPU profile: $PROFILE" >&2; exit 2; }
+  OLD_IFS="$IFS"
+  IFS='|'
+  set -- $PROFILE_LINE
+  IFS="$OLD_IFS"
+  MODEL_PATH="$2"
+  MODEL_ALIAS="$3"
+  MODEL_CONTEXT="$4"
+  KV_TYPE="$5"
+  [ -r "$MODEL_PATH" ] || { echo "Model is not readable: $MODEL_PATH" >&2; exit 1; }
 
-if ! curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-  nohup setsid -f sh -c 'echo "$$" > "$1"; shift; exec "$@"' sh \
-    "$STATE_DIR/ollama.pid" env \
-    OLLAMA_ORIGINS="http://127.0.0.1:$WEB_PORT,http://localhost:$WEB_PORT" \
-    ollama serve >"$STATE_DIR/ollama.log" 2>&1
-  ATTEMPT=0
-  while ! curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; do
-    ATTEMPT=$((ATTEMPT + 1))
-    [ "$ATTEMPT" -lt 80 ] || { echo "Ollama failed; see $STATE_DIR/ollama.log" >&2; exit 1; }
-    sleep 0.25
-  done
-fi
-
-if ! curl -fsS "http://127.0.0.1:$GPU_PORT/health" >/dev/null 2>&1; then
-  nohup setsid -f sh -c 'echo "$$" > "$1"; shift; exec "$@"' sh \
-    "$STATE_DIR/llama.pid" llama-gpu server -m "$MODEL_PATH" -ngl 99 \
-    -c "$MODEL_CONTEXT" -ctk "$KV_TYPE" -ctv "$KV_TYPE" --alias "$MODEL_ALIAS" \
-    --host 127.0.0.1 --port "$GPU_PORT" --cors-origins localhost \
-    >"$STATE_DIR/llama.log" 2>&1
-  ATTEMPT=0
-  while ! curl -fsS "http://127.0.0.1:$GPU_PORT/health" >/dev/null 2>&1; do
-    ATTEMPT=$((ATTEMPT + 1))
-    [ "$ATTEMPT" -lt 240 ] || { echo "GPU server failed; see $STATE_DIR/llama.log" >&2; exit 1; }
-    sleep 0.25
-  done
+  stop_pid "Ollama" "$STATE_DIR/ollama.pid" '^ollama serve$'
+  RUNNING_ALIAS=""
+  if curl -fsS "http://127.0.0.1:$GPU_PORT/v1/models" >/dev/null 2>&1; then
+    RUNNING_ALIAS=$(curl -fsS "http://127.0.0.1:$GPU_PORT/v1/models" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+  fi
+  if [ -n "$RUNNING_ALIAS" ] && [ "$RUNNING_ALIAS" != "$MODEL_ALIAS" ]; then
+    stop_pid "llama.cpp GPU server" "$STATE_DIR/llama.pid" "llama-server .*--port $GPU_PORT"
+  fi
+  if ! curl -fsS "http://127.0.0.1:$GPU_PORT/health" >/dev/null 2>&1; then
+    nohup setsid -f sh -c 'echo "$$" > "$1"; shift; exec "$@"' sh \
+      "$STATE_DIR/llama.pid" llama-gpu server -m "$MODEL_PATH" -ngl 99 \
+      -c "$MODEL_CONTEXT" -np 1 -ctk "$KV_TYPE" -ctv "$KV_TYPE" --alias "$MODEL_ALIAS" \
+      --host 127.0.0.1 --port "$GPU_PORT" --cors-origins localhost \
+      >"$STATE_DIR/llama.log" 2>&1
+    ATTEMPT=0
+    while ! curl -fsS "http://127.0.0.1:$GPU_PORT/health" >/dev/null 2>&1; do
+      ATTEMPT=$((ATTEMPT + 1))
+      [ "$ATTEMPT" -lt 240 ] || { echo "GPU server failed; see $STATE_DIR/llama.log" >&2; exit 1; }
+      sleep 0.25
+    done
+  fi
 fi
 
 if ! curl -fsS "$APP_URL" >/dev/null 2>&1; then
@@ -131,5 +137,9 @@ if ! curl -fsS "$APP_URL" >/dev/null 2>&1; then
     --directory "$APP_DIR" >"$STATE_DIR/web.log" 2>&1
 fi
 
-echo "Opening PrivateLLMLens with GPU profile: $PROFILE"
+if [ "$BACKEND" = "gpu" ]; then
+  echo "Opening PrivateLLMLens with backend: gpu ($PROFILE)"
+else
+  echo "Opening PrivateLLMLens with backend: ollama"
+fi
 termux-open-url "$APP_URL"
