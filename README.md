@@ -1,290 +1,154 @@
 # PrivateLLMLens
 
-PrivateLLMLens is a feature-rich, single-file chat interface for local Ollama models. It runs entirely in the browser, works on desktop and Android/Termux, and requires no application backend.
+PrivateLLMLens is a single-file browser interface for local Ollama, llama.cpp and optional in-browser WebGPU models. It works on desktop and Android/Termux without an application backend.
 
 Try the hosted version: **https://jimliddle.github.io/privatellmlens/**
 
-Alternatively, download `index.html` and open it locally. For PWA installation, serve the file from `localhost`, `127.0.0.1`, or HTTPS.
+Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or HTTPS for PWA installation and consistent browser storage.
 
 ## Highlights
 
-- Direct, streaming chat with Ollama models or a local llama.cpp server
-- Multiple conversation threads with editable system prompts
-- Local conversation persistence using IndexedDB
-- Text, PDF, CSV, HTML, Python, JSON, and image attachments
-- Vision-model support through Ollama's `images` API
-- Summarised or raw attachment processing
-- Configurable conversation history
-- Explicit 8K, 16K, and 32K Ollama context profiles
-- 4K contexts for lightweight utility inference
-- Real cancellation of active Ollama requests
-- Local automatic thread titles without an extra inference call
-- Markdown rendering, syntax highlighting, copy controls, regeneration, and branching
-- Thread search, export/import, and PDF export
-- Encrypted persistent memories with separate use/learning controls, relevance limits, deduplication, and manual management
-- Optional Tavily search and agent-style search loops
-- Optional Perplexity search, OpenAI image generation, and Gemini long-context processing
-- Optional Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
-- Optional in-browser WebGPU models (Qwen3.5 0.8B Fast and 2B Quality)
-- Light, dark, and system themes
-- Installable PWA metadata embedded in the single HTML file
+- Streaming Ollama and OpenAI-compatible llama.cpp chat
+- Multiple IndexedDB-backed conversation threads with editable system prompts
+- Encrypted persistent document workspaces for PDF, PPTX, text, CSV, HTML, Python and JSON
+- Direct-context, lexical retrieval and question-directed whole-document analysis
+- Multiple documents per thread, reusable without reattaching or re-extracting
+- Page, slide and line-level citations with an exact source-passage viewer
+- Ollama vision-model image attachments
+- Explicit 8K, 16K and 32K context profiles; 4K utility calls
+- Active request and document-processing cancellation
+- Encrypted persistent memories with separate use and learning controls
+- Optional Tavily search, Deep Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
+- Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
+- Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
+- Markdown, syntax highlighting, regeneration, branching, search, JSON backup and PDF export
+- Embedded PWA manifest and icon
 
-## Why a single HTML file?
+## Single-file design
 
-PrivateLLMLens is deliberately self-contained. The UI, styles, application logic, PWA manifest, and app icon are all embedded in `index.html`.
+The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
 
-There is no PrivateLLMLens server and no account system. Local Ollama requests go directly from the browser to Ollama, while conversation data remains in browser storage. Optional cloud features make requests directly to their respective providers only when enabled.
+Browser dependencies are loaded from CDNs: PDF.js, JSZip (PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU runtime. The first PPTX use therefore needs JSZip to have loaded; normal browser caching can reuse it afterward.
 
-Some third party browser libraries are currently loaded from CDNs, including PDF.js, Marked, DOMPurify, Highlight.js, Font Awesome, and the optional WebGPU runtime.
+## Quick start with Ollama
 
-## Requirements
-
-- A modern Chromium-based browser is recommended
-- Ollama running locally or on a reachable machine
-- At least one Ollama model installed
-- Optional: llama.cpp server on `127.0.0.1:8080` for the Adreno GPU provider
-- Ollama configured to permit requests from the origin used to open PrivateLLMLens
-
-## Quick start
-
-1. Start Ollama.
-2. Install a model if needed:
+1. Start Ollama and install a model:
 
    ```sh
    ollama pull qwen3:4b
+   ollama serve
    ```
 
-3. Open the hosted application or download `index.html`.
-4. Confirm that the connection indicator becomes active.
-5. Select a model below the chat input and start a conversation.
+2. Open the hosted application or serve the downloaded file.
+3. Confirm the header reports **Ollama connected**.
+4. Select a model and start chatting.
 
-PrivateLLMLens reads `/api/tags` to populate Ollama models and sends Ollama chats to `/api/chat`. It also discovers an optional local llama.cpp server through `/v1/models` and translates its OpenAI-compatible chat stream into the same internal format.
+PrivateLLMLens discovers Ollama models through `/api/tags` and sends chat to `/api/chat`. It separately discovers a llama.cpp server through `/v1/models` on port 8080 and translates OpenAI-compatible streaming into the same internal format.
+
+## Document workspaces
+
+Ordinary document attachments are extracted once, encrypted with AES-256-GCM, stored in IndexedDB, and associated with the current thread. A SHA-256 content hash prevents duplicate storage. Branching a conversation copies and re-encrypts its document workspace for the new thread.
+
+Three strategies are available:
+
+- **Automatic** sends documents in full when they fit the selected context. Oversized targeted questions use lexical retrieval; oversized whole-document requests use question-directed map analysis.
+- **Exact / targeted** retrieves the most relevant source passages when the workspace is too large.
+- **Whole-document analysis** examines all document sections against the question before synthesis.
+
+Context budgeting reserves room for the system prompt, memories, conversation and answer. Retrieved passages retain provenance. Citations open the exact decrypted page, slide or line range locally.
+
+Supported local workspace formats:
+
+- PDF, with page references
+- PPTX, including slide text, tables, speaker notes and available image descriptions
+- Text, CSV, HTML, Python and JSON, with line references
+
+Legacy binary `.ppt` is not parsed in-browser; convert it to `.pptx` or PDF. PPTX extraction does not visually interpret undescribed images, diagrams or chart graphics.
+
+Attachments are explicitly marked as untrusted data so their contents cannot override application instructions. Gemini Long Context remains a separate, explicit cloud option and never activates automatically.
 
 ## Android Adreno GPU provider
 
-A reproducible Termux build, configurable launcher, profile template, security notes, and uninstall instructions are available in [`android-termux/`](android-termux/README.md).
+Reproducible Termux build instructions, portable scripts, model profiles and troubleshooting are in [`android-termux/`](android-termux/README.md).
 
-On supported Snapdragon Android devices, PrivateLLMLens can use a llama.cpp server built with the Qualcomm-optimised OpenCL backend. When a server is available at `http://127.0.0.1:8080`, the model selector adds **Qwen3 4B Q4_K_M — Adreno GPU** automatically.
+Tested Galaxy Z Fold 8 results:
 
-The Fold 8 launcher supports four tested, persistent GPU profiles:
+| Profile | Model | Context | Prompt | Generation |
+| --- | --- | ---: | ---: | ---: |
+| `qwen3-4b` | Qwen3 4B Q4_K_M | 32K | 287 tok/s | 19.8 tok/s |
+| `mistral-7b` | Mistral 7B Q4_K_M | 16K | 147 tok/s | 13.2 tok/s |
+| `deepseek-r1-8b` | DeepSeek-R1/Qwen3 8B Q4_K_M | 8K | 141 tok/s | 11.5 tok/s |
+| `gemma4-e4b` | Gemma 4 E4B Q4_0 | 8K | 203 tok/s | 17.7 tok/s |
 
-| Profile | Model | Context | Measured generation |
-| --- | --- | ---: | ---: |
-| `qwen3-4b` | Qwen3 4B Q4_K_M | 32K | 19.8 tok/s |
-| `mistral-7b` | Mistral 7B Q4_K_M | 16K | 13.2 tok/s |
-| `deepseek-r1-8b` | DeepSeek-R1/Qwen3 8B Q4_K_M | 8K | 11.5 tok/s |
-| `gemma4-e4b` | Gemma 4 E4B Q4_0 | 8K | 17.7 tok/s |
-
-List and select profiles with:
+The Android launcher runs one heavyweight inference backend at a time to avoid mobile memory pressure. It also restricts both backends to one model/request slot and holds a Termux wake lock while running.
 
 ```sh
+privatellmlens                    # use the remembered backend
+privatellmlens --gpu qwen3-4b    # switch to GPU and remember it
+privatellmlens --ollama          # switch to Ollama and remember it
 privatellmlens --gpu-list
-privatellmlens --gpu qwen3-4b
-privatellmlens --gpu mistral-7b
-privatellmlens --gpu deepseek-r1-8b
-privatellmlens --gpu gemma4-e4b
+privatellmlens --stop
 ```
 
-The selection is remembered. Switching profiles restarts only the llama.cpp server; Ollama and the PrivateLLMLens web server remain available. Larger models use smaller contexts to preserve Adreno compute-buffer headroom. All profiles use full GPU offload and Q8 KV cache.
-
-The equivalent manual Qwen3 command is:
-
-```sh
-llama-gpu server \
-  -m /path/to/qwen3-4b-q4_k_m.gguf \
-  -ngl 99 -c 32768 -ctk q8_0 -ctv q8_0 \
-  --alias qwen3-4b-gpu \
-  --host 127.0.0.1 --port 8080 \
-  --cors-origins localhost
-```
-
-Binding to loopback and limiting CORS to localhost prevents remote network clients and ordinary external web origins from using the server. PrivateLLMLens supports model discovery, streaming, cancellation, utility calls, Tavily workflows, and agent loops through this provider. Vision attachments require a compatible llama.cpp multimodal model and are not provided by the default Qwen3 4B text configuration.
+The default is Ollama. After switching once, plain `privatellmlens` continues using the remembered backend. Never run a large Ollama model and a large llama.cpp GPU model concurrently on the phone.
 
 ## Ollama origins
 
-The browser origin must be allowed to access Ollama. The broadest configuration is:
+The browser origin must be allowed to access Ollama. A broad personal-machine configuration is:
 
 ```sh
-OLLAMA_ORIGINS="*"
+OLLAMA_ORIGINS="*" ollama serve
 ```
 
-This is convenient for a personal machine but permits any website loaded in the browser to attempt requests to the local Ollama API. Where possible, use a narrower list containing only the origin from which you run PrivateLLMLens.
+This permits any website in the browser to attempt local Ollama requests. Prefer an origin-specific allowlist such as `http://127.0.0.1:8765` where practical, then restart Ollama.
 
-Restart Ollama after changing the environment.
+## Context profiles
 
-### macOS
+- **8K Performance:** lower KV-cache use and faster prompt handling
+- **16K Balanced:** default general-purpose Ollama context
+- **32K Maximum / deep documents:** deeper conversations and document work
+- **4K Utility:** automatically used for small classification, extraction and summarisation calls
 
-For the current login session:
+Conversation History controls stored message count; Model Context controls Ollama `num_ctx`. llama.cpp GPU contexts are fixed by the active server profile.
 
-```sh
-launchctl setenv OLLAMA_ORIGINS "*"
-```
+## Memories
 
-Restart the Ollama application afterward. Use a LaunchAgent if the setting must survive a reboot.
+**Use Memories** is enabled by default. It decrypts and ranks active facts without another inference call, injecting at most 10 memories and approximately 600 tokens. **Learn Memories** is experimental and off by default; it performs idle-time local extraction and is aborted by new foreground work.
 
-### Windows
+Memory records contain an encrypted fact, semantic key and confidence. Exact duplicates are ignored, newer conflicting facts supersede older ones, instruction-like content and likely secrets are rejected, and storage is capped at 200 records. The manager supports manual addition, editing and deletion.
 
-Open **Edit the system environment variables**, select **Environment Variables**, and create a user variable:
+## Search and cloud features
 
-```text
-Name:  OLLAMA_ORIGINS
-Value: *
-```
+- **Web Search:** one explicit Tavily search
+- **Auto-search:** a local decision followed by Tavily when current information appears necessary
+- **Deep Web Research:** an explicit per-request iterative search workflow
+- **Perplexity:** search-grounded cloud answers
+- **OpenAI:** image generation
+- **Gemini:** explicit cloud long-context file processing
 
-Restart Ollama or reboot Windows.
-
-### Android with Termux
-
-Export the variable before starting Ollama:
-
-```sh
-export OLLAMA_ORIGINS="*"
-ollama serve
-```
-
-Add the export to the shell startup file used by Termux if you want it applied automatically.
-
-## Model context profiles
-
-The Processing settings separate two different concepts:
-
-- **Conversation History** controls how many recent messages are considered.
-- **Model Context** controls the `num_ctx` value sent to Ollama.
-
-Available model-context profiles:
-
-| Profile | Context | Intended use |
-| --- | ---: | --- |
-| Performance | 8K | Faster chat and lower KV-cache memory use |
-| Balanced | 16K | Default profile for general use |
-| Maximum / deep documents | 32K | Long conversations and document-heavy work |
-
-KV-cache memory grows roughly in proportion to context size. Relative to 32K, an 8K cache is approximately 25% and a 16K cache approximately 50%, although total RAM use depends heavily on the selected model, architecture, and quantisation.
-
-Small utility calls such as search decisions, attachment routing, clarification, summarisation, memory extraction, follow up generation, and fact checking use a 4K context automatically.
-
-## Attachments
-
-PrivateLLMLens supports:
-
-- Plain text
-- PDF
-- CSV
-- HTML
-- Python
-- JSON
-- Images
-
-Large text and PDF files can be processed in chunks and summarised before the final request. **Don't Summarize** concatenates the extracted content instead, which is useful when exact text, code, or structured data matters.
-
-Images are converted to base64 and passed to compatible Ollama vision models through the `images` field.
-
-Gemini long context processing is optional and sends selected attachment content to Google's API. It is not a local/private operation.
-
-## Web search and cloud features
-
-All cloud integrations are optional:
-
-- **Tavily**: manual search, automatic search decisions, agent loops, and optional fact checking
-- **Perplexity**: search-grounded answers
-- **OpenAI**: image generation
-- **Gemini**: long-context file processing
-
-These features send prompts, search queries, files, or generated content to the selected external provider. Leave a provider's API key unset to keep that integration disabled.
+Provider keys are stored in the WebCrypto vault. Leave a key unset to keep its integration unavailable.
 
 ## Local storage and privacy
 
-PrivateLLMLens currently uses IndexedDB version 5.
+PrivateLLMLens uses IndexedDB version 6 for threads, messages, encrypted memories, the WebCrypto vault, and encrypted document workspaces. Non-sensitive preferences remain in `localStorage`.
 
-IndexedDB stores:
+Provider keys, memories, document filenames and extracted document content use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. CDN dependencies remain part of the trust boundary.
 
-- Threads
-- Messages and attachment data
-- Persistent memories
-- The WebCrypto vault
-
-Non-sensitive preferences—such as theme, selected model, context profile, conversation-history length, endpoint, and feature toggles—are stored in `localStorage`.
-
-### Vault protection
-
-Provider API keys and persistent memory text are encrypted using AES-256-GCM through the WebCrypto API. A non-extractable encryption key is stored in IndexedDB, every encryption uses a fresh random IV, and decrypted values are retained only in runtime memory.
-
-Memory ciphertext is authenticated against a random per-record identifier using AES-GCM additional data. This prevents an encrypted fact from being silently copied into another memory record. Existing plaintext memories are migrated in place during startup and their plaintext fields are removed.
-
-Older plaintext API keys in `localStorage` and plaintext memory records in IndexedDB are automatically migrated into the encrypted vault format and removed.
-
-This improves protection against casual inspection and direct `localStorage` extraction. It does not protect unlocked credentials from malicious JavaScript already executing in the same page. Because the application currently loads some dependencies from CDNs, vendoring and pinning all dependencies locally would provide stronger supply-chain protection.
-
-Browser storage is scoped to the application's origin. Opening the same file through a different hostname, port, protocol, or file path may create a separate storage area.
-
-## Streaming and cancellation
-
-Ollama returns newline-delimited JSON. PrivateLLMLens buffers incomplete network fragments so that JSON records split across network chunks are not lost.
-
-The Cancel control uses `AbortController` to disconnect the active Ollama or llama.cpp request. It covers ordinary chat, regeneration, direct-answer mode, streamed generation, and foreground Ollama preprocessing. Local file-processing loops also observe cancellation.
-
-## Memories and conversation summaries
-
-Memory use and memory learning are separate settings:
-
-- **Use Memories** decrypts and ranks active memories against the current prompt. At most 10 memories and approximately 600 tokens are injected.
-- **Learn Memories** queues extraction for browser idle time. A new foreground prompt aborts extraction so it does not compete with interactive generation.
-
-Learned records include an encrypted fact, semantic conflict key and confidence, plus source-thread and timestamp metadata. Exact duplicates are ignored. A newer fact with the same semantic key supersedes the older record, and storage is capped at 200 records. Instruction-like content and likely secrets are rejected before storage. Injected memories are explicitly labelled as untrusted data.
-
-The memory manager supports manual addition, editing, individual deletion, confidence/source review, and clearing all records. Manual facts receive full confidence. If a WebGPU model is selected, learning uses an available Ollama or llama.cpp utility model; if none is available, extraction is skipped.
-
-This is lightweight lexical relevance rather than an embedding database. Semantic-key quality depends on the extraction model, so users should periodically review learned facts.
-
-When automatic context summarisation is enabled, older messages can be compressed while recent messages remain verbatim. This helps long-running threads stay within the selected model context.
-
-## WebGPU model
-
-PrivateLLMLens can optionally load a small model directly in a compatible browser using WebGPU. Model assets are downloaded and cached by the browser.
-
-The WebGPU path is separate from Ollama and llama.cpp and intentionally disables features that depend on the local-server agent/search workflow. Browser and device support varies. Only the selected browser model is loaded; switching models terminates its worker to release GPU memory.
+Browser storage is origin-scoped. Changing hostname, port, protocol or file origin creates a different storage area. Ordinary JSON export includes threads, messages and portable settings but deliberately excludes API keys, memories and document workspaces.
 
 ## PWA installation
 
-The web-app manifest, app icon, standalone metadata, and install-prompt handling are embedded directly in `index.html`.
-
-Installation requires the application to be opened from:
-
-- HTTPS
-- `http://localhost`
-- `http://127.0.0.1`
-
-Browsers do not permit PWA installation from a raw `file://` URL. On Android, use the install button in the header or the browser's **Add to Home screen** command.
-
-A service worker is not required merely to install the application. Reliable offline caching would require a separately served service-worker script, which cannot be registered from inline or `blob:` JavaScript under current browser security rules.
-
-## Backup and portability
-
-Use **Export** to download threads, messages, and portable settings as JSON. API keys and persistent memories are deliberately excluded. A future password-encrypted memory export should be treated as a separate security feature rather than silently adding decrypted memories to ordinary backups.
-
-Use **Import** to add an exported backup to the current browser database. Browser storage should not be treated as the only backup for important conversations.
-
-## Security notes
-
-- Rendered model Markdown is sanitised with DOMPurify.
-- Search results are constructed with DOM nodes and `textContent` to prevent stored HTML injection.
-- API keys and persistent memory text are encrypted at rest in the browser vault.
-- External provider use is explicit and optional.
-- `OLLAMA_ORIGINS="*"` is convenient but broad; restrict it where practical.
-- CDN-hosted dependencies remain part of the application's trust boundary.
+Install from HTTPS, `http://localhost`, or `http://127.0.0.1`. Browsers do not permit installation from raw `file://` URLs. Use the header install button or the browser's **Add to Home screen** action.
 
 ## Development
 
-The project intentionally has no build step. Edit `index.html`, reload the browser, and test against a running Ollama instance.
-
-A useful syntax check for the main inline JavaScript is:
+There is no build step. Edit `index.html`, reload, and test against a local provider. A basic main-script syntax check is:
 
 ```sh
-sed -n '/^  <script>$/,/^  <\/script>$/p' index.html \
-  | sed '/^  <script>$/d;/^  <\/script>$/d' \
-  | node --check -
+awk '/<script>/{inside=1;next} /<\/script>/{inside=0} inside{print}' index.html > /tmp/privatellmlens.js
+node --check /tmp/privatellmlens.js
 ```
 
 ## License and contributions
 
-Issues, pull requests, suggestions, and stars are welcome. Before submitting security-sensitive changes, consider the single-file deployment model and the fact that PrivateLLMLens runs with access to local conversations and any unlocked provider credentials.
+Issues, pull requests, suggestions and stars are welcome. Security-sensitive changes should account for the single-file deployment model and the page's access to local conversations, documents and unlocked provider credentials.
