@@ -8,7 +8,7 @@ Alternatively, download `index.html` and open it locally. For PWA installation, 
 
 ## Highlights
 
-- Direct, streaming chat with any model exposed by Ollama
+- Direct, streaming chat with Ollama models or a local llama.cpp server
 - Multiple conversation threads with editable system prompts
 - Local conversation persistence using IndexedDB
 - Text, PDF, CSV, HTML, Python, JSON, and image attachments
@@ -24,7 +24,8 @@ Alternatively, download `index.html` and open it locally. For PWA installation, 
 - Optional persistent memories
 - Optional Tavily search and agent-style search loops
 - Optional Perplexity search, OpenAI image generation, and Gemini long-context processing
-- Optional in-browser WebGPU model
+- Optional Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
+- Optional in-browser WebGPU models (Qwen3.5 0.8B Fast and 2B Quality)
 - Light, dark, and system themes
 - Installable PWA metadata embedded in the single HTML file
 
@@ -41,6 +42,7 @@ Some third party browser libraries are currently loaded from CDNs, including PDF
 - A modern Chromium-based browser is recommended
 - Ollama running locally or on a reachable machine
 - At least one Ollama model installed
+- Optional: llama.cpp server on `127.0.0.1:8080` for the Adreno GPU provider
 - Ollama configured to permit requests from the origin used to open PrivateLLMLens
 
 ## Quick start
@@ -56,7 +58,24 @@ Some third party browser libraries are currently loaded from CDNs, including PDF
 4. Confirm that the connection indicator becomes active.
 5. Select a model below the chat input and start a conversation.
 
-PrivateLLMLens reads `/api/tags` to populate the model selector and sends chats to `/api/chat`.
+PrivateLLMLens reads `/api/tags` to populate Ollama models and sends Ollama chats to `/api/chat`. It also discovers an optional local llama.cpp server through `/v1/models` and translates its OpenAI-compatible chat stream into the same internal format.
+
+## Android Adreno GPU provider
+
+On supported Snapdragon Android devices, PrivateLLMLens can use a llama.cpp server built with the Qualcomm-optimised OpenCL backend. When a server is available at `http://127.0.0.1:8080`, the model selector adds **Qwen3 4B Q4_K_M — Adreno GPU** automatically.
+
+The tested Fold 8 configuration uses full GPU offload, a 32K server context, and Q8 KV cache:
+
+```sh
+llama-gpu server \
+  -m /path/to/qwen3-4b-q4_k_m.gguf \
+  -ngl 99 -c 32768 -ctk q8_0 -ctv q8_0 \
+  --alias qwen3-4b-gpu \
+  --host 127.0.0.1 --port 8080 \
+  --cors-origins localhost
+```
+
+Binding to loopback and limiting CORS to localhost prevents remote network clients and ordinary external web origins from using the server. PrivateLLMLens supports model discovery, streaming, cancellation, utility calls, Tavily workflows, and agent loops through this provider. Vision attachments require a compatible llama.cpp multimodal model and are not provided by the default Qwen3 4B text configuration.
 
 ## Ollama origins
 
@@ -177,7 +196,7 @@ Browser storage is scoped to the application's origin. Opening the same file thr
 
 Ollama returns newline-delimited JSON. PrivateLLMLens buffers incomplete network fragments so that JSON records split across network chunks are not lost.
 
-The Cancel control uses `AbortController` to disconnect the active Ollama request. It covers ordinary chat, regeneration, direct-answer mode, streamed generation, and foreground Ollama preprocessing. Local file-processing loops also observe cancellation.
+The Cancel control uses `AbortController` to disconnect the active Ollama or llama.cpp request. It covers ordinary chat, regeneration, direct-answer mode, streamed generation, and foreground Ollama preprocessing. Local file-processing loops also observe cancellation.
 
 ## Memories and conversation summaries
 
@@ -189,7 +208,7 @@ When automatic context summarisation is enabled, older messages can be compresse
 
 PrivateLLMLens can optionally load a small model directly in a compatible browser using WebGPU. Model assets are downloaded and cached by the browser.
 
-The WebGPU path is separate from Ollama and intentionally disables features that depend on the Ollama agent/search workflow. Browser and device support varies.
+The WebGPU path is separate from Ollama and llama.cpp and intentionally disables features that depend on the local-server agent/search workflow. Browser and device support varies. Only the selected browser model is loaded; switching models terminates its worker to release GPU memory.
 
 ## PWA installation
 
