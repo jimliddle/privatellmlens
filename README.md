@@ -205,11 +205,13 @@ IndexedDB stores:
 
 Non-sensitive preferences—such as theme, selected model, context profile, conversation-history length, endpoint, and feature toggles—are stored in `localStorage`.
 
-### API-key protection
+### Vault protection
 
-Provider API keys are encrypted using AES-256-GCM through the WebCrypto API. A non-extractable encryption key is stored in IndexedDB, each encrypted value uses a fresh random IV, and decrypted credentials are retained only in runtime memory.
+Provider API keys and persistent memory text are encrypted using AES-256-GCM through the WebCrypto API. A non-extractable encryption key is stored in IndexedDB, every encryption uses a fresh random IV, and decrypted values are retained only in runtime memory.
 
-Older plaintext API keys in `localStorage` are automatically migrated into the encrypted vault and removed.
+Memory ciphertext is authenticated against a random per-record identifier using AES-GCM additional data. This prevents an encrypted fact from being silently copied into another memory record. Existing plaintext memories are migrated in place during startup and their plaintext fields are removed.
+
+Older plaintext API keys in `localStorage` and plaintext memory records in IndexedDB are automatically migrated into the encrypted vault format and removed.
 
 This improves protection against casual inspection and direct `localStorage` extraction. It does not protect unlocked credentials from malicious JavaScript already executing in the same page. Because the application currently loads some dependencies from CDNs, vendoring and pinning all dependencies locally would provide stronger supply-chain protection.
 
@@ -257,7 +259,7 @@ Use **Import** to add an exported backup to the current browser database. Browse
 
 - Rendered model Markdown is sanitised with DOMPurify.
 - Search results are constructed with DOM nodes and `textContent` to prevent stored HTML injection.
-- API keys are encrypted at rest in the browser vault.
+- API keys and persistent memory text are encrypted at rest in the browser vault.
 - External provider use is explicit and optional.
 - `OLLAMA_ORIGINS="*"` is convenient but broad; restrict it where practical.
 - CDN-hosted dependencies remain part of the application's trust boundary.
