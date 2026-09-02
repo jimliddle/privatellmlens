@@ -62,6 +62,8 @@ PrivateLLMLens reads `/api/tags` to populate Ollama models and sends Ollama chat
 
 ## Android Adreno GPU provider
 
+A reproducible Termux build, configurable launcher, profile template, security notes, and uninstall instructions are available in [`android-termux/`](android-termux/README.md).
+
 On supported Snapdragon Android devices, PrivateLLMLens can use a llama.cpp server built with the Qualcomm-optimised OpenCL backend. When a server is available at `http://127.0.0.1:8080`, the model selector adds **Qwen3 4B Q4_K_M — Adreno GPU** automatically.
 
 The Fold 8 launcher supports four tested, persistent GPU profiles:
