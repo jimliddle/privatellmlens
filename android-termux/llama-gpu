@@ -1,0 +1,25 @@
+#!/data/data/com.termux/files/usr/bin/sh
+set -eu
+
+LLAMA_SOURCE="${LLAMA_CPP_SOURCE_DIR:-${HOME}/src/llama.cpp}"
+LLAMA_BIN_DIR="$LLAMA_SOURCE/build-opencl/bin"
+OPENCL_CACHE="${XDG_CACHE_HOME:-${HOME}/.cache}/llama.cpp/opencl"
+
+export LD_LIBRARY_PATH="$LLAMA_BIN_DIR:/system/lib64:/vendor/lib64"
+export GGML_OPENCL_KERNEL_CACHE_DIR="$OPENCL_CACHE"
+mkdir -p "$OPENCL_CACHE"
+
+case "${1:-}" in
+  cli|server|bench)
+    TOOL="$1"
+    shift
+    exec "$LLAMA_BIN_DIR/llama-$TOOL" "$@"
+    ;;
+  devices)
+    exec "$LLAMA_BIN_DIR/llama-cli" --list-devices
+    ;;
+  *)
+    echo "Usage: llama-gpu {cli|server|bench|devices} [options]" >&2
+    exit 2
+    ;;
+esac
