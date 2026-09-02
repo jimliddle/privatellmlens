@@ -21,7 +21,7 @@ Alternatively, download `index.html` and open it locally. For PWA installation, 
 - Local automatic thread titles without an extra inference call
 - Markdown rendering, syntax highlighting, copy controls, regeneration, and branching
 - Thread search, export/import, and PDF export
-- Optional persistent memories
+- Encrypted persistent memories with separate use/learning controls, relevance limits, deduplication, and manual management
 - Optional Tavily search and agent-style search loops
 - Optional Perplexity search, OpenAI image generation, and Gemini long-context processing
 - Optional Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
@@ -225,7 +225,16 @@ The Cancel control uses `AbortController` to disconnect the active Ollama or lla
 
 ## Memories and conversation summaries
 
-Optional automatic memories extract useful preferences, project facts, and decisions into a dedicated IndexedDB store. Memories can be reviewed and deleted in Settings.
+Memory use and memory learning are separate settings:
+
+- **Use Memories** decrypts and ranks active memories against the current prompt. At most 10 memories and approximately 600 tokens are injected.
+- **Learn Memories** queues extraction for browser idle time. A new foreground prompt aborts extraction so it does not compete with interactive generation.
+
+Learned records include an encrypted fact, semantic conflict key and confidence, plus source-thread and timestamp metadata. Exact duplicates are ignored. A newer fact with the same semantic key supersedes the older record, and storage is capped at 200 records. Instruction-like content and likely secrets are rejected before storage. Injected memories are explicitly labelled as untrusted data.
+
+The memory manager supports manual addition, editing, individual deletion, confidence/source review, and clearing all records. Manual facts receive full confidence. If a WebGPU model is selected, learning uses an available Ollama or llama.cpp utility model; if none is available, extraction is skipped.
+
+This is lightweight lexical relevance rather than an embedding database. Semantic-key quality depends on the extraction model, so users should periodically review learned facts.
 
 When automatic context summarisation is enabled, older messages can be compressed while recent messages remain verbatim. This helps long-running threads stay within the selected model context.
 
@@ -251,7 +260,7 @@ A service worker is not required merely to install the application. Reliable off
 
 ## Backup and portability
 
-Use **Export** to download threads, messages, and portable settings as JSON. API keys are deliberately excluded.
+Use **Export** to download threads, messages, and portable settings as JSON. API keys and persistent memories are deliberately excluded. A future password-encrypted memory export should be treated as a separate security feature rather than silently adding decrypted memories to ordinary backups.
 
 Use **Import** to add an exported backup to the current browser database. Browser storage should not be treated as the only backup for important conversations.
 
