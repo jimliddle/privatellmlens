@@ -2473,6 +2473,10 @@
     const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
     let OLLAMA_ENDPOINT = "http://localhost:11434/api/chat";
     let OLLAMA_TAGS = "http://localhost:11434/api/tags";
+    const LLAMA_CPP_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions";
+    const LLAMA_CPP_MODELS = "http://127.0.0.1:8080/v1/models";
+    const LLAMA_CPP_MODEL_VALUE = "__llamacpp_qwen3_4b_gpu__";
+    const LLAMA_CPP_MODEL_LABEL = "Qwen3 4B Q4_K_M — Adreno GPU";
     let activeRequestController = null;
     let deferredInstallPrompt = null;
 
@@ -2517,12 +2521,49 @@
     // Wrapper for all Ollama chat API calls.
     // We do not send think:false — compatibility varies widely across models and
     // Ollama versions. stripThinkTags() handles cleanup universally instead.
-    function fetchOllamaChat(options = {}) {
+    function isLlamaCppModel(value) {
+      return value === LLAMA_CPP_MODEL_VALUE;
+    }
+
+    async function fetchOllamaChat(options = {}) {
       const requestOptions = { ...options };
       if (!requestOptions.signal && activeRequestController) {
         requestOptions.signal = activeRequestController.signal;
       }
-      return fetch(OLLAMA_ENDPOINT, requestOptions);
+      let requestBody = null;
+      try {
+        requestBody = typeof requestOptions.body === "string" ? JSON.parse(requestOptions.body) : null;
+      } catch (_) {}
+
+      if (!isLlamaCppModel(requestBody?.model)) {
+        return fetch(OLLAMA_ENDPOINT, requestOptions);
+      }
+
+      const ollamaOptions = requestBody.options || {};
+      const llamaBody = {
+        model: "qwen3-4b-gpu",
+        messages: requestBody.messages || [],
+        stream: requestBody.stream === true
+      };
+      if (ollamaOptions.temperature !== undefined) llamaBody.temperature = ollamaOptions.temperature;
+      if (ollamaOptions.top_p !== undefined) llamaBody.top_p = ollamaOptions.top_p;
+      if (ollamaOptions.seed !== undefined) llamaBody.seed = ollamaOptions.seed;
+      if (ollamaOptions.num_predict !== undefined) llamaBody.max_tokens = ollamaOptions.num_predict;
+
+      const response = await fetch(LLAMA_CPP_ENDPOINT, {
+        ...requestOptions,
+        body: JSON.stringify(llamaBody)
+      });
+      response.privateLLMLensStreamFormat = llamaBody.stream ? "openai-sse" : "openai-json";
+
+      if (!llamaBody.stream && response.ok) {
+        const data = await response.json();
+        return new Response(JSON.stringify({
+          message: { content: data.choices?.[0]?.message?.content || "" },
+          done: true
+        }), { status: response.status, headers: { "Content-Type": "application/json" } });
+      }
+      return response;
     }
 
     function showForegroundCancel(label = "Generating response…") {
@@ -2563,10 +2604,22 @@
       const decoder = new TextDecoder();
       let buffer = "";
 
+      const isOpenAIStream = response.privateLLMLensStreamFormat === "openai-sse";
       const consumeLine = (line) => {
         const trimmed = line.trim();
         if (!trimmed) return false;
-        const message = JSON.parse(trimmed);
+        if (isOpenAIStream && trimmed === "data: [DONE]") {
+          onMessage({ done: true });
+          return true;
+        }
+        const payload = isOpenAIStream && trimmed.startsWith("data:")
+          ? trimmed.slice(5).trim()
+          : trimmed;
+        if (isOpenAIStream && !trimmed.startsWith("data:")) return false;
+        const parsed = JSON.parse(payload);
+        const message = isOpenAIStream
+          ? { message: { content: parsed.choices?.[0]?.delta?.content || "" }, done: false }
+          : parsed;
         onMessage(message);
         return message.done === true;
       };
@@ -3138,50 +3191,47 @@ self.onmessage = async (e) => {
       const modelDropdown = document.getElementById("modelSelection");
       modelDropdown.innerHTML = "<option>Loading...</option>";
       const webgpuEnabled = localStorage.getItem("webgpuEnabled") === "true";
+      const [ollamaResult, llamaResult] = await Promise.allSettled([
+        fetchWithRetry(OLLAMA_TAGS).then(async response => {
+          if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
+          return response.json();
+        }),
+        fetch(LLAMA_CPP_MODELS).then(async response => {
+          if (!response.ok) throw new Error(`llama-server returned ${response.status}`);
+          return response.json();
+        })
+      ]);
 
-      try {
-        const response = await fetchWithRetry(OLLAMA_TAGS);
-        const data = await response.json();
-        modelDropdown.innerHTML = "";
-
-        // Inject WebGPU option first if enabled
-        if (webgpuEnabled) {
-          appendWebGPUOptions(modelDropdown);
-        }
-
-        if (data.models && data.models.length > 0) {
-          data.models.forEach(model => {
-            const option = document.createElement("option");
-            option.value = model.name;
-            option.textContent = model.name;
-            modelDropdown.appendChild(option);
-          });
-        } else if (!webgpuEnabled) {
-          modelDropdown.innerHTML = "<option>No models found</option>";
-        }
-
-        const savedModel = localStorage.getItem("defaultModel");
-        if (savedModel) {
-          if (isWebGPUModel(savedModel) && webgpuEnabled) {
-            modelDropdown.value = savedModel;
-          } else if (data.models && data.models.some(m => m.name === savedModel)) {
-            modelDropdown.value = savedModel;
-          }
-        }
-        if (!modelDropdown.value && modelDropdown.options.length > 0) {
-          modelDropdown.selectedIndex = 0;
-        }
-        updateWebGPUUIState();
-      } catch (error) {
-        console.error("Error fetching models:", error);
-        modelDropdown.innerHTML = "";
-        if (webgpuEnabled) {
-          appendWebGPUOptions(modelDropdown);
-        } else {
-          modelDropdown.innerHTML = "<option>Error loading models</option>";
-        }
-        updateWebGPUUIState();
+      modelDropdown.innerHTML = "";
+      if (llamaResult.status === "fulfilled") {
+        const option = document.createElement("option");
+        option.value = LLAMA_CPP_MODEL_VALUE;
+        option.textContent = LLAMA_CPP_MODEL_LABEL;
+        modelDropdown.appendChild(option);
       }
+      if (webgpuEnabled) appendWebGPUOptions(modelDropdown);
+
+      const ollamaModels = ollamaResult.status === "fulfilled" && Array.isArray(ollamaResult.value.models)
+        ? ollamaResult.value.models
+        : [];
+      ollamaModels.forEach(model => {
+        const option = document.createElement("option");
+        option.value = model.name;
+        option.textContent = `${model.name} — Ollama`;
+        modelDropdown.appendChild(option);
+      });
+
+      const savedModel = localStorage.getItem("defaultModel");
+      const savedIsAvailable = Array.from(modelDropdown.options).some(option => option.value === savedModel);
+      if (savedIsAvailable) modelDropdown.value = savedModel;
+      if (!modelDropdown.options.length) {
+        modelDropdown.innerHTML = "<option>No local models available</option>";
+      } else if (!modelDropdown.value) {
+        modelDropdown.selectedIndex = 0;
+      }
+      if (ollamaResult.status === "rejected") console.warn("Ollama model discovery failed:", ollamaResult.reason);
+      if (llamaResult.status === "rejected") console.warn("llama-server discovery failed:", llamaResult.reason);
+      updateWebGPUUIState();
     }
 
     // ============================================
@@ -5624,6 +5674,7 @@ JSON array:` }],
         
         // Add response time and search badge
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const responseModelLabel = isLlamaCppModel(modelUsed) ? LLAMA_CPP_MODEL_LABEL : modelUsed;
         const timeDiv = document.createElement("div");
         timeDiv.className = "response-time";
         
@@ -5637,7 +5688,7 @@ JSON array:` }],
         }
         
         const timeText = document.createElement("span");
-        timeText.textContent = `${modelUsed} • ${elapsed}s`;
+        timeText.textContent = `${responseModelLabel} • ${elapsed}s`;
         timeDiv.appendChild(timeText);
         
         placeholder.appendChild(timeDiv);
@@ -5648,7 +5699,7 @@ JSON array:` }],
             role: "assistant",
             text: stripThinkTags(finalReply),
             type: "text",
-            responseTime: `${modelUsed} • ${elapsed}s`,
+            responseTime: `${responseModelLabel} • ${elapsed}s`,
             citations: allCitations,
             searchGrounded: usedTavilySearch,
             timestamp: Date.now()
