@@ -4695,18 +4695,103 @@ You may search up to 3 times. When you have enough information, write your final
     // ============================================
     // MEMORY STORE HELPERS
     // ============================================
-    async function loadAllMemories() {
+    function memoryAdditionalData(cryptoId) {
+      return new TextEncoder().encode(`PrivateLLMLens:memory:v1:${cryptoId}`);
+    }
+
+    function readMemoryRecords() {
       if (!db) return [];
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const memories = [];
         const tx = db.transaction(["memories"], "readonly");
         const store = tx.objectStore("memories");
-        store.openCursor().onsuccess = (e) => {
+        const request = store.openCursor();
+        request.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) { memories.push(cursor.value); cursor.continue(); }
           else resolve(memories);
         };
+        request.onerror = () => reject(request.error);
       });
+    }
+
+    async function encryptMemoryFact(fact, cryptoId = crypto.randomUUID()) {
+      if (!vaultKey) throw new Error("Memory vault is not initialized");
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv, additionalData: memoryAdditionalData(cryptoId) },
+        vaultKey,
+        new TextEncoder().encode(fact)
+      );
+      return {
+        cryptoId,
+        version: 1,
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(new Uint8Array(ciphertext))
+      };
+    }
+
+    async function decryptMemoryFact(record) {
+      // Plaintext exists only during migration from pre-encryption versions.
+      if (typeof record.fact === "string") return record.fact;
+      if (record.version !== 1 || !record.cryptoId || !record.iv || !record.ciphertext) {
+        throw new Error("Unsupported encrypted memory record");
+      }
+      const plaintext = await crypto.subtle.decrypt(
+        {
+          name: "AES-GCM",
+          iv: base64ToBytes(record.iv),
+          additionalData: memoryAdditionalData(record.cryptoId)
+        },
+        vaultKey,
+        base64ToBytes(record.ciphertext)
+      );
+      return new TextDecoder().decode(plaintext);
+    }
+
+    function putMemoryRecord(record) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(["memories"], "readwrite");
+        const request = tx.objectStore("memories").put(record);
+        tx.oncomplete = () => resolve(request.result);
+        tx.onerror = () => reject(tx.error || request.error);
+        tx.onabort = () => reject(tx.error || new Error("Memory write was aborted"));
+      });
+    }
+
+    async function saveEncryptedMemory(fact, timestamp = Date.now()) {
+      const encrypted = await encryptMemoryFact(fact);
+      return putMemoryRecord({ ...encrypted, timestamp });
+    }
+
+    async function migratePlaintextMemories() {
+      const records = await readMemoryRecords();
+      const plaintextRecords = records.filter(record => typeof record.fact === "string");
+      for (const record of plaintextRecords) {
+        const fact = record.fact.trim();
+        if (!fact) continue;
+        const encrypted = await encryptMemoryFact(fact, record.cryptoId || crypto.randomUUID());
+        const migrated = { ...record, ...encrypted };
+        delete migrated.fact;
+        await putMemoryRecord(migrated);
+      }
+      if (plaintextRecords.length) {
+        console.info(`Encrypted ${plaintextRecords.length} legacy memor${plaintextRecords.length === 1 ? "y" : "ies"}.`);
+      }
+    }
+
+    async function loadAllMemories() {
+      if (!db || !vaultKey) return [];
+      const records = await readMemoryRecords();
+      const decrypted = await Promise.all(records.map(async record => {
+        try {
+          return { ...record, fact: await decryptMemoryFact(record) };
+        } catch (error) {
+          console.error(`Could not decrypt memory ${record.id}:`, error);
+          return null;
+        }
+      }));
+      return decrypted.filter(Boolean);
     }
 
     async function extractAndSaveMemories(userMsg, assistantMsg, modelName) {
@@ -4730,9 +4815,11 @@ Reply with ONLY the JSON array.`;
         if (!match) return;
         const memories = JSON.parse(match[0]);
         if (!Array.isArray(memories) || !memories.length) return;
-        const tx = db.transaction(["memories"], "readwrite");
-        const store = tx.objectStore("memories");
-        memories.forEach(m => { if (typeof m === "string" && m.trim()) store.add({ fact: m.trim(), timestamp: Date.now() }); });
+        const validMemories = memories
+          .filter(m => typeof m === "string" && m.trim())
+          .slice(0, 5)
+          .map(m => m.trim());
+        await Promise.all(validMemories.map(memory => saveEncryptedMemory(memory)));
       } catch (err) { console.error("Memory extraction error:", err); }
     }
 
@@ -6595,6 +6682,7 @@ JSON array:` }],
         syncModelContextControls();
         await openDatabase();
         await initializeSecretVault();
+        await migratePlaintextMemories();
 
         // Apply saved endpoint
         const savedEndpoint = localStorage.getItem("ollamaEndpoint");
@@ -6661,6 +6749,8 @@ JSON array:` }],
 
     // Cleanup on page unload
     window.addEventListener("beforeunload", () => {
+      vaultKey = null;
+      Object.keys(apiKeyCache).forEach(name => delete apiKeyCache[name]);
       if (connectionCheckInterval) {
         clearInterval(connectionCheckInterval);
       }
