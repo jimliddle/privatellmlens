@@ -2475,8 +2475,20 @@
     let OLLAMA_TAGS = "http://localhost:11434/api/tags";
     const LLAMA_CPP_ENDPOINT = "http://127.0.0.1:8080/v1/chat/completions";
     const LLAMA_CPP_MODELS = "http://127.0.0.1:8080/v1/models";
-    const LLAMA_CPP_MODEL_VALUE = "__llamacpp_qwen3_4b_gpu__";
-    const LLAMA_CPP_MODEL_LABEL = "Qwen3 4B Q4_K_M — Adreno GPU";
+    const LLAMA_CPP_MODEL_PREFIX = "__llamacpp__:";
+    const LLAMA_CPP_LEGACY_VALUE = "__llamacpp_qwen3_4b_gpu__";
+    const LLAMA_CPP_MODEL_LABELS = {
+      "qwen3-4b-gpu": "Qwen3 4B Q4_K_M — Adreno GPU (32K)",
+      "mistral-7b-gpu": "Mistral 7B Q4_K_M — Adreno GPU (16K)",
+      "deepseek-r1-8b-gpu": "DeepSeek-R1 Qwen3 8B Q4_K_M — Adreno GPU (8K)",
+      "gemma4-e4b-gpu": "Gemma 4 E4B Q4_0 — Adreno GPU (8K, text)"
+    };
+    const LLAMA_CPP_CONTEXTS = {
+      "qwen3-4b-gpu": "32768",
+      "mistral-7b-gpu": "16384",
+      "deepseek-r1-8b-gpu": "8192",
+      "gemma4-e4b-gpu": "8192"
+    };
     let activeRequestController = null;
     let deferredInstallPrompt = null;
 
@@ -2522,7 +2534,19 @@
     // We do not send think:false — compatibility varies widely across models and
     // Ollama versions. stripThinkTags() handles cleanup universally instead.
     function isLlamaCppModel(value) {
-      return value === LLAMA_CPP_MODEL_VALUE;
+      return value === LLAMA_CPP_LEGACY_VALUE || value?.startsWith(LLAMA_CPP_MODEL_PREFIX);
+    }
+
+    function getLlamaCppModelId(value) {
+      if (value === LLAMA_CPP_LEGACY_VALUE) return "qwen3-4b-gpu";
+      return value?.startsWith(LLAMA_CPP_MODEL_PREFIX)
+        ? value.slice(LLAMA_CPP_MODEL_PREFIX.length)
+        : "";
+    }
+
+    function getLlamaCppModelLabel(value) {
+      const modelId = getLlamaCppModelId(value);
+      return LLAMA_CPP_MODEL_LABELS[modelId] || `${modelId || "llama.cpp"} — Adreno GPU`;
     }
 
     async function fetchOllamaChat(options = {}) {
@@ -2541,7 +2565,7 @@
 
       const ollamaOptions = requestBody.options || {};
       const llamaBody = {
-        model: "qwen3-4b-gpu",
+        model: getLlamaCppModelId(requestBody.model),
         messages: requestBody.messages || [],
         stream: requestBody.stream === true
       };
@@ -3022,8 +3046,17 @@ self.onmessage = async (e) => {
 
       const contextSelect = document.getElementById("chatContextSelection");
       if (contextSelect) {
-        contextSelect.disabled = isWebGPU;
-        contextSelect.style.opacity = isWebGPU ? "0.38" : "";
+        const selectedModel = getModelSelection();
+        const isLlamaCpp = isLlamaCppModel(selectedModel);
+        if (isLlamaCpp) {
+          contextSelect.value = LLAMA_CPP_CONTEXTS[getLlamaCppModelId(selectedModel)] || "8192";
+          contextSelect.title = "Context is fixed by the active Adreno GPU server profile";
+        } else if (!isWebGPU) {
+          contextSelect.value = localStorage.getItem("modelContext") || "16384";
+          contextSelect.title = "Ollama context for chat requests";
+        }
+        contextSelect.disabled = isWebGPU || isLlamaCpp;
+        contextSelect.style.opacity = (isWebGPU || isLlamaCpp) ? "0.38" : "";
       }
     }
 
@@ -3204,10 +3237,15 @@ self.onmessage = async (e) => {
 
       modelDropdown.innerHTML = "";
       if (llamaResult.status === "fulfilled") {
-        const option = document.createElement("option");
-        option.value = LLAMA_CPP_MODEL_VALUE;
-        option.textContent = LLAMA_CPP_MODEL_LABEL;
-        modelDropdown.appendChild(option);
+        const llamaModels = llamaResult.value.data || llamaResult.value.models || [];
+        llamaModels.forEach(model => {
+          const modelId = model.id || model.model || model.name;
+          if (!modelId) return;
+          const option = document.createElement("option");
+          option.value = LLAMA_CPP_MODEL_PREFIX + modelId;
+          option.textContent = LLAMA_CPP_MODEL_LABELS[modelId] || `${modelId} — Adreno GPU`;
+          modelDropdown.appendChild(option);
+        });
       }
       if (webgpuEnabled) appendWebGPUOptions(modelDropdown);
 
@@ -5674,7 +5712,7 @@ JSON array:` }],
         
         // Add response time and search badge
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const responseModelLabel = isLlamaCppModel(modelUsed) ? LLAMA_CPP_MODEL_LABEL : modelUsed;
+        const responseModelLabel = isLlamaCppModel(modelUsed) ? getLlamaCppModelLabel(modelUsed) : modelUsed;
         const timeDiv = document.createElement("div");
         timeDiv.className = "response-time";
         
