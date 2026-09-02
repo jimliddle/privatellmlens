@@ -64,7 +64,28 @@ PrivateLLMLens reads `/api/tags` to populate Ollama models and sends Ollama chat
 
 On supported Snapdragon Android devices, PrivateLLMLens can use a llama.cpp server built with the Qualcomm-optimised OpenCL backend. When a server is available at `http://127.0.0.1:8080`, the model selector adds **Qwen3 4B Q4_K_M — Adreno GPU** automatically.
 
-The tested Fold 8 configuration uses full GPU offload, a 32K server context, and Q8 KV cache:
+The Fold 8 launcher supports four tested, persistent GPU profiles:
+
+| Profile | Model | Context | Measured generation |
+| --- | --- | ---: | ---: |
+| `qwen3-4b` | Qwen3 4B Q4_K_M | 32K | 19.8 tok/s |
+| `mistral-7b` | Mistral 7B Q4_K_M | 16K | 13.2 tok/s |
+| `deepseek-r1-8b` | DeepSeek-R1/Qwen3 8B Q4_K_M | 8K | 11.5 tok/s |
+| `gemma4-e4b` | Gemma 4 E4B Q4_0 | 8K | 17.7 tok/s |
+
+List and select profiles with:
+
+```sh
+privatellmlens --gpu-list
+privatellmlens --gpu qwen3-4b
+privatellmlens --gpu mistral-7b
+privatellmlens --gpu deepseek-r1-8b
+privatellmlens --gpu gemma4-e4b
+```
+
+The selection is remembered. Switching profiles restarts only the llama.cpp server; Ollama and the PrivateLLMLens web server remain available. Larger models use smaller contexts to preserve Adreno compute-buffer headroom. All profiles use full GPU offload and Q8 KV cache.
+
+The equivalent manual Qwen3 command is:
 
 ```sh
 llama-gpu server \
