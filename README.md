@@ -123,7 +123,7 @@ Memory records contain an encrypted fact, semantic key and confidence. Exact dup
 
 - **Web Search:** one explicit Tavily search
 - **Auto-search:** a conservative hybrid router uses deterministic rules first, then a strict low-temperature JSON decision for ambiguous requests; uncertain decisions remain local
-- **Deep Web Research:** an explicit per-request iterative search workflow
+- **Deep Web Research:** an explicit structured search/answer loop with up to three distinct Tavily searches, URL deduplication, global citation numbering and guaranteed final synthesis
 - **Perplexity:** search-grounded cloud answers
 - **OpenAI:** image generation
 - **Gemini:** explicit cloud long-context file processing
