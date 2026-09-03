@@ -10,7 +10,7 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 
 - Streaming Ollama and OpenAI-compatible llama.cpp chat
 - Multiple IndexedDB-backed conversation threads with editable system prompts
-- Encrypted persistent document workspaces for PDF, PPTX, text, CSV, HTML, Python and JSON
+- Encrypted persistent document workspaces for PDF, DOCX, PPTX, text, CSV, HTML, Python and JSON
 - Direct-context, lexical retrieval and question-directed whole-document analysis
 - Multiple documents per thread, reusable without reattaching or re-extracting
 - Page, slide and line-level citations with an exact source-passage viewer
@@ -21,14 +21,15 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Optional Tavily search, Deep Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
 - Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
 - Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
-- Markdown, syntax highlighting, regeneration, branching, search, JSON backup and PDF export
+- Markdown, syntax highlighting, one-tap response copying, regeneration, branching, search, JSON backup and PDF export
+- Responsive compact composer with Automatic, Compact and Desktop layout modes
 - Embedded PWA manifest and icon
 
 ## Single-file design
 
 The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
 
-Browser dependencies are loaded from CDNs: PDF.js, JSZip (PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU runtime. The first PPTX use therefore needs JSZip to have loaded; normal browser caching can reuse it afterward.
+Browser dependencies are loaded from CDNs: PDF.js, JSZip (DOCX/PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU runtime. The first DOCX or PPTX use therefore needs JSZip to have loaded; normal browser caching can reuse it afterward.
 
 ## Quick start with Ollama
 
@@ -60,10 +61,11 @@ Context budgeting reserves room for the system prompt, memories, conversation an
 Supported local workspace formats:
 
 - PDF, with page references
+- DOCX, including ordered paragraphs, headings, lists, tables, headers, footers, footnotes, endnotes and explicit page-break markers
 - PPTX, including slide text, tables, speaker notes and available image descriptions
 - Text, CSV, HTML, Python and JSON, with line references
 
-Legacy binary `.ppt` is not parsed in-browser; convert it to `.pptx` or PDF. PPTX extraction does not visually interpret undescribed images, diagrams or chart graphics.
+Legacy binary `.doc` and `.ppt` files are not parsed in-browser; convert them to DOCX, PPTX or PDF. DOCX extraction does not OCR image-only documents, and PPTX extraction does not visually interpret undescribed images, diagrams or chart graphics.
 
 Attachments are explicitly marked as untrusted data so their contents cannot override application instructions. Gemini Long Context remains a separate, explicit cloud option and never activates automatically.
 
@@ -120,7 +122,7 @@ Memory records contain an encrypted fact, semantic key and confidence. Exact dup
 ## Search and cloud features
 
 - **Web Search:** one explicit Tavily search
-- **Auto-search:** a local decision followed by Tavily when current information appears necessary
+- **Auto-search:** a conservative hybrid router uses deterministic rules first, then a strict low-temperature JSON decision for ambiguous requests; uncertain decisions remain local
 - **Deep Web Research:** an explicit per-request iterative search workflow
 - **Perplexity:** search-grounded cloud answers
 - **OpenAI:** image generation
@@ -139,6 +141,8 @@ Browser storage is origin-scoped. Changing hostname, port, protocol or file orig
 ## PWA installation
 
 Install from HTTPS, `http://localhost`, or `http://127.0.0.1`. Browsers do not permit installation from raw `file://` URLs. Use the header install button or the browser's **Add to Home screen** action.
+
+On touch devices, the compact composer exposes Tools and Model as stable bottom sheets and keeps response-copy controls visible. The header layout button switches directly between Compact and Desktop; **Settings → Appearance → Layout** also offers Automatic mode, which follows screen size and pointer capability.
 
 ## Development
 
