@@ -51,7 +51,7 @@
 
   <!-- pdf.js for PDF chunking -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <!-- JSZip for local PPTX/Open XML extraction -->
+  <!-- JSZip for local DOCX/PPTX Open XML extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Marked for Markdown parsing -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -965,6 +965,17 @@
       font-size: 10px;
     }
 
+    .search-routing-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
     .citations {
       font-size: 12px;
       color: var(--text-secondary);
@@ -1215,6 +1226,18 @@
       gap: 16px;
       margin-top: 12px;
       align-items: center;
+    }
+
+    .mobile-composer-btn,
+    .mobile-sheet-action,
+    #mobileActiveChips,
+    #mobileSheetBackdrop,
+    .mobile-sheet-header {
+      display: none;
+    }
+
+    .mobile-sheet {
+      display: contents;
     }
 
     .option-group {
@@ -1826,6 +1849,12 @@
       }
     }
 
+    body.layout-desktop #sidebarToggleBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     #inputCollapseBtn {
       display: block;
       width: 100%;
@@ -1904,9 +1933,13 @@
     }
 
     /* Mobile Responsive */
-    @media (max-width: 768px) {
+    @media (max-width: 768px), (max-width: 1100px) and (pointer: coarse) {
       #menuToggle {
         display: flex;
+      }
+
+      #sidebarToggleBtn {
+        display: none !important;
       }
 
       #sidebar {
@@ -1938,44 +1971,203 @@
         max-width: 95%;
       }
 
+      .assistant-message > .msg-actions:not(.bottom) {
+        opacity: 1;
+      }
+
+      .assistant-message {
+        padding-top: 38px;
+      }
+
       #inputSection {
-        padding: 10px 12px;
-        padding-bottom: max(10px, env(safe-area-inset-bottom));
+        flex-shrink: 0;
+        padding: 8px 10px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
       }
 
       #optionsRow {
-        flex-wrap: nowrap;
+        display: block;
+        margin-top: 0;
+      }
+
+      body.input-collapsed #optionsRow {
+        display: block;
+      }
+
+      #inputCollapseBtn,
+      #tokenDisplay {
+        display: none !important;
+      }
+
+      #mobileActiveChips {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        max-height: 30px;
+        margin-bottom: 6px;
         overflow-x: auto;
-        gap: 12px;
-        padding-bottom: 2px;
-        -webkit-overflow-scrolling: touch;
+        overflow-y: hidden;
+        white-space: nowrap;
         scrollbar-width: none;
       }
 
-      #optionsRow::-webkit-scrollbar {
+      #mobileActiveChips::-webkit-scrollbar {
         display: none;
       }
 
-      .option-group {
-        font-size: 12px;
-        white-space: nowrap;
+      .mobile-chip {
         flex-shrink: 0;
+        padding: 4px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        font-size: 10px;
+        line-height: 16px;
       }
 
-      #modelSelection {
-        min-width: 120px;
-        max-width: 140px;
+      .mobile-chip.active-tool {
+        border-color: var(--primary);
+        color: var(--primary);
       }
 
-      #chatContextSelection {
-        min-width: 104px;
-        max-width: 112px;
+      #mobileSheetBackdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 430;
+        background: rgba(15, 23, 42, 0.48);
       }
 
-      #modelControls {
+      #mobileSheetBackdrop.active {
+        display: block;
+      }
+
+      .mobile-sheet {
+        display: none;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 440;
+        max-height: min(72dvh, 620px);
+        overflow-y: auto;
+        padding: 12px 14px max(16px, env(safe-area-inset-bottom));
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border);
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -16px 40px rgba(15, 23, 42, 0.2);
+      }
+
+      .mobile-sheet.active {
+        display: grid;
+        gap: 2px;
+      }
+
+      .mobile-sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 2px 10px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .mobile-sheet-header button {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+      }
+
+      .mobile-sheet .option-group {
+        min-height: 46px;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 4px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+
+      .mobile-sheet-action {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        padding: 9px 4px;
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-primary);
+        font: inherit;
+        text-align: left;
+      }
+
+      .mobile-sheet .option-group label {
+        flex: 1;
         order: -1;
+      }
+
+      .mobile-sheet .option-group select {
+        max-width: 58%;
+      }
+
+      #modelPanel #modelControls {
         margin-left: 0 !important;
+        display: grid !important;
+        grid-template-columns: 42px minmax(0, 1fr);
+        gap: 10px !important;
+        padding: 10px 2px 2px;
+      }
+
+      #modelSelection,
+      #chatContextSelection {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+      }
+
+      #modelSelection,
+      #chatContextSelection,
+      #paramsPopoverWrapper {
+        grid-column: 2;
+      }
+
+      #modelPanel #modelControls > .input-btn {
+        grid-column: 1;
+        grid-row: 1;
+      }
+
+      #modelSelection { grid-row: 1; }
+      #chatContextSelection { grid-row: 2; }
+      #paramsPopoverWrapper { grid-row: 3; }
+
+      #paramsPopover {
+        position: fixed;
+        left: 14px;
+        right: 14px;
+        bottom: max(14px, env(safe-area-inset-bottom));
+        width: auto;
+        max-height: 70dvh;
+        overflow-y: auto;
+        z-index: 460;
+      }
+
+      .mobile-composer-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 10px 11px;
+        font-size: 12px;
         flex-shrink: 0;
+      }
+
+      #micButton {
+        display: none;
       }
 
       #connectionStatus span {
@@ -1989,7 +2181,7 @@
 
       #inputRow {
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 7px;
         align-items: center;
       }
 
@@ -1999,11 +2191,30 @@
       }
 
       #userInput {
-        min-height: 76px;
+        min-height: 88px;
+        max-height: min(32dvh, 240px);
+        font-size: 16px;
       }
 
       #sendButton {
         flex: 1;
+        min-width: 82px;
+        justify-content: center;
+        padding: 11px 14px;
+      }
+
+      #documentWorkspace,
+      #attachmentPreview {
+        flex-wrap: nowrap;
+        max-height: 38px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+      }
+
+      #documentWorkspace::-webkit-scrollbar,
+      #attachmentPreview::-webkit-scrollbar {
+        display: none;
       }
     }
 
@@ -2085,6 +2296,9 @@
       </div>
     </div>
     <div id="headerRight">
+      <button class="header-btn" id="layoutToggleButton" onclick="toggleLayoutMode()" title="Switch to compact layout" aria-label="Switch to compact layout">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+      </button>
       <button class="header-btn" id="installPwaButton" onclick="installPrivateLLMLens()" title="Install PrivateLLMLens" style="display:none;">
         <i class="fa-solid fa-download"></i>
       </button>
@@ -2160,12 +2374,31 @@
           <button id="micButton" class="input-btn" title="Voice input" onclick="toggleVoiceInput()">
             <i class="fa-solid fa-microphone"></i>
           </button>
+          <button id="mobileToolsButton" class="input-btn mobile-composer-btn" title="Search and document tools" onclick="toggleMobileSheet('toolsPanel')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Tools</span>
+          </button>
+          <button id="mobileModelButton" class="input-btn mobile-composer-btn" title="Model and context" onclick="toggleMobileSheet('modelPanel')">
+            <i class="fa-solid fa-microchip"></i>
+            <span>Model</span>
+          </button>
           <button id="sendButton" onclick="sendMessage()">
             <i class="fa-solid fa-paper-plane"></i>
             Send
           </button>
         </div>
         <div id="optionsRow">
+          <div id="mobileActiveChips" aria-live="polite"></div>
+          <div id="mobileSheetBackdrop" onclick="closeMobileSheets()"></div>
+          <div id="toolsPanel" class="mobile-sheet" role="dialog" aria-label="Prompt tools">
+            <div class="mobile-sheet-header">
+              <strong>Tools</strong>
+              <button onclick="closeMobileSheets()" aria-label="Close tools"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <button class="mobile-sheet-action" onclick="closeMobileSheets(); toggleVoiceInput()">
+              <i class="fa-solid fa-microphone"></i>
+              Voice input
+            </button>
           <div class="option-group">
             <input type="checkbox" id="tavilySearchCheckbox">
             <label for="tavilySearchCheckbox" title="Ground responses with real-time web search via Tavily (Private)">🔍 Web Search</label>
@@ -2198,6 +2431,12 @@
             <input type="checkbox" id="longContextCheckbox">
             <label for="longContextCheckbox" title="Send entire file to Gemini Flash for processing in a single prompt (requires Gemini API key in Settings)">Long Context</label>
           </div>
+          </div>
+          <div id="modelPanel" class="mobile-sheet" role="dialog" aria-label="Model controls">
+            <div class="mobile-sheet-header">
+              <strong>Model &amp; context</strong>
+              <button onclick="closeMobileSheets()" aria-label="Close model controls"><i class="fa-solid fa-xmark"></i></button>
+            </div>
           <div id="modelControls" style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
             <button onclick="fetchModels()" class="input-btn" style="padding: 6px 10px;" title="Refresh models">
               <i class="fa-solid fa-rotate"></i>
@@ -2248,6 +2487,7 @@
               </div>
             </div>
           </div>
+          </div>
         </div>
         <div id="documentWorkspace"></div>
         <div id="attachmentPreview"></div>
@@ -2280,6 +2520,14 @@
               <option value="light">Light</option>
               <option value="dark">Dark</option>
               <option value="system">System</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Layout</span>
+            <select id="layoutModeSelect" class="setting-select">
+              <option value="auto">Automatic</option>
+              <option value="compact">Compact</option>
+              <option value="desktop">Desktop</option>
             </select>
           </div>
         </div>
@@ -2707,6 +2955,23 @@
       cancelButton.textContent = "Cancel";
     }
 
+    function resetComposerForThreadChange() {
+      if (activeRequestController) activeRequestController.abort();
+      activeRequestController = null;
+      cancelProcessing = false;
+      const progress = document.getElementById("processingProgress");
+      if (progress) progress.style.display = "none";
+      const cancelButton = document.getElementById("cancelButton");
+      if (cancelButton) {
+        cancelButton.disabled = false;
+        cancelButton.textContent = "Cancel";
+      }
+      const input = document.getElementById("userInput");
+      const sendButton = document.getElementById("sendButton");
+      if (input) input.disabled = false;
+      if (sendButton) sendButton.disabled = false;
+    }
+
     // Ollama streams newline-delimited JSON. Network chunks can end in the
     // middle of a JSON object, so retain the unfinished tail for the next read.
     async function readOllamaStream(response, onMessage) {
@@ -2897,7 +3162,8 @@
       suggestedFollowUps: "false",
       autoFactCheck: "false",
       webgpuEnabled: "false",
-      theme: "system"
+      theme: "system",
+      layoutMode: "auto"
     };
 
     Object.keys(defaults).forEach(key => {
@@ -3374,6 +3640,7 @@ self.onmessage = async (e) => {
       if (ollamaResult.status === "rejected") console.warn("Ollama model discovery failed:", ollamaResult.reason);
       if (llamaResult.status === "rejected") console.warn("llama-server discovery failed:", llamaResult.reason);
       updateWebGPUUIState();
+      updateMobileActiveChips();
     }
 
     // ============================================
@@ -3467,6 +3734,7 @@ self.onmessage = async (e) => {
       const systemPrompt = document.getElementById("systemPromptInput").value.trim();
       
       if (!db) return;
+      resetComposerForThreadChange();
       
       const transaction = db.transaction(["threads"], "readwrite");
       const store = transaction.objectStore("threads");
@@ -3483,6 +3751,7 @@ self.onmessage = async (e) => {
         loadMessages();
         renderDocumentWorkspace();
         closeNewThreadModal();
+        focusPromptInputOnDesktop(document.getElementById("userInput"));
       };
     }
 
@@ -3585,11 +3854,13 @@ self.onmessage = async (e) => {
     }
 
     function selectThread(threadId) {
+      resetComposerForThreadChange();
       currentThreadId = Number(threadId);
       loadMessages();
       renderDocumentWorkspace();
       updateThreadSelectionUI();
       loadThreadParams(Number(threadId));
+      focusPromptInputOnDesktop(document.getElementById("userInput"));
 
       // Close sidebar on mobile
       if (window.innerWidth <= 768) {
@@ -3747,7 +4018,7 @@ self.onmessage = async (e) => {
     }
 
     function createMessageElement(msg) {
-      const { id, role, text, type, fileName, imageData, responseTime, citations, searchGrounded, documentMode } = msg;
+      const { id, role, text, type, fileName, imageData, responseTime, citations, searchGrounded, searchRouting, documentMode } = msg;
       
       const messageElem = document.createElement("div");
       messageElem.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
@@ -3759,13 +4030,14 @@ self.onmessage = async (e) => {
         div.className = "msg-actions";
 
         const copyBtn = document.createElement("button");
-        copyBtn.className = "msg-action-btn";
+        copyBtn.className = "msg-action-btn copy";
         copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
         copyBtn.title = "Copy message";
+        copyBtn.setAttribute("aria-label", "Copy message");
         copyBtn.onclick = async (ev) => {
           ev.stopPropagation();
           try {
-            await navigator.clipboard.writeText(text || "");
+            await copyPlainText(text || "");
             copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
             copyBtn.classList.add("copied");
             setTimeout(() => {
@@ -3924,6 +4196,13 @@ self.onmessage = async (e) => {
           badge.title = "This response was enhanced with real-time web search via Tavily";
           timeElem.appendChild(badge);
         }
+        if (searchRouting) {
+          const routingBadge = document.createElement("span");
+          routingBadge.className = "search-routing-badge";
+          routingBadge.textContent = searchRouting.decision === "search" ? "Auto-search · web" : "Auto-search · local";
+          routingBadge.title = `${searchRouting.reason || "Automatic routing"}${Number.isFinite(searchRouting.confidence) ? ` (${Math.round(searchRouting.confidence * 100)}% confidence)` : ""}`;
+          timeElem.appendChild(routingBadge);
+        }
         if (documentMode && documentMode !== "none") {
           const badge = document.createElement("span");
           badge.className = "document-mode-badge";
@@ -3950,6 +4229,50 @@ self.onmessage = async (e) => {
       ro.observe(messageElem);
 
       return messageElem;
+    }
+
+    async function copyPlainText(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      if (!copied) throw new Error("Clipboard access was rejected");
+    }
+
+    function attachLiveCopyAction(text, messageId) {
+      const messages = [...document.querySelectorAll("#messageHistory .assistant-message")];
+      const messageElem = messages.reverse().find(message => !message.querySelector(".msg-actions"));
+      if (!messageElem) return;
+      if (messageId != null) messageElem.dataset.messageId = messageId;
+
+      const actions = document.createElement("div");
+      actions.className = "msg-actions live-copy-actions";
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "msg-action-btn copy";
+      copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+      copyBtn.title = "Copy response";
+      copyBtn.setAttribute("aria-label", "Copy response");
+      copyBtn.onclick = async event => {
+        event.stopPropagation();
+        try {
+          await copyPlainText(text || "");
+          copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+          setTimeout(() => { copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
+        } catch (err) {
+          console.error("Failed to copy:", err);
+        }
+      };
+      actions.appendChild(copyBtn);
+      messageElem.prepend(actions);
     }
 
     function enhanceCodeBlocks(container) {
@@ -3990,7 +4313,19 @@ self.onmessage = async (e) => {
         const transaction = db.transaction(["messages"], "readwrite");
         const store = transaction.objectStore("messages");
         const request = store.add(messageObj);
-        transaction.oncomplete = () => resolve(request.result);
+        transaction.oncomplete = () => {
+          const messageId = request.result;
+          try {
+            if (messageObj.role === "assistant" && messageObj.type !== "image") {
+              attachLiveCopyAction(messageObj.text || "", messageId);
+            }
+          } catch (err) {
+            // Message persistence must never be held open by an optional UI enhancement.
+            console.error("Could not attach live copy action:", err);
+          } finally {
+            resolve(messageId);
+          }
+        };
         transaction.onabort = (e) => {
           console.error("saveMessage transaction aborted:", e.target.error, "threadId:", currentThreadId, "role:", messageObj.role);
           resolve(null);
@@ -4281,6 +4616,7 @@ self.onmessage = async (e) => {
       switch(attachment.type) {
         case 'pdf': icon = "fa-file-pdf"; break;
         case 'pptx': icon = "fa-file-powerpoint"; break;
+        case 'docx': icon = "fa-file-word"; break;
         case 'image': icon = "fa-image"; break;
         case 'python': icon = "fa-file-code"; break;
         case 'csv': icon = "fa-file-csv"; break;
@@ -4303,7 +4639,7 @@ self.onmessage = async (e) => {
     function showMultiAttachmentPreview() {
       const preview = document.getElementById("attachmentPreview");
       preview.innerHTML = "";
-      const icons = { pdf: 'fa-file-pdf', pptx: 'fa-file-powerpoint', python: 'fa-file-code', csv: 'fa-file-csv', json: 'fa-file-code', html: 'fa-file-code' };
+      const icons = { pdf: 'fa-file-pdf', pptx: 'fa-file-powerpoint', docx: 'fa-file-word', python: 'fa-file-code', csv: 'fa-file-csv', json: 'fa-file-code', html: 'fa-file-code' };
       pendingAttachments.forEach((att, idx) => {
         const icon = icons[att.type] || 'fa-file-lines';
         const item = document.createElement("div");
@@ -4331,7 +4667,9 @@ self.onmessage = async (e) => {
     function detectAttachmentType(file) {
       const name = file.name.toLowerCase();
       if (name.endsWith(".ppt")) return "legacy-ppt";
+      if (name.endsWith(".doc")) return "legacy-doc";
       if (name.endsWith(".pptx") || file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation") return "pptx";
+      if (name.endsWith(".docx") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "docx";
       if (file.type === "application/pdf") return "pdf";
       if (file.type === "text/html" || name.endsWith(".html") || name.endsWith(".htm")) return "html";
       if (name.endsWith(".py")) return "python";
@@ -4347,14 +4685,17 @@ self.onmessage = async (e) => {
       if (e.target.files.length > 1 || (document.getElementById("longContextCheckbox").checked && e.target.files.length > 0)) {
         clearPendingAttachment();
         let legacyPptSkipped = false;
+        let legacyDocSkipped = false;
         for (const file of e.target.files) {
           if (file.type.startsWith("image/")) continue; // images not supported in LC mode
           const type = detectAttachmentType(file);
           if (type === "legacy-ppt") { legacyPptSkipped = true; continue; }
+          if (type === "legacy-doc") { legacyDocSkipped = true; continue; }
           if (type === "unsupported" || type === "image") continue;
           pendingAttachments.push({ type, fileName: file.name, file, reader: null, cancelled: false });
         }
         if (legacyPptSkipped) alert("Legacy .ppt files cannot be parsed safely in-browser. Please save or export them as .pptx or PDF first.");
+        if (legacyDocSkipped) alert("Legacy .doc files cannot be parsed safely in-browser. Please save or export them as .docx or PDF first.");
         showMultiAttachmentPreview();
         e.target.value = "";
         return;
@@ -4369,6 +4710,11 @@ self.onmessage = async (e) => {
 
       if (detectedType === "legacy-ppt") {
         alert("Legacy .ppt files cannot be parsed safely in-browser. Please save or export this presentation as .pptx or PDF first.");
+        e.target.value = "";
+        return;
+      }
+      if (detectedType === "legacy-doc") {
+        alert("Legacy .doc files cannot be parsed safely in-browser. Please save or export this document as .docx or PDF first.");
         e.target.value = "";
         return;
       }
@@ -4397,6 +4743,9 @@ self.onmessage = async (e) => {
         showPendingAttachmentPreview(pendingAttachment);
       } else if (detectedType === "pptx") {
         pendingAttachment = { type: 'pptx', fileName: file.name, file, reader: null, cancelled: false };
+        showPendingAttachmentPreview(pendingAttachment);
+      } else if (detectedType === "docx") {
+        pendingAttachment = { type: 'docx', fileName: file.name, file, reader: null, cancelled: false };
         showPendingAttachmentPreview(pendingAttachment);
       } else if (detectedType === "image") {
         const reader = new FileReader();
@@ -4458,6 +4807,8 @@ self.onmessage = async (e) => {
       } else if (attachment.type === 'pptx') {
         const slides = await extractPptxPages(attachment.file);
         return slides.map(slide => `[Slide ${slide.slide}]\n${slide.text}`).join("\n\n");
+      } else if (attachment.type === 'docx') {
+        return await extractDocxText(attachment.file);
       } else if (attachment.type === 'pdf') {
         const arrayBuffer = await attachment.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
@@ -4678,26 +5029,46 @@ self.onmessage = async (e) => {
       return context;
     }
     
-    async function shouldPerformSearch(query, modelName) {
-      // Ask the LLM if it needs to search for current/real-time information
-      const decisionPrompt = `You are a helpful assistant that decides whether a web search is needed to answer a question.
+    function deterministicSearchRoute(query) {
+      const text = (query || "").trim();
+      const normalized = text.toLowerCase().replace(/\s+/g, " ");
+      if (!normalized) return { decision: "no_search", confidence: 1, source: "rule", reason: "empty prompt", query: "" };
 
-Analyze this question: "${query}"
+      const explicitSearch = /\b(search (?:the )?(?:web|internet|online)|browse (?:the )?(?:web|internet)|look (?:it|this|that) up|find online)\b/i;
+      const currentInformation = /\b(latest|today|tonight|right now|currently|current|up[ -]to[ -]date|breaking|live updates?)\b/i;
+      const realtimeCategory = /\b(weather|forecast|temperature|price|stock|share price|exchange rate|score|standings|fixture|schedule|availability|opening hours?|traffic|travel disruption|election results?)\b/i;
+      const greeting = /^(?:hi|hello|hey|good (?:morning|afternoon|evening)|how are you)[!,.? ]*$/i;
+      const localTask = /^(?:rewrite|rephrase|proofread|translate|summari[sz]e|draft|compose|write (?:me )?(?:a |an |the )?(?:poem|story|email|letter|message)|brainstorm)\b/i;
 
-A web search IS needed if the question:
-- Asks about current events, news, or recent developments
-- Asks about current prices, weather, stock values, or real-time data
-- Asks about specific facts that may have changed recently
-- Asks "what is the latest..." or "current state of..."
-- References specific dates in the near past or future
+      if (explicitSearch.test(text)) return { decision: "search", confidence: 1, source: "rule", reason: "explicit web request", query: text };
+      if (currentInformation.test(text) || realtimeCategory.test(text)) return { decision: "search", confidence: 0.98, source: "rule", reason: "time-sensitive information", query: text };
+      if (greeting.test(normalized)) return { decision: "no_search", confidence: 1, source: "rule", reason: "conversation", query: "" };
+      if (localTask.test(normalized)) return { decision: "no_search", confidence: 0.98, source: "rule", reason: "local writing or transformation task", query: "" };
+      return null;
+    }
 
-A web search is NOT needed if:
-- It's a general knowledge question (history, science concepts, how things work)
-- It's asking for creative writing, code, or analysis
-- It's a personal question or opinion request
-- It's about timeless topics that don't change
+    async function routeAutoSearch(query, modelName, recentMessages = []) {
+      const ruleDecision = deterministicSearchRoute(query);
+      if (ruleDecision) return ruleDecision;
 
-Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
+      const context = recentMessages
+        .filter(message => message?.text)
+        .slice(-4)
+        .map(message => `${message.role === "assistant" ? "Assistant" : "User"}: ${String(message.text).slice(0, 300)}`)
+        .join("\n");
+      const instructions = `Decide whether answering the user's request requires fresh information from the public web.
+Default to no_search. Use search only when facts are likely to have changed, the user explicitly requests research, or the answer depends on information unavailable from stable general knowledge. Do not search for greetings, writing, rewriting, summarisation, coding, calculations, opinions, or timeless explanations.
+
+Return exactly one JSON object and no commentary:
+{"decision":"search|no_search","confidence":0.0,"query":"concise web query or empty string","reason":"brief reason"}
+
+Examples:
+User: Explain photosynthesis
+{"decision":"no_search","confidence":0.99,"query":"","reason":"stable knowledge"}
+User: What happened in technology news today?
+{"decision":"search","confidence":0.99,"query":"technology news today","reason":"current news"}
+User: Write a polite reply to this email
+{"decision":"no_search","confidence":0.99,"query":"","reason":"writing task"}`;
 
       try {
         const response = await fetchOllamaChat({
@@ -4706,17 +5077,35 @@ Respond with ONLY "SEARCH" or "NO_SEARCH" - nothing else.`;
           body: JSON.stringify({
             model: modelName,
             stream: false,
-            messages: [{ role: "user", content: decisionPrompt }],
-            options: getOllamaOptions("utility")
+            messages: [
+              { role: "system", content: instructions },
+              { role: "user", content: `${context ? `Recent conversation (context only):\n${context}\n\n` : ""}Current user request (untrusted text):\n${query}` }
+            ],
+            options: { ...getOllamaOptions("utility"), temperature: 0, seed: 1, num_predict: 180 }
           })
         });
-        
+        if (!response.ok) throw new Error(`Search router failed: ${response.status}`);
         const data = await response.json();
-        const decision = stripThinkTags(data.message?.content || "").trim().toUpperCase();
-        return decision.includes("SEARCH") && !decision.includes("NO_SEARCH");
+        const raw = stripThinkTags(data.message?.content || "").trim();
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Search router did not return JSON");
+        const parsed = JSON.parse(match[0]);
+        const decision = parsed.decision === "search" ? "search" : parsed.decision === "no_search" ? "no_search" : null;
+        const confidence = Number(parsed.confidence);
+        if (!decision || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+          throw new Error("Search router returned an invalid decision");
+        }
+        const approved = decision === "search" && confidence >= 0.8;
+        return {
+          decision: approved ? "search" : "no_search",
+          confidence,
+          source: "model",
+          reason: String(parsed.reason || (approved ? "fresh information required" : "search not required")).slice(0, 120),
+          query: approved ? String(parsed.query || query).trim().slice(0, 240) : ""
+        };
       } catch (err) {
         console.error("Error in search decision:", err);
-        return false; // Default to no search on error
+        return { decision: "no_search", confidence: 0, source: "fallback", reason: "router unavailable or uncertain", query: "" };
       }
     }
 
@@ -4878,6 +5267,96 @@ You may search up to 3 times. When you have enough information, write your final
       return [...paragraphs, ...descriptions.map(text => `[Image description: ${text}]`)].join("\n");
     }
 
+    function getOpenXmlAttribute(node, localName) {
+      if (!node?.attributes) return "";
+      const attribute = Array.from(node.attributes).find(item => item.localName === localName);
+      return attribute?.value || "";
+    }
+
+    function extractWordParagraph(paragraph) {
+      let text = "";
+      const walk = node => {
+        if (node.nodeType !== 1) return;
+        const name = node.localName;
+        if (name === "del") return; // Exclude revision text deleted in Word.
+        if (name === "t") text += node.textContent || "";
+        else if (name === "tab") text += "\t";
+        else if (name === "br" || name === "cr") {
+          text += getOpenXmlAttribute(node, "type") === "page" ? "\n[Page break]\n" : "\n";
+        } else if (name === "lastRenderedPageBreak") text += "\n[Page break]\n";
+        else if (name === "noBreakHyphen") text += "-";
+        Array.from(node.children || []).forEach(walk);
+      };
+      walk(paragraph);
+      text = text.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+      if (!text) return "";
+
+      const styleNode = paragraph.getElementsByTagNameNS("*", "pStyle")[0];
+      const style = getOpenXmlAttribute(styleNode, "val");
+      const headingMatch = style.match(/^Heading\s*([1-6])$/i);
+      if (headingMatch) text = `${"#".repeat(Number(headingMatch[1]))} ${text}`;
+      else if (paragraph.getElementsByTagNameNS("*", "numPr").length) text = `- ${text}`;
+      return text;
+    }
+
+    function extractWordTable(table) {
+      const rows = Array.from(table.children || []).filter(node => node.localName === "tr");
+      const lines = rows.map(row => {
+        const cells = Array.from(row.children || []).filter(node => node.localName === "tc");
+        return cells.map(cell => Array.from(cell.getElementsByTagNameNS("*", "p"))
+          .map(extractWordParagraph).filter(Boolean).join(" / ")).join(" | ");
+      }).filter(Boolean);
+      return lines.length ? `[Table]\n${lines.join("\n")}` : "";
+    }
+
+    function extractTextFromWordXml(xmlText) {
+      const xml = new DOMParser().parseFromString(xmlText, "application/xml");
+      if (xml.querySelector("parsererror")) return "";
+      const body = xml.getElementsByTagNameNS("*", "body")[0] || xml.documentElement;
+      const blocks = [];
+      Array.from(body.children || []).forEach(node => {
+        if (node.localName === "p") {
+          const paragraph = extractWordParagraph(node);
+          if (paragraph) blocks.push(paragraph);
+        } else if (node.localName === "tbl") {
+          const table = extractWordTable(node);
+          if (table) blocks.push(table);
+        }
+      });
+      return blocks.join("\n\n");
+    }
+
+    async function extractDocxText(file) {
+      if (typeof JSZip === "undefined") throw new Error("DOCX support could not load. Check the internet connection once so the document reader can be cached.");
+      const zip = await JSZip.loadAsync(file);
+      const documentEntry = zip.file("word/document.xml");
+      if (!documentEntry) throw new Error("This DOCX contains no readable Word document or is damaged/password-protected.");
+
+      const sections = [];
+      showProgressBar();
+      try {
+        const supportingEntries = Object.keys(zip.files)
+          .filter(path => /^word\/(?:header\d+|footer\d+|footnotes|endnotes)\.xml$/.test(path))
+          .sort();
+        const entries = ["word/document.xml", ...supportingEntries];
+        for (let index = 0; index < entries.length; index++) {
+          if (activeRequestController?.signal.aborted || cancelProcessing) throw new DOMException("Cancelled", "AbortError");
+          updateProgressBar(index + 1, entries.length);
+          const text = extractTextFromWordXml(await zip.file(entries[index]).async("string"));
+          if (!text) continue;
+          const label = entries[index] === "word/document.xml"
+            ? ""
+            : `\n\n[${entries[index].split("/").pop().replace(".xml", "")}]\n`;
+          sections.push(label + text);
+        }
+      } finally {
+        hideProgressBar();
+      }
+      const result = sections.join("\n\n").trim();
+      if (!result) throw new Error("No extractable text was found in this DOCX. It may contain only scans, drawings, or unsupported embedded objects.");
+      return result;
+    }
+
     async function extractPptxPages(file) {
       if (typeof JSZip === "undefined") throw new Error("PPTX support could not load. Check the internet connection once so the presentation reader can be cached.");
       const zip = await JSZip.loadAsync(file);
@@ -4910,6 +5389,8 @@ You may search up to 3 times. When you have enough information, write your final
       const pages = [];
       if (attachment.type === "pptx") {
         pages.push(...await extractPptxPages(attachment.file));
+      } else if (attachment.type === "docx") {
+        pages.push({ page: null, text: await extractDocxText(attachment.file) });
       } else if (attachment.type === "pdf") {
         const arrayBuffer = await attachment.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
@@ -6100,6 +6581,7 @@ JSON array:` }],
         let modelUsed = "";
         let usedTavilySearch = false;
         let tavilyCitations = [];
+        let searchRouting = null;
         let clarificationAsked = false;
         let documentCitations = [];
         let documentMode = "none";
@@ -6368,6 +6850,7 @@ JSON array:` }],
               // === SINGLE-PASS SEARCH (manual Tavily or agent-style single-decision) ===
               let searchContext = "";
               let shouldSearch = false;
+              let tavilyQuery = promptText;
 
               if (tavilyChecked) {
                 shouldSearch = true;
@@ -6377,7 +6860,10 @@ JSON array:` }],
                   <span class="thinking-dots"><span></span><span></span><span></span></span>
                   <span style="color: var(--text-muted); margin-left: 8px;">(deciding if search needed)</span>
                 `;
-                shouldSearch = await shouldPerformSearch(promptText, modelUsed);
+                const priorMessages = allThreadMsgs.slice(0, -1);
+                searchRouting = await routeAutoSearch(promptText, modelUsed, priorMessages);
+                shouldSearch = searchRouting.decision === "search";
+                if (shouldSearch && searchRouting.query) tavilyQuery = searchRouting.query;
               }
 
               if (shouldSearch) {
@@ -6387,7 +6873,7 @@ JSON array:` }],
                     <span class="thinking-dots"><span></span><span></span><span></span></span>
                     <span style="color: var(--text-muted); margin-left: 8px;">(via Tavily)</span>
                   `;
-                  const searchResults = await searchTavily(promptText);
+                  const searchResults = await searchTavily(tavilyQuery);
                   searchContext = formatTavilyResultsForContext(searchResults);
                   usedTavilySearch = true;
                   tavilyCitations = searchResults.map(r => ({ url: r.url, title: r.title }));
@@ -6557,6 +7043,13 @@ JSON array:` }],
           badge.title = "This response was enhanced with real-time web search via Tavily";
           timeDiv.appendChild(badge);
         }
+        if (searchRouting) {
+          const routingBadge = document.createElement("span");
+          routingBadge.className = "search-routing-badge";
+          routingBadge.textContent = searchRouting.decision === "search" ? "Auto-search · web" : "Auto-search · local";
+          routingBadge.title = `${searchRouting.reason || "Automatic routing"}${Number.isFinite(searchRouting.confidence) ? ` (${Math.round(searchRouting.confidence * 100)}% confidence)` : ""}`;
+          timeDiv.appendChild(routingBadge);
+        }
         if (documentMode !== "none") {
           const badge = document.createElement("span");
           badge.className = "document-mode-badge";
@@ -6579,6 +7072,7 @@ JSON array:` }],
             responseTime: `${responseModelLabel} • ${elapsed}s`,
             citations: allCitations,
             searchGrounded: usedTavilySearch,
+            searchRouting,
             documentMode,
             timestamp: Date.now()
           });
@@ -6607,6 +7101,8 @@ JSON array:` }],
         document.getElementById("sendButton").disabled = false;
         document.getElementById("clarifyPromptCheckbox").checked = false;
         document.getElementById("deepResearchCheckbox").checked = false;
+        closeMobileSheets();
+        updateMobileActiveChips();
         clearPendingAttachment();
         focusPromptInputOnDesktop(userInput);
         updateTokenDisplay();
@@ -6749,6 +7245,7 @@ JSON array:` }],
       document.getElementById("settingsOverlay").classList.add("active");
       
       document.getElementById("themeSelect").value = localStorage.getItem("theme") || "system";
+      document.getElementById("layoutModeSelect").value = localStorage.getItem("layoutMode") || "auto";
       document.getElementById("textChunkSizeInput").value = localStorage.getItem("textChunkSize") || "10240";
       document.getElementById("pdfPagesPerChunkInput").value = localStorage.getItem("pdfPagesPerChunk") || "3";
       document.getElementById("contextWindowInput").value = localStorage.getItem("contextWindow") || "10";
@@ -6800,6 +7297,9 @@ JSON array:` }],
       const theme = document.getElementById("themeSelect").value;
       localStorage.setItem("theme", theme);
       applyTheme(theme);
+      const layoutMode = document.getElementById("layoutModeSelect").value;
+      localStorage.setItem("layoutMode", layoutMode);
+      applyLayoutMode(layoutMode);
       
       localStorage.setItem("textChunkSize", document.getElementById("textChunkSizeInput").value);
       localStorage.setItem("pdfPagesPerChunk", document.getElementById("pdfPagesPerChunkInput").value);
@@ -6888,6 +7388,124 @@ JSON array:` }],
     function closeImageLightbox() {
       document.getElementById("imageLightbox").classList.remove("active");
       document.getElementById("imageLightboxImg").src = "";
+    }
+
+    function closeMobileSheets() {
+      document.querySelectorAll(".mobile-sheet.active").forEach(panel => panel.classList.remove("active"));
+      document.getElementById("mobileSheetBackdrop")?.classList.remove("active");
+      document.body.classList.remove("mobile-sheet-open");
+    }
+
+    const AUTO_COMPACT_QUERY = "(max-width: 768px), (max-width: 1100px) and (pointer: coarse)";
+    let compactLayoutMediaRule = null;
+
+    function findCompactLayoutMediaRule() {
+      if (compactLayoutMediaRule) return compactLayoutMediaRule;
+      const searchRules = rules => {
+        for (const rule of rules || []) {
+          if (rule.media?.mediaText?.includes("max-width: 1100px") && rule.media.mediaText.includes("pointer: coarse")) {
+            return rule;
+          }
+          const nested = rule.cssRules && searchRules(rule.cssRules);
+          if (nested) return nested;
+        }
+        return null;
+      };
+      for (const sheet of document.styleSheets) {
+        try {
+          compactLayoutMediaRule = searchRules(sheet.cssRules);
+          if (compactLayoutMediaRule) break;
+        } catch (_) {
+          // Cross-origin stylesheets are not readable; the layout rules are inline.
+        }
+      }
+      return compactLayoutMediaRule;
+    }
+
+    function isCompactLayout() {
+      const mode = localStorage.getItem("layoutMode") || "auto";
+      if (mode === "compact") return true;
+      if (mode === "desktop") return false;
+      return window.matchMedia(AUTO_COMPACT_QUERY).matches;
+    }
+
+    function updateLayoutToggleButton() {
+      const button = document.getElementById("layoutToggleButton");
+      if (!button) return;
+      const compact = isCompactLayout();
+      const label = compact ? "Switch to desktop layout" : "Switch to compact layout";
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.innerHTML = compact
+        ? '<i class="fa-solid fa-desktop"></i>'
+        : '<i class="fa-solid fa-mobile-screen-button"></i>';
+    }
+
+    function applyLayoutMode(mode = localStorage.getItem("layoutMode") || "auto") {
+      if (!["auto", "compact", "desktop"].includes(mode)) mode = "auto";
+      const mediaRule = findCompactLayoutMediaRule();
+      if (mediaRule) {
+        mediaRule.media.mediaText = mode === "compact" ? "all" : mode === "desktop" ? "not all" : AUTO_COMPACT_QUERY;
+      }
+      document.body.classList.toggle("layout-compact", mode === "compact");
+      document.body.classList.toggle("layout-desktop", mode === "desktop");
+      if (!isCompactLayout()) closeMobileSheets();
+      updateLayoutToggleButton();
+      updateMobileActiveChips();
+    }
+
+    function toggleLayoutMode() {
+      const nextMode = isCompactLayout() ? "desktop" : "compact";
+      localStorage.setItem("layoutMode", nextMode);
+      const select = document.getElementById("layoutModeSelect");
+      if (select) select.value = nextMode;
+      applyLayoutMode(nextMode);
+    }
+
+    function toggleMobileSheet(panelId) {
+      if (!isCompactLayout()) return;
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      const opening = !panel.classList.contains("active");
+      closeMobileSheets();
+      if (opening) {
+        panel.classList.add("active");
+        document.getElementById("mobileSheetBackdrop")?.classList.add("active");
+        document.body.classList.add("mobile-sheet-open");
+      }
+    }
+
+    function updateMobileActiveChips() {
+      const container = document.getElementById("mobileActiveChips");
+      if (!container) return;
+      container.innerHTML = "";
+      const addChip = (label, activeTool = false) => {
+        const chip = document.createElement("span");
+        chip.className = `mobile-chip${activeTool ? " active-tool" : ""}`;
+        chip.textContent = label;
+        container.appendChild(chip);
+      };
+      const modelSelect = document.getElementById("modelSelection");
+      const selectedModelLabel = modelSelect?.selectedOptions?.[0]?.textContent?.trim() || "No model";
+      addChip(selectedModelLabel.replace(/\s+[—-]\s+.*$/, "").slice(0, 28));
+      const contextSelect = document.getElementById("chatContextSelection");
+      if (contextSelect && !contextSelect.disabled) addChip(contextSelect.selectedOptions?.[0]?.textContent || "Context");
+
+      const activeCheckboxes = [
+        ["tavilySearchCheckbox", "Web Search"],
+        ["deepResearchCheckbox", "Deep Research"],
+        ["clarifyPromptCheckbox", "Clarify First"],
+        ["perplexitySearchCheckbox", "Perplexity"],
+        ["generateImageCheckbox", "Generate Image"],
+        ["longContextCheckbox", "Long Context"]
+      ];
+      activeCheckboxes.forEach(([id, label]) => {
+        if (document.getElementById(id)?.checked) addChip(label, true);
+      });
+      const documentStrategy = document.getElementById("documentStrategySelection");
+      if (documentStrategy?.value && documentStrategy.value !== "auto") {
+        addChip(documentStrategy.selectedOptions[0].textContent, true);
+      }
     }
 
     function toggleSidebarDesktop() {
@@ -7092,6 +7710,7 @@ JSON array:` }],
     function setModelContext(value) {
       localStorage.setItem("modelContext", normaliseModelContext(value));
       syncModelContextControls();
+      updateMobileActiveChips();
     }
 
     function getOllamaOptions(purpose = "chat") {
@@ -7385,6 +8004,18 @@ JSON array:` }],
         disposeWebGPUWorker("WebGPU model changed");
       }
       updateWebGPUUIState();
+      updateMobileActiveChips();
+    });
+
+    document.getElementById("optionsRow").addEventListener("change", updateMobileActiveChips);
+    document.getElementById("userInput").addEventListener("focus", closeMobileSheets);
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeMobileSheets();
+    });
+    window.matchMedia(AUTO_COMPACT_QUERY).addEventListener("change", () => {
+      if ((localStorage.getItem("layoutMode") || "auto") !== "auto") return;
+      if (!isCompactLayout()) closeMobileSheets();
+      updateLayoutToggleButton();
     });
 
     // Checkbox interactions
@@ -7550,6 +8181,8 @@ JSON array:` }],
           document.body.classList.add("input-collapsed");
         }
         updateInputCollapseIcon();
+        applyLayoutMode();
+        updateMobileActiveChips();
 
         // Initial token display
         updateTokenDisplay();
