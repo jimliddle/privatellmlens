@@ -81,9 +81,15 @@ The default backend is Ollama. `--gpu PROFILE` switches to llama.cpp and remembe
 
 Only one inference backend runs at a time. Starting GPU mode stops Ollama; starting Ollama mode stops llama.cpp. This prevents simultaneous multi-gigabyte model allocations from causing Android to kill the Termux process group. Ollama is constrained to one loaded model and one parallel request. llama.cpp uses one slot (`-np 1`).
 
-The launcher also starts the loopback web server, opens the browser, and holds a Termux wake lock. `--stop` stops both possible backends and the web server, then releases the wake lock.
+The launcher also starts the loopback web server, prefers Microsoft Edge and then Chrome when opening the application, and holds a Termux wake lock. It falls back to Android's default browser only when neither preferred browser is installed. This ordering makes browser WebGPU available even when Firefox is the system default. `--stop` stops both possible backends and the web server, then releases the wake lock.
+
+If a home-screen PWA was previously installed through Firefox, that shortcut remains tied to Firefox. Remove it and reinstall PrivateLLMLens from Edge or Chrome if WebGPU is required.
 
 The PrivateLLMLens header probes both providers and reports **GPU connected** or **Ollama connected**.
+
+## Mobile layout
+
+The default **Automatic** layout uses the compact composer on narrow or coarse-pointer displays. On foldables or tablets, use the header layout button for an immediate Compact/Desktop switch, or choose **Automatic**, **Compact**, or **Desktop** under **Settings → Appearance → Layout**. The choice is stored on that browser. Compact mode uses stable Tools and Model bottom sheets and keeps the response-copy action visible.
 
 ## Security
 
@@ -99,6 +105,7 @@ Logs are stored in `~/.local/state/privatellmlens/`.
 - **`cannot locate symbol ... liblog.so`:** preserve the `llama-gpu` library ordering.
 - **No `GPUOpenCL` device:** confirm `/vendor/lib64/libOpenCL.so` is readable and the build reported the OpenCL backend.
 - **First launch is slow:** model loading and OpenCL kernel compilation take time; kernels are cached afterward.
+- **Page opens in Firefox:** launch with the `privatellmlens` command rather than an old Firefox-installed PWA shortcut; confirm Edge or Chrome is installed.
 - **Thermal throttling:** avoid sustained inference while charging under an insulating cover.
 
 ## Updating and removal
