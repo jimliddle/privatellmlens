@@ -2958,6 +2958,7 @@
     function resetComposerForThreadChange() {
       if (activeRequestController) activeRequestController.abort();
       activeRequestController = null;
+      sendSubmissionPending = false;
       cancelProcessing = false;
       const progress = document.getElementById("processingProgress");
       if (progress) progress.style.display = "none";
@@ -3026,6 +3027,8 @@
 
     let db;
     let currentThreadId = null;
+    let implicitThreadCreationPromise = null;
+    let sendSubmissionPending = false;
     let pendingAttachment = null;
     let pendingAttachments = []; // queued multi-file attachments for local workspace or Long Context
     let currentWorkspaceTokens = 0;
@@ -3882,6 +3885,7 @@ self.onmessage = async (e) => {
     function deleteThread(threadId) {
       if (!confirm("Delete this thread and all its messages?")) return;
       if (!db) return;
+      if (currentThreadId === Number(threadId)) resetComposerForThreadChange();
       
       const transaction = db.transaction(["threads", "messages", "documents"], "readwrite");
       const threadsStore = transaction.objectStore("threads");
@@ -3916,7 +3920,7 @@ self.onmessage = async (e) => {
                 <div id="emptyState">
                   <i class="fa-regular fa-comments"></i>
                   <h3>No threads</h3>
-                  <p>Create a new thread to start chatting.</p>
+                  <p>Send a message to create a thread automatically, or use New Thread to add a custom system prompt.</p>
                 </div>
               `;
             }
@@ -6476,6 +6480,32 @@ JSON array:` }],
       input.dispatchEvent(new Event("input"));
     }
 
+    async function ensureActiveThread() {
+      if (currentThreadId) return currentThreadId;
+      if (!db) throw new Error("Conversation storage is not ready yet");
+      if (implicitThreadCreationPromise) return implicitThreadCreationPromise;
+
+      implicitThreadCreationPromise = new Promise((resolve, reject) => {
+        const transaction = db.transaction(["threads"], "readwrite");
+        const request = transaction.objectStore("threads").add({
+          name: "New Thread",
+          systemPrompt: "",
+          created: Date.now()
+        });
+        transaction.oncomplete = () => {
+          currentThreadId = request.result;
+          loadThreads();
+          renderDocumentWorkspace();
+          resolve(currentThreadId);
+        };
+        transaction.onabort = () => reject(transaction.error || new Error("Could not create a conversation thread"));
+        transaction.onerror = () => reject(transaction.error || new Error("Could not create a conversation thread"));
+      }).finally(() => {
+        implicitThreadCreationPromise = null;
+      });
+      return implicitThreadCreationPromise;
+    }
+
     async function sendMessage() {
       const userInput = document.getElementById("userInput");
       let promptText = userInput.value.trim();
@@ -6486,7 +6516,16 @@ JSON array:` }],
       const deepResearchChecked = document.getElementById("deepResearchCheckbox").checked;
       
       if (!promptText && !pendingAttachment && pendingAttachments.length === 0) return;
-      if (!currentThreadId) return;
+      if (sendSubmissionPending) return;
+      sendSubmissionPending = true;
+      try {
+        await ensureActiveThread();
+      } catch (err) {
+        sendSubmissionPending = false;
+        console.error("Could not create thread:", err);
+        alert(`Could not create a new thread: ${err.message}`);
+        return;
+      }
       const requestController = beginForegroundRequest();
 
       // Clear empty state
@@ -7096,6 +7135,7 @@ JSON array:` }],
         placeholder.textContent = err.name === "AbortError" ? "Generation cancelled." : `Error: ${err.message}`;
         if (err.name !== "AbortError") console.error("Send error:", err);
       } finally {
+        sendSubmissionPending = false;
         endForegroundRequest(requestController);
         userInput.disabled = false;
         document.getElementById("sendButton").disabled = false;
