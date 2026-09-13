@@ -18,6 +18,7 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Explicit 8K, 16K and 32K context profiles; 4K utility calls
 - Active request and document-processing cancellation
 - Encrypted persistent memories with separate use and learning controls
+- Schema-driven local tool registry for calculator, date/time, encrypted document search/read and JSON inspection; Deep Web Research can combine these with Tavily
 - Optional Tavily search, Deep Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
 - Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
 - Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
@@ -131,6 +132,14 @@ Conversation History controls stored message count; Model Context controls Ollam
 **Use Memories** is enabled by default. It decrypts and ranks active facts without another inference call, injecting at most 10 memories and approximately 600 tokens. **Learn Memories** is experimental and off by default; it performs idle-time local extraction and is aborted by new foreground work.
 
 Memory records contain an encrypted fact, semantic key and confidence. Exact duplicates are ignored, newer conflicting facts supersede older ones, instruction-like content and likely secrets are rejected, and storage is capped at 200 records. The manager supports manual addition, editing and deletion.
+
+## Local tools and tool schemas
+
+**Local Tools** is an explicit per-prompt mode that lets the selected private model call browser-only functions without sending tool arguments off-device. The initial registry includes a safe arithmetic evaluator, browser date/time, encrypted workspace document listing, hybrid document search, exact document reading and simple JSON-path inspection. Document tools preserve the existing source markers/citations.
+
+Each tool is defined once with a name, description, JSON parameter schema, privacy classification (`local` or `external`) and executor. Ollama receives these schemas through native tool calling. OpenAI-compatible llama.cpp receives the same function schemas, while in-browser WebGPU models use a constrained JSON action protocol as a compatibility fallback. If native tool calling is unavailable for a local-server model, PrivateLLMLens falls back to the same JSON protocol.
+
+Deep Web Research uses the same registry and additionally exposes Tavily as an **external** `web_search` tool, with a three-search limit. Tool results are treated as untrusted data and cannot override system/application instructions.
 
 ## Search and cloud features
 
