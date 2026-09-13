@@ -1,0 +1,50 @@
+name: Apply hybrid retrieval
+
+on:
+  push:
+    branches:
+      - feature/hybrid-local-retrieval
+    paths:
+      - scripts/apply_hybrid_retrieval.py
+      - .github/workflows/apply-hybrid-retrieval.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/hybrid-local-retrieval
+      - name: Apply hybrid retrieval patch
+        run: python scripts/apply_hybrid_retrieval.py
+      - name: Validate generated JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('index.html').read_text(encoding='utf-8')
+          required = [
+              'rankDocumentChunksHybrid',
+              'DOCUMENT_EMBEDDING_MODEL',
+              'local BM25 + semantic fusion',
+              'chunkEmbeddings: source.chunkEmbeddings'
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit(f'Missing hybrid retrieval markers: {missing}')
+          print('Hybrid retrieval markers validated')
+          PY
+      - name: Commit generated app
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No index.html changes to commit'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add hybrid local document retrieval'
+          git push origin HEAD:feature/hybrid-local-retrieval
