@@ -2405,7 +2405,7 @@
           </div>
           <div class="option-group">
             <input type="checkbox" id="deepResearchCheckbox">
-            <label for="deepResearchCheckbox" title="Allow the local model to use local tools plus several Tavily searches before answering">Deep Web Research</label>
+            <label for="deepResearchCheckbox" title="Use local tools plus multiple Tavily searches before producing a final answer">Web Research</label>
           </div>
           <div class="option-group">
             <input type="checkbox" id="localToolsCheckbox">
@@ -2655,7 +2655,7 @@
           </div>
         </div>
         <div class="settings-section">
-          <h3>WebGPU Models <span style="font-size:11px;font-weight:normal;color:var(--warning);">&#9675; Chrome / Edge only</span> <i class="fa-solid fa-circle-info" style="font-size:12px;color:var(--text-muted);cursor:help;vertical-align:middle;" title="Deep Web Research, Clarify First, auto-search and Web Search are unavailable with a WebGPU model and are disabled while WebGPU is active."></i></h3>
+          <h3>WebGPU Models <span style="font-size:11px;font-weight:normal;color:var(--warning);">&#9675; Chrome / Edge only</span> <i class="fa-solid fa-circle-info" style="font-size:12px;color:var(--text-muted);cursor:help;vertical-align:middle;" title="Web Research, Clarify First, auto-search and Web Search are unavailable with a WebGPU model and are disabled while WebGPU is active."></i></h3>
           <div class="setting-row">
             <span class="setting-label" title="Adds Fast (0.8B) and Quality (2B) Qwen3.5 models to the selector. Only the selected model is loaded, and it is cached by the browser after download.">Enable Qwen3.5 WebGPU models</span>
             <div class="agentic-toggle">
@@ -5662,7 +5662,7 @@ User: Write a polite reply to this email
       };
     }
 
-    // Compatibility entry point for the existing Deep Web Research control.
+    // Compatibility entry point for the existing Web Research control.
     async function runAgentLoop(messages, modelUsed, placeholder, initialDocumentCitations = []) {
       return runToolAgent(messages, modelUsed, placeholder, {
         allowExternalSearch: true,

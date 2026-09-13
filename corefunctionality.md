@@ -92,7 +92,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 - **Document provenance** — document search/read reuses the existing clickable source citations and continues citation numbering from any passages already selected by the normal document pipeline.
 - **Native provider schemas** — Ollama receives native function schemas; OpenAI-compatible llama.cpp receives the same function definitions through its chat-completions adapter.
 - **Compatibility fallback** — browser WebGPU models and local-server models without usable native tool calling use a constrained JSON action protocol over the same registry.
-- **Privacy metadata** — every tool is marked `local` or `external`. Deep Web Research uses the same registry but may additionally expose Tavily `web_search`, which is explicitly external and limited to three searches.
+- **Privacy metadata** — every tool is marked `local` or `external`. Web Research uses the same registry but may additionally expose Tavily `web_search`, which is explicitly external and limited to three searches.
 - **Bounded execution** — tool-agent loops have fixed step/result limits, treat tool output as untrusted data, and force a final answer when the step budget is exhausted.
 
 ---
@@ -102,7 +102,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 - **Auto-title threads** — names the thread after the first exchange.
 - **Auto-search (Tavily)** — a conservative local router decides whether fresh public-web information is required before performing a Tavily search.
 - **Auto-summarise context** — summarises older messages when the conversation exceeds the configured history window.
-- **Deep Web Research** — structured multi-step Tavily search/answer loop with up to three distinct searches.
+- **Web Research** — structured multi-step Tavily search/answer loop with up to three distinct searches.
 - **Proactive clarification** — asks one focused clarification question when enabled and genuinely needed.
 - **Suggested follow-ups** — generates contextual follow-up suggestions.
 - **Auto-extract memories** — extracts durable facts during idle time when enabled.

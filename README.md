@@ -18,8 +18,8 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Explicit 8K, 16K and 32K context profiles; 4K utility calls
 - Active request and document-processing cancellation
 - Encrypted persistent memories with separate use and learning controls
-- Schema-driven local tool registry for calculator, date/time, encrypted document search/read and JSON inspection; Deep Web Research can combine these with Tavily
-- Optional Tavily search, Deep Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
+- Schema-driven local tool registry for calculator, date/time, encrypted document search/read and JSON inspection; Web Research can combine these with Tavily
+- Optional Tavily search, Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
 - Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
 - Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
 - Markdown, syntax highlighting, one-tap response copying, regeneration, branching, search, JSON backup and PDF export
@@ -139,13 +139,13 @@ Memory records contain an encrypted fact, semantic key and confidence. Exact dup
 
 Each tool is defined once with a name, description, JSON parameter schema, privacy classification (`local` or `external`) and executor. Ollama receives these schemas through native tool calling. OpenAI-compatible llama.cpp receives the same function schemas, while in-browser WebGPU models use a constrained JSON action protocol as a compatibility fallback. If native tool calling is unavailable for a local-server model, PrivateLLMLens falls back to the same JSON protocol.
 
-Deep Web Research uses the same registry and additionally exposes Tavily as an **external** `web_search` tool, with a three-search limit. Tool results are treated as untrusted data and cannot override system/application instructions.
+Web Research uses the same registry and additionally exposes Tavily as an **external** `web_search` tool, with a three-search limit. Tool results are treated as untrusted data and cannot override system/application instructions.
 
 ## Search and cloud features
 
 - **Web Search:** one explicit Tavily search
 - **Auto-search:** a conservative hybrid router uses deterministic rules first, then a strict low-temperature JSON decision for ambiguous requests; uncertain decisions remain local
-- **Deep Web Research:** an explicit structured search/answer loop with up to three distinct Tavily searches, URL deduplication, global citation numbering and guaranteed final synthesis
+- **Web Research:** an explicit structured search/answer loop with up to three distinct Tavily searches, URL deduplication, global citation numbering and guaranteed final synthesis
 - **Perplexity:** search-grounded cloud answers
 - **OpenAI:** image generation
 - **Gemini:** explicit cloud long-context file processing
