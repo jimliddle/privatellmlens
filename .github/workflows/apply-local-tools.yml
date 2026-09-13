@@ -1,0 +1,50 @@
+name: Apply local tool registry
+
+on:
+  push:
+    branches:
+      - feature/local-tool-registry
+    paths:
+      - scripts/apply_local_tools.py
+      - .github/workflows/apply-local-tools.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/local-tool-registry
+      - name: Apply patch
+        run: python scripts/apply_local_tools.py
+      - name: Check generated JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html)
+          Path('/tmp/privatellmlens.js').write_text('\n'.join(scripts), encoding='utf-8')
+          required = ['localToolsCheckbox', 'createToolRegistry', 'runToolAgent', 'document_search', 'json_query', 'privacy: "local"']
+          missing = [item for item in required if item not in html]
+          if missing:
+              raise SystemExit('Missing expected local-tool code: ' + ', '.join(missing))
+          PY
+          node --check /tmp/privatellmlens.js
+      - name: Commit generated files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html README.md corefunctionality.md
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "Add schema-driven local tool framework"
+          git push origin HEAD:feature/local-tool-registry
