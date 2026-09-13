@@ -6,6 +6,7 @@ on:
       - feature/local-tool-registry
     paths:
       - scripts/apply_local_tools.py
+      - scripts/apply_local_tools_fixed.py
       - .github/workflows/apply-local-tools.yml
 
 permissions:
@@ -20,7 +21,7 @@ jobs:
         with:
           ref: feature/local-tool-registry
       - name: Apply patch
-        run: python scripts/apply_local_tools.py
+        run: python scripts/apply_local_tools_fixed.py
       - name: Check generated JavaScript
         shell: bash
         run: |
