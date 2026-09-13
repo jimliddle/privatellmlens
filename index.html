@@ -5663,10 +5663,11 @@ User: Write a polite reply to this email
     }
 
     // Compatibility entry point for the existing Deep Web Research control.
-    async function runAgentLoop(messages, modelUsed, placeholder) {
+    async function runAgentLoop(messages, modelUsed, placeholder, initialDocumentCitations = []) {
       return runToolAgent(messages, modelUsed, placeholder, {
         allowExternalSearch: true,
-        maxWebSearches: TOOL_AGENT_MAX_WEB_SEARCHES
+        maxWebSearches: TOOL_AGENT_MAX_WEB_SEARCHES,
+        initialDocumentCitations
       });
     }
 
@@ -7667,7 +7668,7 @@ JSON array:` }],
                 <span>Agent starting</span>
                 <span class="thinking-dots"><span></span><span></span><span></span></span>
               `;
-              const agentResult = await runAgentLoop(messages, modelUsed, placeholder);
+              const agentResult = await runAgentLoop(messages, modelUsed, placeholder, documentCitations);
               finalReply = agentResult.finalReply;
               tavilyCitations = agentResult.citations;
               if (agentResult.documentCitations?.length) documentCitations = agentResult.documentCitations;
