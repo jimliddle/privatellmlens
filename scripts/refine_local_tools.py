@@ -31,7 +31,7 @@ index.write_text(text, encoding='utf-8')
 
 core = Path('corefunctionality.md')
 core_text = core.read_text(encoding='utf-8')
-heading = '#### Agentic Features (Standard — on by default)\n'
+heading = '#### Agentic Features\n'
 section = '''#### Local Tool Framework
 
 - **Schema-driven registry** — browser tools are defined once with a name, description, JSON parameter schema, privacy classification (`local` or `external`), availability rule and executor.
