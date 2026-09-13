@@ -11,7 +11,7 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Streaming Ollama and OpenAI-compatible llama.cpp chat
 - Multiple IndexedDB-backed conversation threads with editable system prompts
 - Encrypted persistent document workspaces for PDF, DOCX, PPTX, text, CSV, HTML, Python and JSON
-- Direct-context, lexical retrieval and question-directed whole-document analysis
+- Direct-context, hybrid BM25 + local semantic retrieval, and question-directed whole-document analysis
 - Multiple documents per thread, reusable without reattaching or re-extracting
 - Page, slide and line-level citations with an exact source-passage viewer
 - Ollama vision-model image attachments
@@ -29,7 +29,7 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 
 The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
 
-Browser dependencies are loaded from CDNs: PDF.js, JSZip (DOCX/PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU runtime. The first DOCX or PPTX use therefore needs JSZip to have loaded; normal browser caching can reuse it afterward.
+Browser dependencies are loaded from CDNs: PDF.js, JSZip (DOCX/PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU/semantic-retrieval runtimes. The first DOCX or PPTX use therefore needs JSZip to have loaded; normal browser caching can reuse it afterward. The first hybrid document retrieval downloads the small q8 MiniLM embedding model and related tokenizer/config assets (approximately 25 MB in total); normal browser caching reuses those assets afterward.
 
 ## Quick start with Ollama
 
@@ -52,9 +52,22 @@ Ordinary document attachments are extracted once, encrypted with AES-256-GCM, st
 
 Three strategies are available:
 
-- **Automatic** sends documents in full when they fit the selected context. Oversized targeted questions use lexical retrieval; oversized whole-document requests use question-directed map analysis.
+- **Automatic** sends documents in full when they fit the selected context. Oversized targeted questions use hybrid local retrieval; oversized whole-document requests use question-directed map analysis.
 - **Exact / targeted** retrieves the most relevant source passages when the workspace is too large.
 - **Whole-document analysis** examines all document sections against the question before synthesis.
+
+### Hybrid local retrieval
+
+For oversized targeted questions, PrivateLLMLens combines two local retrieval signals:
+
+- **BM25 lexical ranking** handles exact words, identifiers, model names, code symbols and unusual technical terms well.
+- **Semantic ranking** uses `Xenova/all-MiniLM-L6-v2` locally in a dedicated WASM worker, so differently worded passages can still match the meaning of the question.
+
+The two rankings are combined using reciprocal-rank fusion, followed by a lightweight MMR-style diversification pass to avoid spending the context budget on several near-duplicate or adjacent chunks.
+
+Semantic indexing is lazy: attaching a document does not immediately run the embedding model. The first targeted retrieval builds embeddings for that document, quantises the normalised vectors to compact signed 8-bit values, and stores them inside the existing encrypted document payload. Later queries reuse the cached encrypted index. Conversation branches preserve the semantic index when the workspace is copied and re-encrypted.
+
+No document text or query is sent to an external embedding API. Embedding inference runs locally in the browser. If the worker, WebAssembly runtime, model load, or embedding inference is unavailable on a device, retrieval automatically falls back to local BM25 rather than blocking document Q&A.
 
 Context budgeting reserves room for the system prompt, memories, conversation and answer. Retrieved passages retain provenance. Citations open the exact decrypted page, slide or line range locally.
 
@@ -134,7 +147,7 @@ Provider keys are stored in the WebCrypto vault. Leave a key unset to keep its i
 
 PrivateLLMLens uses IndexedDB version 6 for threads, messages, encrypted memories, the WebCrypto vault, and encrypted document workspaces. Non-sensitive preferences remain in `localStorage`.
 
-Provider keys, memories, document filenames and extracted document content use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. CDN dependencies remain part of the trust boundary.
+Provider keys, memories, document filenames, extracted document content and cached semantic document indexes use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. CDN dependencies remain part of the trust boundary.
 
 Browser storage is origin-scoped. Changing hostname, port, protocol or file origin creates a different storage area. Ordinary JSON export includes threads, messages and portable settings but deliberately excludes API keys, memories and document workspaces.
 
