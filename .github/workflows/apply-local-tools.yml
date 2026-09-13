@@ -5,8 +5,7 @@ on:
     branches:
       - feature/local-tool-registry
     paths:
-      - scripts/apply_local_tools.py
-      - scripts/apply_local_tools_fixed.py
+      - scripts/refine_local_tools.py
       - .github/workflows/apply-local-tools.yml
 
 permissions:
@@ -20,9 +19,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feature/local-tool-registry
-      - name: Apply patch
-        run: python scripts/apply_local_tools_fixed.py
-      - name: Check generated JavaScript
+      - name: Apply refinement
+        run: python scripts/refine_local_tools.py
+      - name: Check generated JavaScript and tool integration
         shell: bash
         run: |
           python - <<'PY'
@@ -31,10 +30,18 @@ jobs:
           html = Path('index.html').read_text(encoding='utf-8')
           scripts = re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', html)
           Path('/tmp/privatellmlens.js').write_text('\n'.join(scripts), encoding='utf-8')
-          required = ['localToolsCheckbox', 'createToolRegistry', 'runToolAgent', 'document_search', 'json_query', 'privacy: "local"']
+          required = [
+              'localToolsCheckbox', 'createToolRegistry', 'runToolAgent',
+              'document_search', 'document_read', 'json_query',
+              'privacy: "local"', 'privacy: "external"',
+              'initialDocumentCitations', 'parallel_tool_calls'
+          ]
           missing = [item for item in required if item not in html]
           if missing:
               raise SystemExit('Missing expected local-tool code: ' + ', '.join(missing))
+          core = Path('corefunctionality.md').read_text(encoding='utf-8')
+          if '#### Local Tool Framework' not in core:
+              raise SystemExit('Local Tool Framework documentation missing')
           PY
           node --check /tmp/privatellmlens.js
       - name: Commit generated files
@@ -42,10 +49,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html README.md corefunctionality.md
+          git add index.html corefunctionality.md
           if git diff --cached --quiet; then
-            echo "No generated changes"
+            echo "No refinement changes"
             exit 0
           fi
-          git commit -m "Add schema-driven local tool framework"
+          git commit -m "Refine local tool citation flow and docs"
           git push origin HEAD:feature/local-tool-registry
