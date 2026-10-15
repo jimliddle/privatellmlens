@@ -1,5 +1,7 @@
 # PrivateLLMLens
 
+Current application release: **2.3.0**.
+
 PrivateLLMLens is a single-file browser interface for local Ollama, llama.cpp and optional in-browser WebGPU models. It works on desktop and Android/Termux without an application backend.
 
 Try the hosted version: **https://jimliddle.github.io/privatellmlens/**
@@ -16,13 +18,13 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Page, slide and line-level citations with an exact source-passage viewer
 - Ollama vision-model image attachments
 - Explicit 8K, 16K and 32K context profiles; 4K utility calls
-- Active request and document-processing cancellation
+- Active local/cloud request and document-processing cancellation, with responses bound to their original thread
 - Encrypted persistent memories with separate use and learning controls
 - Schema-driven local tool registry for calculator, date/time, encrypted document search/read and JSON inspection; Web Research can combine these with Tavily
 - Optional Tavily search, Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
 - Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
 - Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
-- Markdown, syntax highlighting, one-tap response copying, regeneration, branching, search, JSON backup and PDF export
+- Markdown, syntax highlighting, one-tap response copying, regeneration, branching, search, conversation JSON export, encrypted workspace backups and PDF export
 - Responsive compact composer with Automatic, Compact and Desktop layout modes
 - Embedded PWA manifest and icon
 
@@ -30,7 +32,7 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 
 The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
 
-Browser dependencies are loaded from CDNs: PDF.js, JSZip (DOCX/PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU/semantic-retrieval runtimes. The first DOCX or PPTX use therefore needs JSZip to have loaded; normal browser caching can reuse it afterward. The first hybrid document retrieval downloads the small q8 MiniLM embedding model and related tokenizer/config assets (approximately 25 MB in total); normal browser caching reuses those assets afterward.
+Browser dependencies are loaded from CDNs: PDF.js, JSZip (DOCX/PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU/semantic-retrieval runtimes. PDF.js 6.4.299 is loaded lazily with a version-matched legacy worker, character maps and standard-font assets; JavaScript evaluation is disabled while text extraction and page citations remain available. DOMPurify 3.4.17 and Marked 18.1.1 are pinned. The first DOCX or PPTX use needs JSZip to have loaded; normal browser caching can reuse it afterward. The first hybrid document retrieval downloads the small q8 MiniLM embedding model and related tokenizer/config assets (approximately 25 MB in total); normal browser caching reuses those assets afterward.
 
 ## Quick start with Ollama
 
@@ -63,6 +65,8 @@ For oversized targeted questions, PrivateLLMLens combines two local retrieval si
 
 - **BM25 lexical ranking** handles exact words, identifiers, model names, code symbols and unusual technical terms well.
 - **Semantic ranking** uses `Xenova/all-MiniLM-L6-v2` locally in a dedicated WASM worker, so differently worded passages can still match the meaning of the question.
+
+Whole-document analysis processes every section, then combines all relevant findings through bounded reduction passes when they exceed the final context budget. Coverage is shown on the response; findings are not silently dropped to fit. Oversized individual text lines are split while retaining their source line number.
 
 The two rankings are combined using reciprocal-rank fusion, followed by a lightweight MMR-style diversification pass to avoid spending the context budget on several near-duplicate or adjacent chunks.
 
@@ -150,6 +154,8 @@ Web Research uses the same registry and additionally exposes Tavily as an **exte
 - **OpenAI:** image generation
 - **Gemini:** explicit cloud long-context file processing
 
+Tavily search queries leave the device even though answer generation can remain local. Local and cloud requests share cancellation, and changing threads discards stale replies.
+
 Provider keys are stored in the WebCrypto vault. Leave a key unset to keep its integration unavailable.
 
 ## Local storage and privacy
@@ -158,17 +164,34 @@ PrivateLLMLens uses IndexedDB version 6 for threads, messages, encrypted memorie
 
 Provider keys, memories, document filenames, extracted document content and cached semantic document indexes use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. CDN dependencies remain part of the trust boundary.
 
-Browser storage is origin-scoped. Changing hostname, port, protocol or file origin creates a different storage area. Ordinary JSON export includes threads, messages and portable settings but deliberately excludes API keys, memories and document workspaces.
+Browser storage is origin-scoped. Changing hostname, port, protocol or file origin creates a different storage area. The **Export chat** button creates a plain JSON conversation export, compatible with existing conversation backups. It excludes API keys, memories and documents. **Workspace backup** creates a password-encrypted `.pllbackup` file containing conversations, extracted document workspaces, cached semantic indexes, source references and memories. API keys and network endpoints are excluded from both formats.
+
+Workspace backups use a fresh salt and IV, PBKDF2-SHA256 (310,000 iterations) and AES-256-GCM. Keep the backup password: the app cannot recover it. Use **Import** to restore either format; encrypted backups are authenticated and validated before one atomic import transaction. New IDs and encryption are generated for the destination browser, and document citations are remapped. Existing data is kept. Imported preferences are allowlisted and cannot silently redirect the Ollama endpoint or install provider credentials.
 
 ## PWA installation
 
 Install from HTTPS, `http://localhost`, or `http://127.0.0.1`. Browsers do not permit installation from raw `file://` URLs. Use the header install button or the browser's **Add to Home screen** action.
 
+At narrow phone widths, Settings and layout remain visible, with installation, shortcuts and fullscreen in **More actions**. Browser zoom stays enabled, form controls have associated labels, and modal dialogs retain and restore keyboard focus.
+
 On touch devices, the compact composer exposes Tools and Model as stable bottom sheets and keeps response-copy controls visible. The header layout button switches directly between Compact and Desktop; **Settings → Appearance → Layout** also offers Automatic mode, which follows screen size and pointer capability.
 
 ## Development
 
-There is no build step. Edit `index.html`, reload, and test against a local provider. A basic main-script syntax check is:
+There is no application build step. Edit `index.html`, reload, and test against a local provider. Model discovery uses capability metadata when available and excludes embedding-only models from chat. A saved model must still be available; known text-only models report a clear error for image input.
+
+Development-only regression tests run with Node.js 22 or newer:
+
+```sh
+npm ci
+npm test
+npx playwright install chromium
+npm run test:browser
+```
+
+`npm run test:all` runs both suites. PDF reference fixtures are downloaded from a pinned Mozilla tag and checksum-verified; baseline hashes compare content across all 17 pages while allowing equivalent Unicode and whitespace formatting. Browser tests use synthetic provider responses rather than paid APIs. GitHub Actions runs these checks on pull requests and `main`.
+
+For browser environments where a separate test browser cannot launch, run `node tests/server.cjs` and open `http://127.0.0.1:18767/native`. This local-only harness uses a separate test database and synthetic providers to exercise streaming, tools, PDF workers/source viewing, encrypted restore and cancellation. The production HTML does not include the harness. A basic main-script syntax check is:
 
 ```sh
 awk '/<script>/{inside=1;next} /<\/script>/{inside=0} inside{print}' index.html > /tmp/privatellmlens.js

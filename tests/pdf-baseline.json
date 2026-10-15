@@ -1,0 +1,35 @@
+[
+  {
+    "name": "basicapi.pdf",
+    "url": "https://raw.githubusercontent.com/mozilla/pdf.js/v2.16.105/test/pdfs/basicapi.pdf",
+    "fileSha256": "925853d98d67d5dae7473c635f932958e1695ce1029d23b2ecd2531cb65f1f14",
+    "pageHashes": [
+      "3d498ca96baaa1c2647017888f47465745067f2d23deb40452ba6b9cc3da133d",
+      "cdcfb5f090a04e5cb6a3aac769c934357a8dc51579c43eebbf38b5fb35cf8907",
+      "9eecb5d65a9895dbb53536c80d7e99431b278c0a286cd8d5a4371b51aa0b74db"
+    ],
+    "fullTextHash": "d5bcbb93caf6869bcdfc5c5772f7c446919015014d1ba4a24438610de7d24184"
+  },
+  {
+    "name": "tracemonkey.pdf",
+    "url": "https://raw.githubusercontent.com/mozilla/pdf.js/v2.16.105/test/pdfs/tracemonkey.pdf",
+    "fileSha256": "3662ff519e485810520552bf301d8c3b2b917fd2f83303f4965d7abed367e113",
+    "pageHashes": [
+      "18619889d084697944ae2d80475ad46bbe6142638db74264aa3cc759976cefa7",
+      "6bb5ec35c821c048bdad8a79b1000ed8887680bbf645523a9c5c986e81340a3d",
+      "bfdb57e75fd00e142f80df2b28e3e7a7ce2b769b3462f3f6f26d177ac8d45cd3",
+      "a9dcb2bfc464010a7827b798e93ffd674fc2c341a9747d31b2e44c6f823606f2",
+      "6150015bff7734c583e09b5a8c7d39fd237280919929603af85b045aa687b35d",
+      "367e0d6f887ee074002639200af2ed5176a1e8be82d31259edf21631c51d6556",
+      "03098f9d6709d554e2b62c716fd19b50402e692a95576c4f9dc16868692121ed",
+      "41608447b3eafff5e49c3a6023845fc8afdc33413fb16df85d5e8b6795a8d72f",
+      "b163e1adea2836cbcd798fb5e864c597efcbec78abc98ac8bfa5f21e9b0750f2",
+      "ed0226651d09fa3e3a1b64caa81806bc2a2c6b5f951cede75bd831893de1c869",
+      "56f512d37136a2af8f7cf8f197e32a4fd693b9b3dabf7e8f0a254c6b3f7afdaa",
+      "22a24cfcde2ae4bd5b5267d58be4463a49661b78caad8a9b6be79219ac27274a",
+      "e3751966f82faf491bdcf9ee0c79c848370d2e090b9c5a0de563bfa15b911a38",
+      "b94c7766662971ccfc10eb4513c83ca4d2e345c3e9adc3df0a2c90cbf9e7f640"
+    ],
+    "fullTextHash": "6bdb13252169d7552ed47c0c943a75ee54f3c8e016a76e1067370367f48ececc"
+  }
+]
