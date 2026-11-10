@@ -355,7 +355,11 @@ test('the model manager works at phone width, including a streamed download', as
 });
 
 test('generation settings persist and the alert status reflects notification permission', async ({ page, context }) => {
-  await context.grantPermissions(['notifications']);
+  // Headless browsers differ on real notification permission, so stand in a granted one.
+  await context.addInitScript(() => {
+    window.__notifications = [];
+    window.Notification = class { constructor(title, options) { window.__notifications.push({ title, body: options.body }); } close() {} static get permission() { return 'granted'; } static requestPermission() { return Promise.resolve('granted'); } };
+  });
   await routeApp(context); await openApp(page);
   await page.locator('#settingsButton').click();
   await expect(page.locator('#keepAwakeCheckbox')).toBeChecked();
@@ -365,15 +369,14 @@ test('generation settings persist and the alert status reflects notification per
   await page.locator('#keepAwakeCheckbox').uncheck();
   await page.locator('#settingsFooter button').last().click();
   expect(await page.evaluate(() => [localStorage.getItem('completionAlert'), localStorage.getItem('keepAwake'), localStorage.getItem('completionSound')])).toEqual(['true', 'false', 'true']);
-  // A hidden page gets a notification that contains no chat content.
-  const shown = await page.evaluate(async () => {
-    const created = [];
-    const Real = window.Notification;
-    window.Notification = class { constructor(title, options) { created.push({ title, body: options.body }); } close() {} static get permission() { return Real.permission; } };
-    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
-    const outcome = await announceCompletion({ ok: true, elapsedSeconds: 12 });
-    return { created, outcome, title: document.title };
-  });
-  expect(shown.created).toEqual([{ title: 'PrivateLLMLens', body: 'Your reply is ready (12s).' }]);
+  // A reply that lands while the page is hidden raises an alert with no chat content.
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.hasFocus = () => false; });
+  await page.locator('#userInput').fill('A confidential question about QUOKKA'); await page.locator('#sendButton').click();
+  await expect(page.locator('.assistant-message').last()).toContainText('preserved local functionality');
+  await expect.poll(() => page.evaluate(() => window.__notifications.length)).toBe(1);
+  const shown = await page.evaluate(() => ({ note: window.__notifications[0], title: document.title }));
+  expect(shown.note.title).toBe('PrivateLLMLens');
+  expect(shown.note.body).toMatch(/^Your reply is ready/);
+  expect(JSON.stringify(shown.note)).not.toMatch(/QUOKKA|preserved/);
   expect(shown.title).toContain('Reply ready');
 });
