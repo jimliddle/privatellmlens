@@ -2,7 +2,7 @@
 
 Current application release: **2.5.0**.
 
-PrivateLLMLens is a single-file browser interface for local Ollama, llama.cpp and optional in-browser WebGPU models. It works on desktop and Android/Termux without an application backend.
+PrivateLLMLens is a single file browser interface for local Ollama, llama.cpp and optional in browser WebGPU models. It is delbierately a single page for portability and ease of use and works on desktop and Android/Termux without an application backend.
 
 Try the hosted version: **https://jimliddle.github.io/privatellmlens/**
 
