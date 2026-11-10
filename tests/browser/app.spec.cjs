@@ -25,15 +25,11 @@ async function routeApp(context, chatHandler) {
       return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: url.pathname === '/api/chat' ? 'application/x-ndjson' : 'text/event-stream', body: output });
     }
     if (url.hostname === '127.0.0.1' && url.port === '18767') return route.continue();
-    if (url.pathname.includes('dompurify@3.4.17')) return route.fulfill({ contentType: 'text/javascript', path: path.join(root, 'node_modules/dompurify/dist/purify.min.js') });
-    if (url.pathname.includes('marked@18.1.1')) return route.fulfill({ contentType: 'text/javascript', path: path.join(root, 'node_modules/marked/lib/marked.umd.js') });
-    if (url.pathname.includes('jszip/3.10.1')) return route.fulfill({ contentType: 'text/javascript', path: path.join(root, 'node_modules/jszip/dist/jszip.min.js') });
     const pdfPath = url.pathname.split('pdfjs-dist@6.4.299/')[1];
     if (pdfPath) {
       const file = path.resolve(root, 'node_modules/pdfjs-dist', pdfPath);
       if (file.startsWith(path.join(root, 'node_modules/pdfjs-dist') + path.sep) && fs.existsSync(file)) return route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, contentType: file.endsWith('.mjs') ? 'text/javascript' : 'application/octet-stream', path: file });
     }
-    if (url.pathname.includes('highlight.min.js')) return route.fulfill({ contentType: 'text/javascript', body: 'window.hljs={highlightElement(){}};' });
     // Unrelated fonts, icons and model downloads are not needed for these functional tests.
     return route.abort();
   });
@@ -182,4 +178,76 @@ test('regenerate reuses the Send pipeline and PDF export cannot run message mark
   expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
   expect(await popup.evaluate(() => window.__pwned)).toBeUndefined();
   expect(await page.evaluate(() => self.crossOriginIsolated)).toBe(false);
+});
+
+test('core features work with every CDN unreachable and the security policy reports no violations', async ({ page, context }) => {
+  const external = [], violations = [];
+  await routeApp(context);
+  await context.route(url => !['127.0.0.1', 'localhost'].includes(new URL(url).hostname) && !/\/(api|v1)\//.test(new URL(url).pathname), route => { external.push(route.request().url()); return route.abort(); });
+  page.on('console', message => { if (/Content Security Policy|Refused to/i.test(message.text())) violations.push(message.text()); });
+  await openApp(page);
+  const libraries = await page.evaluate(() => ({
+    marked: typeof marked?.parse, purify: DOMPurify.version, hljs: hljs.versionString, jszip: JSZip.version,
+    comment: DOMPurify.sanitize('<!-- note --><b>ok</b><script>window.__x=1</scr' + 'ipt>'),
+    isolated: self.crossOriginIsolated
+  }));
+  expect(libraries).toMatchObject({ marked: 'function', purify: '3.4.17', hljs: '11.9.0', jszip: '3.10.1', comment: '<b>ok</b>' });
+  // Icons are embedded masks, sized and coloured without any font download.
+  const icon = await page.locator('#settingsButton i').evaluate(element => { const style = getComputedStyle(element); return { mask: style.maskImage || style.webkitMaskImage, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }; });
+  expect(icon.mask).toContain('data:image/svg+xml');
+  expect(icon.width).toBeGreaterThan(8); expect(icon.height).toBeGreaterThan(8);
+  expect(await page.locator('#aiIcon').evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+  // Markdown, code highlighting and a remote image in model output.
+  await context.unroute('**/*');
+  await routeApp(context, route => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/x-ndjson',
+    body: JSON.stringify({ message: { content: '**Bold** ![chart](https://tracker.example/pixel.png?q=secret)\n\n```js\nconst answer = 42;\n```\n[site](https://example.com)' } }) + '\n' + JSON.stringify({ done: true }) + '\n' }));
+  const requested = [];
+  page.on('request', request => requested.push(request.url()));
+  await page.locator('#userInput').fill('Show formatting'); await page.locator('#sendButton').click();
+  const reply = page.locator('.assistant-message').last();
+  await expect(reply.locator('strong')).toHaveText('Bold');
+  await expect(reply.locator('pre code .hljs-keyword').first()).toHaveText('const');
+  await expect(reply.locator('a.remote-image-link')).toHaveText('[image: chart]');
+  await expect(reply.locator('img')).toHaveCount(0);
+  await expect(reply.locator('a', { hasText: 'site' })).toHaveAttribute('target', '_blank');
+  expect(requested.some(url => url.includes('tracker.example'))).toBe(false);
+  // Even markup that slips an image element into the page cannot load it.
+  const blocked = await page.evaluate(() => new Promise(resolve => { const image = new Image(); image.onload = () => resolve('loaded'); image.onerror = () => resolve('blocked'); image.src = 'https://tracker.example/direct.png'; setTimeout(() => resolve('timeout'), 3000); }));
+  expect(blocked).toBe('blocked');
+  // DOCX reading needs no network.
+  const text = await page.evaluate(async () => {
+    const zip = new JSZip();
+    zip.file('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Offline document text</w:t></w:r></w:p></w:body></w:document>');
+    const blob = await zip.generateAsync({ type: 'blob' });
+    return extractDocxText(new File([blob], 'Offline.docx'));
+  });
+  expect(text).toContain('Offline document text');
+  expect(violations.filter(text => !text.includes('tracker.example'))).toEqual([]);
+  expect(external.filter(url => !/fonts\.(googleapis|gstatic)\.com/.test(url))).toEqual([]);
+});
+
+test('a PDF.js download that does not match its pinned hash is refused', async ({ page, context }) => {
+  await routeApp(context);
+  await context.route('**/pdfjs-dist@6.4.299/legacy/build/pdf.min.mjs', route => route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'text/javascript', body: 'window.__tampered = true; export const getDocument = () => {};' }));
+  await openApp(page);
+  const message = await page.evaluate(() => loadPdfDocument(new Uint8Array([37, 80, 68, 70])).then(() => 'loaded', error => error.message));
+  expect(message).toContain('did not match its pinned integrity hash');
+  expect(await page.evaluate(() => window.__tampered)).toBeUndefined();
+});
+
+test('storage settings show protection, usage and contents on a phone-sized screen', async ({ page, context }) => {
+  await routeApp(context); await openApp(page);
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.locator('#userInput').fill('Hello'); await page.locator('#sendButton').click();
+  await expect(page.locator('.assistant-message').last()).toContainText('preserved local functionality');
+  await page.locator('#settingsButton').click();
+  await page.locator('#storageSection').scrollIntoViewIfNeeded();
+  await expect(page.locator('#storagePersistenceText')).toContainText(/Protected|Not protected/);
+  await expect(page.locator('#storageUsageText')).toContainText(/ of /);
+  await expect(page.locator('#storageContentsText')).toHaveText('1 thread · 2 messages · 0 documents · 0 memories');
+  await expect(page.locator('#storageBackupText')).toHaveText('Never');
+  const box = await page.locator('#storageSection').boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(360);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+  await page.screenshot({ path: 'test-results/storage-settings-phone.png' });
 });
