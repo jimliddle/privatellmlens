@@ -87,15 +87,47 @@ The page finds Ollama models at `http://localhost:11434`. You can point it at an
 
 ## Allowing the page to reach Ollama
 
-Ollama only answers web pages it has been told to trust. The simplest setting for a personal machine is:
+Ollama only answers web pages it has been told to trust. Out of the box it trusts pages served from your own machine, such as `http://localhost:8765`, and nothing else. To use the hosted page you have to add its address to a setting called `OLLAMA_ORIGINS`.
+
+**Ollama only reads this setting when it starts. After changing it you must quit Ollama and start it again. Refreshing the page is not enough.**
+
+### If you start Ollama from a terminal
 
 ```sh
 OLLAMA_ORIGINS="*" ollama serve
 ```
 
-This lets any website open in your browser try to use your Ollama. If you would rather limit it, list only the address you use, for example `https://jimliddle.github.io` or `http://127.0.0.1:8765`, and restart Ollama.
+### If you use the Ollama app on a Mac
 
-Recent versions of Chrome also ask before a website may contact services on your own computer or network. If you use the hosted page and see that prompt, choose **Allow**. Without it the page cannot reach Ollama.
+1. Run this in Terminal:
+
+   ```sh
+   launchctl setenv OLLAMA_ORIGINS "*"
+   ```
+
+2. Click the Ollama icon in the menu bar and choose **Quit Ollama**.
+3. Open Ollama again.
+4. Reload PrivateLLMLens.
+
+The Mac forgets this setting when it restarts, so run the command again after a reboot, then quit and reopen Ollama.
+
+The **Expose Ollama to the network** option in the Ollama app's settings is a different thing. It lets other devices reach Ollama. It does not change which web pages Ollama trusts, so it will not fix a page that cannot connect.
+
+### Which value to use
+
+`"*"` trusts every website open in your browser. If you would rather limit it, give only the address you use, for example `"https://jimliddle.github.io"`. Separate several addresses with commas.
+
+### Checking it worked
+
+```sh
+curl -i -H "Origin: https://jimliddle.github.io" http://localhost:11434/api/tags
+```
+
+If the output includes a line starting `Access-Control-Allow-Origin`, Ollama is set up correctly. If that line is missing, Ollama has not picked the setting up: quit it and start it again.
+
+### If Ollama is set up but the page still says Disconnected
+
+Recent versions of Chrome and Edge ask before a website may contact services on your own computer or network. If you see that prompt, choose **Allow**. If you dismissed it, click the icon at the left of the address bar, open **Site settings**, set **Local network access** to **Allow**, and reload.
 
 ## One file, and what it loads
 
