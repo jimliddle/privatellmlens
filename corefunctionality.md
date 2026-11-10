@@ -34,7 +34,8 @@
 - Semantic embeddings run in a dedicated WASM worker so retrieval does not require an external embedding service and does not compete with an active WebGPU chat model for GPU memory.
 - The embedding model is q8 and requires roughly 25 MB of model/tokenizer/config assets on first semantic use; browser caching reuses them afterward.
 - Semantic indexing is lazy — embeddings are created only when an oversized targeted query needs retrieval, not merely when a document is attached.
-- Normalised chunk embeddings are compactly quantised to signed 8-bit values and stored inside the existing encrypted document payload.
+- Each document section is indexed as several ~900-character passages so the whole section is visible to the embedding model; a section ranks by its best passage.
+- Normalised passage embeddings are compactly quantised to signed 8-bit values and stored inside the existing encrypted document payload.
 - BM25 and semantic rankings are combined using reciprocal-rank fusion.
 - A lightweight MMR-style diversification pass reduces redundant adjacent/near-duplicate passages in the final context.
 - If the worker, WebAssembly runtime, embedding model or semantic inference is unavailable, document retrieval automatically falls back to local BM25.
@@ -65,7 +66,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 
 - **Copy** — copies raw message text to clipboard with a brief confirmation.
 - **Edit** (user messages) — restores the prompt to the input field and removes that message plus subsequent messages for resubmission.
-- **Regenerate** (assistant messages) — removes the response and subsequent messages and re-runs the prompt.
+- **Regenerate** (assistant messages) — removes the response and subsequent messages and re-runs the prompt through the same pipeline as Send, including memories, context summary, search, tools, images and WebGPU models.
 - **Branch** — forks the conversation into a new thread from that message point.
 - **Delete** — removes the individual message.
 
@@ -101,7 +102,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 
 - **Auto-title threads** — names the thread after the first exchange.
 - **Auto-search (Tavily)** — a conservative local router decides whether fresh public-web information is required before performing a Tavily search.
-- **Auto-summarise context** — summarises older messages when the conversation exceeds the configured history window.
+- **Auto-summarise context** — keeps a running summary of older messages on the thread and extends it in batches, rather than re-summarising on every send.
 - **Web Research** — structured multi-step Tavily search/answer loop with up to three distinct searches.
 - **Proactive clarification** — asks one focused clarification question when enabled and genuinely needed.
 - **Suggested follow-ups** — generates contextual follow-up suggestions.
@@ -132,7 +133,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 #### Settings
 
 - **Appearance** — light / dark / system theme and Automatic / Compact / Desktop layout modes.
-- **Processing** — text chunk size, PDF pages per chunk, conversation history and model context.
+- **Processing** — document section size, conversation history and model context.
 - **Ollama Endpoint** — override the default `localhost:11434`.
 - **API Keys** — Perplexity, OpenAI, Tavily and Gemini keys are stored through the encrypted WebCrypto vault.
 - **Agentic Functions** — controls for auto-search, title generation, context summarisation, memory use/learning, follow-ups and fact-checking.
@@ -159,7 +160,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 #### Export
 
 - **JSON backup** — exports threads, messages and portable settings; API keys, encrypted memories and document workspaces are intentionally excluded.
-- **PDF export** — exports the current conversation to a formatted PDF through the browser print flow.
+- **PDF export** — exports the current conversation to a formatted PDF through the browser print flow. Message content is sanitised exactly as in the chat view.
 
 ---
 
