@@ -1066,6 +1066,14 @@ test('token counts and speeds reported by the server are shown, saved and rememb
   app.run('rememberModelSpeed("test-chat", { promptTokens: 30, promptSeconds: 0.01 })');
   assert(Math.abs(normalize(app.run('getModelSpeed("test-chat")')).read - 7.45) < 0.01);
   assert.equal(app.run('getModelSpeed("another-model")'), null);
+  // The real count corrects the app's rough estimate for later prompts to the same model.
+  app.run('rememberModelSpeed("ratio-model", { promptTokens: 2800, promptSeconds: 2 }, 3500)');
+  assert(Math.abs(normalize(app.run('getModelSpeed("ratio-model")')).tokenRatio - 0.8) < 0.001);
+  app.window.ratioPlaceholder = app.document.createElement('div');
+  app.document.body.appendChild(app.window.ratioPlaceholder);
+  app.window.ratioMessages = [{ role: 'user', content: 'z'.repeat(20000) }];
+  app.run('stopRatio = startModelWaitStatus(ratioPlaceholder, "ratio-model", ratioMessages); stopRatio()');
+  assert(app.window.ratioPlaceholder.querySelector('.stage-detail').textContent.startsWith('about 4,000 tokens'));
   assert.equal(app.run('formatGenerationStats({ promptTokens: 80, outputTokens: 1200, outputSeconds: 20 })'), 'read 80 tokens · wrote 1,200 at 60/s');
   assert.equal(app.run('formatGenerationStats(null)'), '');
   // llama.cpp reports the same facts in a different shape.

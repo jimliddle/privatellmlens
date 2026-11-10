@@ -9,7 +9,7 @@
        model output or document text cannot pull in or beacon to another site.
        connect-src stays open because the Ollama endpoint is user-configurable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' http: https: data: blob:; manifest-src 'self' blob: data:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
-  <meta name="application-version" content="2.5.1">
+  <meta name="application-version" content="2.6.0">
   <meta name="theme-color" content="#111827">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5190,7 +5190,9 @@ return He}()
     }
 
     // Remember how fast this model read and wrote here, averaged with earlier runs.
-    function rememberModelSpeed(modelValue, stats) {
+    // estimatedPromptTokens: the app's own rough count for the same prompt. The
+    // ratio to the real count is kept so later estimates for this model are closer.
+    function rememberModelSpeed(modelValue, stats, estimatedPromptTokens = 0) {
       if (!stats) return;
       let all = {};
       try { all = JSON.parse(localStorage.getItem("modelSpeeds") || "{}") || {}; } catch (_) {}
@@ -5199,7 +5201,10 @@ return He}()
       // A short or cached prompt says little about reading speed.
       if (stats.promptTokens >= 200 && stats.promptSeconds > 0) entry.read = blend(entry.read, stats.promptTokens / stats.promptSeconds);
       if (stats.outputTokens >= 20 && stats.outputSeconds > 0) entry.write = blend(entry.write, stats.outputTokens / stats.outputSeconds);
-      if (!Number.isFinite(entry.read) && !Number.isFinite(entry.write)) return;
+      if (stats.promptTokens >= 200 && estimatedPromptTokens >= 200) {
+        entry.tokenRatio = blend(entry.tokenRatio, Math.max(0.5, Math.min(2, stats.promptTokens / estimatedPromptTokens)));
+      }
+      if (!Number.isFinite(entry.read) && !Number.isFinite(entry.write) && !Number.isFinite(entry.tokenRatio)) return;
       entry.at = Date.now();
       all[modelSpeedKey(modelValue)] = entry;
       const keys = Object.keys(all);
@@ -5211,9 +5216,14 @@ return He}()
     // model server sends nothing while it loads a model and reads the prompt, so
     // say how big the prompt is, how long that usually takes here, where the model
     // is running, and for Ollama whether the model is in memory yet.
+    function estimatePromptTokens(messages) {
+      return messages.reduce((sum, message) => sum + estimateTokens(typeof message.content === "string" ? message.content : ""), 0);
+    }
+
     function startModelWaitStatus(placeholder, modelValue, messages) {
-      const promptTokens = messages.reduce((sum, message) => sum + estimateTokens(typeof message.content === "string" ? message.content : ""), 0);
-      const speed = getModelSpeed(modelValue)?.read;
+      const known = getModelSpeed(modelValue);
+      const promptTokens = estimatePromptTokens(messages) * (Number.isFinite(known?.tokenRatio) ? known.tokenRatio : 1);
+      const speed = known?.read;
       const usesOllama = !isLlamaCppModel(modelValue) && !isWebGPUModel(modelValue);
       let stopped = false, timer = null, shown = "";
       const render = () => {
@@ -10598,7 +10608,7 @@ JSON array:` }],
               } finally {
                 stopWaitStatus();
               }
-              rememberModelSpeed(modelUsed, generationStats);
+              rememberModelSpeed(modelUsed, generationStats, estimatePromptTokens(messages));
               refreshOllamaRunning();
               enhanceCodeBlocks(placeholder);
             }

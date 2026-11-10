@@ -1,6 +1,6 @@
 # PrivateLLMLens
 
-Current release: **2.5.1**
+Current release: **2.6.0**
 
 PrivateLLMLens is a single file browser interface for local Ollama, llama.cpp and optional in browser WebGPU models. It is deliberately a single page for portability and ease of use, and it works on desktop and on Android with Termux. There is no application server: the page talks straight to your model server.
 
@@ -274,6 +274,27 @@ API keys are stored encrypted in the browser. They are never included in exports
 Every step of a request shows a status line in the chat: what the app is doing, any progress it can count, and the seconds since you pressed Send. If the clock is running, the app is working. A **Cancel** button sits just above the prompt box for the whole time.
 
 Some models think before they answer. While they do, the line reads **Reasoning** and the reply appears once the model starts writing it.
+
+### Waiting for the first word
+
+A model server sends nothing back while it loads a model and reads your prompt. For a long prompt on a slow machine that silence can last many minutes. The status line fills the gap with what the app knows:
+
+- **Loading the model** or **Reading your prompt**. With Ollama the app asks the server whether the model is in memory yet.
+- **The size of the prompt**, for example "about 5,000 tokens". This includes history and any document text.
+- **How long that usually takes**, once the app has seen this model answer at least once on this machine.
+- **Where the model is running.**
+
+### Where the model is running
+
+Beside the model list, and as a chip under the prompt box on a phone, the app shows where the selected model runs:
+
+- **Ollama · GPU**, **Ollama · processor** or **Ollama · 60% GPU**. This comes from Ollama itself and appears once the model has been loaded. Processor only is shown in amber because it is much slower.
+- **GPU server** or **llama.cpp server** for models served by llama.cpp.
+- **in this browser** for the WebGPU models.
+
+### Token figures
+
+Under each reply the app shows what the model server reported: how many tokens it read and wrote, and the speed of each, for example "read 5,012 tokens at 4.9/s · wrote 312 at 3.1/s". The app remembers these speeds for each model and uses them for the estimate above. Nothing is guessed from the type of device, so the same page gives the right picture on a phone and on a desktop.
 
 Two settings help with long answers, mainly on phones. Both are in **Settings → While generating**.
 
