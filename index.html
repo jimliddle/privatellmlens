@@ -8781,8 +8781,21 @@ User: Write a polite reply to this email
       documentEmbeddingDownloads.forEach(file => { loaded += file.loaded; total += file.total; });
       if (!total) { updateDocumentEmbeddingStatus("Downloading search model"); return; }
       const megabytes = bytes => (bytes / 1048576).toFixed(1);
-      if (loaded >= total) updateDocumentEmbeddingStatus("Starting search model");
+      // Small settings files finish first; only the model itself (several MB) means the download is done.
+      const finished = loaded >= total && total > 5 * 1048576;
+      // Progress arrives many times a second. Redrawing that often restarts the dots and wastes work.
+      const now = Date.now();
+      if (!finished && now - documentEmbeddingLastDraw < 250) return;
+      documentEmbeddingLastDraw = now;
+      if (finished) updateDocumentEmbeddingStatus("Starting search model");
       else updateDocumentEmbeddingStatus("Downloading search model", `${megabytes(loaded)} of ${megabytes(total)} MB`, loaded / total);
+    }
+    let documentEmbeddingLastDraw = 0;
+
+    function describeTimeLeft(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 5) return "";
+      if (seconds < 90) return `about ${Math.ceil(seconds / 5) * 5}s left`;
+      return `about ${Math.round(seconds / 60)} min left`;
     }
 
     function ensureDocumentEmbeddingWorker(placeholder) {
@@ -8901,11 +8914,16 @@ self.onmessage = async (event) => {
       const sectionPassages = workspaceDocument.chunks.map(chunk => documentEmbeddingPassages(workspaceDocument, chunk));
       const texts = sectionPassages.flat();
       const vectors = [];
+      // Timed from the second batch on, because the first one also covers loading the model.
+      let timedFrom = 0, timedPassages = 0;
       for (let start = 0; start < texts.length; start += DOCUMENT_EMBEDDING_BATCH_SIZE) {
         if (activeRequestController?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
         const end = Math.min(start + DOCUMENT_EMBEDDING_BATCH_SIZE, texts.length);
-        setEmbeddingWorkStatus(`Indexing ${workspaceDocument.name}`, `passages ${start + 1}–${end} of ${texts.length}`, start / texts.length);
+        const remaining = timedPassages ? describeTimeLeft(((Date.now() - timedFrom) / timedPassages) * (texts.length - start) / 1000) : "";
+        setEmbeddingWorkStatus(`Indexing ${workspaceDocument.name}`, `passages ${start + 1}–${end} of ${texts.length}${remaining ? ` · ${remaining}` : ""}`, start / texts.length);
+        if (start > 0 && !timedFrom) timedFrom = Date.now();
         const embeddings = await awaitForRequest(requestContext, (embedDocumentTexts(texts.slice(start, end), placeholder)));
+        if (timedFrom) timedPassages += end - start;
         if (embeddings.length !== end - start) throw new Error("Embedding model returned an incomplete batch");
         embeddings.forEach(vector => vectors.push(vector));
       }

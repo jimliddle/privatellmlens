@@ -891,7 +891,13 @@ test('the search model reports download and indexing progress', async t => {
   say({ type: 'stage', stage: 'library' });
   assert.deepEqual([label(), detail()], ['Getting the search model ready', 'first use on this device']);
   say({ type: 'stage', stage: 'model' });
+  app.run('documentEmbeddingLastDraw = 0');
   say({ type: 'progress', file: 'model_quantized.onnx', loaded: 6 * 1048576, total: 24 * 1048576 });
+  say({ type: 'progress', file: 'config.json', loaded: 700, total: 700 });
+  assert.equal(label(), 'Downloading search model', 'a finished settings file is not the end of the download');
+  app.run('documentEmbeddingLastDraw = 0');
+  say({ type: 'progress', file: 'tokenizer.json', loaded: 1048576, total: 1048576 });
+  app.run('documentEmbeddingLastDraw = 0');
   say({ type: 'progress', file: 'tokenizer.json', loaded: 1048576, total: 1048576 });
   assert.deepEqual([label(), detail()], ['Downloading search model', '7.0 of 25.0 MB']);
   assert.equal(app.document.getElementById('progressFill').style.width, '28%');
@@ -912,6 +918,9 @@ test('the search model reports download and indexing progress', async t => {
   const result = await ranking;
   assert.equal(result.method, 'hybrid');
   assert(seen.some(line => /^Indexing Zoo\.txt \| passages 1–\d+ of \d+$/.test(line)), JSON.stringify(seen));
+  assert.equal(app.run('describeTimeLeft(3)'), '');
+  assert.equal(app.run('describeTimeLeft(42)'), 'about 45s left');
+  assert.equal(app.run('describeTimeLeft(200)'), 'about 3 min left');
   assert(seen.at(-1).startsWith('Finding the most relevant passages'));
   assert.equal(app.document.querySelector('#processingProgress .progress-bar').style.display, 'none', 'the bar is cleared afterwards');
   app.run('resetComposerForThreadChange()');
