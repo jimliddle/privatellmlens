@@ -9,7 +9,7 @@
        model output or document text cannot pull in or beacon to another site.
        connect-src stays open because the Ollama endpoint is user-configurable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' http: https: data: blob:; manifest-src 'self' blob: data:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
-  <meta name="application-version" content="2.5.1">
+  <meta name="application-version" content="2.6.0">
   <meta name="theme-color" content="#111827">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2827,6 +2827,9 @@ return He}()
     #processingProgress .progress-bar { order: 3; flex: 1 1 100%; margin-top: 0; }
     #processingProgress #cancelButton { margin-top: 0; min-height: 36px; padding: 6px 16px; }
     .stage-detail { color: var(--text-muted); margin-left: 8px; }
+    .model-backend { font-size: 12px; color: var(--text-muted); white-space: nowrap; padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .model-backend.slow, .mobile-chip.slow { color: var(--warning); border-color: var(--warning); }
+    .token-stats { display: block; flex-basis: 100%; margin-top: 2px; font-variant-numeric: tabular-nums; }
     .stage-elapsed { color: var(--text-muted); margin-left: 8px; font-variant-numeric: tabular-nums; }
 
     .progress-bar {
@@ -3912,6 +3915,7 @@ return He}()
               <option value="16384">16K context</option>
               <option value="32768">32K context</option>
             </select>
+            <span id="modelBackendInfo" class="model-backend" role="status" style="display:none;"></span>
             <div id="paramsPopoverWrapper">
               <button id="paramsBtn" onclick="toggleParamsPopover()" title="Model parameters — only sent to Ollama when changed from defaults (Alt+P)">
                 <i class="fa-solid fa-sliders"></i>
@@ -4581,6 +4585,9 @@ return He}()
       elapsed.textContent = stageElapsedText(element);
       parts.push(elapsed);
       element.replaceChildren(...parts);
+      // A longer status can wrap onto a second line; keep it in view if the reader is at the bottom.
+      const history = element.parentElement;
+      if (history?.id === "messageHistory" && history.scrollHeight - history.scrollTop - history.clientHeight < 160) history.scrollTop = history.scrollHeight;
     }
 
     // The bar above the prompt box mirrors progress that can be measured.
@@ -4796,6 +4803,7 @@ return He}()
       if (ollamaOptions.top_p !== undefined) llamaBody.top_p = ollamaOptions.top_p;
       if (ollamaOptions.seed !== undefined) llamaBody.seed = ollamaOptions.seed;
       if (ollamaOptions.num_predict !== undefined) llamaBody.max_tokens = ollamaOptions.num_predict;
+      if (llamaBody.stream) llamaBody.stream_options = { include_usage: true };
 
       const response = await fetchForRequest(requestContext, LLAMA_CPP_ENDPOINT, {
         ...requestOptions,
@@ -4886,6 +4894,27 @@ return He}()
 
     // Ollama streams newline-delimited JSON. Network chunks can end in the
     // middle of a JSON object, so retain the unfinished tail for the next read.
+    // llama.cpp speaks the OpenAI streaming format. Translate a chunk into the
+    // shape Ollama uses, including reasoning text and the token counts and
+    // timings the server reports at the end.
+    function openAIChunkToOllama(parsed) {
+      const delta = parsed.choices?.[0]?.delta || {};
+      const message = { message: { content: delta.content || "" }, done: false };
+      const reasoning = delta.reasoning_content || delta.reasoning;
+      if (reasoning) message.message.thinking = reasoning;
+      const timings = parsed.timings;
+      if (timings) {
+        if (Number.isFinite(timings.prompt_n)) message.prompt_eval_count = timings.prompt_n;
+        if (Number.isFinite(timings.prompt_ms)) message.prompt_eval_duration = timings.prompt_ms * 1e6;
+        if (Number.isFinite(timings.predicted_n)) message.eval_count = timings.predicted_n;
+        if (Number.isFinite(timings.predicted_ms)) message.eval_duration = timings.predicted_ms * 1e6;
+      } else if (parsed.usage) {
+        if (Number.isFinite(parsed.usage.prompt_tokens)) message.prompt_eval_count = parsed.usage.prompt_tokens;
+        if (Number.isFinite(parsed.usage.completion_tokens)) message.eval_count = parsed.usage.completion_tokens;
+      }
+      return message;
+    }
+
     async function readOllamaStream(response, onMessage, requestContext = activeRequestController) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -4905,9 +4934,7 @@ return He}()
           : trimmed;
         if (isOpenAIStream && !trimmed.startsWith("data:")) return false;
         const parsed = JSON.parse(payload);
-        const message = isOpenAIStream
-          ? { message: { content: parsed.choices?.[0]?.delta?.content || "" }, done: false }
-          : parsed;
+        const message = isOpenAIStream ? openAIChunkToOllama(parsed) : parsed;
         onMessage(message);
         return message.done === true;
       };
@@ -5038,6 +5065,189 @@ return He}()
       apiKeyCache[name] = value;
       if (typeof noteDataStored === "function") noteDataStored();
       localStorage.removeItem(name);
+    }
+
+    // ============================================
+    // WHERE THE MODEL RUNS, AND HOW FAST
+    // ============================================
+    // The same page drives a phone on its processor, a phone GPU server, a
+    // laptop and a desktop. Nothing here guesses from the device: it reports
+    // what the model server says and what was measured.
+    const ollamaRunning = new Map();   // model name -> { size, size_vram, context_length }
+    let ollamaRunningKnown = false;    // false until /api/ps has answered once
+
+    async function refreshOllamaRunning() {
+      try {
+        const response = await fetch(OLLAMA_TAGS.replace(/\/api\/tags$/, "/api/ps"), { signal: AbortSignal.timeout(3000) });
+        if (!response.ok) throw new Error(String(response.status));
+        const data = await response.json();
+        ollamaRunning.clear();
+        (Array.isArray(data.models) ? data.models : []).forEach(model => ollamaRunning.set(model.name || model.model, model));
+        ollamaRunningKnown = true;
+      } catch (_) {
+        // Ollama could not be asked, so make no claim from an old answer.
+        ollamaRunning.clear();
+        ollamaRunningKnown = false;
+      }
+      updateModelBackendInfo();
+      return ollamaRunningKnown;
+    }
+
+    function findOllamaRunning(modelName) {
+      const name = String(modelName || "");
+      return ollamaRunning.get(name) || ollamaRunning.get(`${name}:latest`) || ollamaRunning.get(name.replace(/:latest$/, "")) || null;
+    }
+
+    // short: for a chip. long: a full sentence for a tooltip or the model panel.
+    function describeModelBackend(modelValue) {
+      if (!modelValue) return { kind: "none", short: "", long: "" };
+      if (isWebGPUModel(modelValue)) return { kind: "browser", short: "in this browser", long: "Runs inside this browser using WebGPU." };
+      if (isLlamaCppModel(modelValue)) {
+        const gpu = /gpu/i.test(getLlamaCppModelId(modelValue));
+        return { kind: "llamacpp", short: gpu ? "GPU server" : "llama.cpp server", long: `Runs on the llama.cpp server at 127.0.0.1:8080${gpu ? ", a GPU profile" : ""}.` };
+      }
+      const running = findOllamaRunning(modelValue);
+      if (!running) return { kind: "ollama", loaded: ollamaRunningKnown ? false : null, short: "Ollama", long: ollamaRunningKnown ? "Runs on Ollama. The model is not loaded yet, so Ollama has not said whether it will use a GPU." : "Runs on Ollama." };
+      const size = Number(running.size) || 0;
+      const share = size > 0 ? Math.max(0, Math.min(1, (Number(running.size_vram) || 0) / size)) : 0;
+      const where = share >= 0.99 ? "GPU" : share <= 0.01 ? "processor" : `${Math.round(share * 100)}% GPU`;
+      const context = running.context_length ? ` Context ${Math.round(running.context_length / 1024)}K.` : "";
+      const sentence = share >= 0.99 ? "Ollama has the whole model on a GPU." : share <= 0.01 ? "Ollama is running this model on the processor only, which is much slower than a GPU." : `Ollama has ${Math.round(share * 100)}% of the model on a GPU and the rest on the processor.`;
+      return { kind: "ollama", loaded: true, share, short: `Ollama · ${where}`, long: sentence + context };
+    }
+
+    function updateModelBackendInfo() {
+      const info = document.getElementById("modelBackendInfo");
+      const backend = describeModelBackend(document.getElementById("modelSelection")?.value);
+      if (info) {
+        info.textContent = backend.short;
+        info.title = backend.long;
+        info.style.display = backend.short ? "" : "none";
+        info.classList.toggle("slow", backend.kind === "ollama" && backend.loaded === true && backend.share <= 0.01);
+      }
+      if (typeof updateMobileActiveChips === "function") updateMobileActiveChips();
+    }
+
+    function appendGenerationStats(container, stats) {
+      const text = formatGenerationStats(stats);
+      if (!text) return;
+      const element = document.createElement("span");
+      element.className = "token-stats";
+      element.textContent = text;
+      element.title = "Tokens the model read (your prompt, history and any document text) and wrote, with the speed of each, as reported by the model server.";
+      container.appendChild(element);
+    }
+
+    function formatCount(value) {
+      return String(Math.round(Number(value) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function formatRate(tokensPerSecond) {
+      if (!Number.isFinite(tokensPerSecond) || tokensPerSecond <= 0) return "";
+      return `${tokensPerSecond >= 10 ? Math.round(tokensPerSecond) : tokensPerSecond.toFixed(1)}/s`;
+    }
+
+    function describeDuration(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 5) return "a few seconds";
+      if (seconds < 90) return `about ${Math.ceil(seconds / 5) * 5}s`;
+      if (seconds < 5400) return `about ${Math.round(seconds / 60)} min`;
+      return `about ${(seconds / 3600).toFixed(1)} hours`;
+    }
+
+    // The figures a model server reports at the end of a reply.
+    function readGenerationStats(json) {
+      const stats = {};
+      if (Number.isFinite(json?.prompt_eval_count)) stats.promptTokens = json.prompt_eval_count;
+      if (Number.isFinite(json?.prompt_eval_duration) && json.prompt_eval_duration > 0) stats.promptSeconds = json.prompt_eval_duration / 1e9;
+      if (Number.isFinite(json?.eval_count)) stats.outputTokens = json.eval_count;
+      if (Number.isFinite(json?.eval_duration) && json.eval_duration > 0) stats.outputSeconds = json.eval_duration / 1e9;
+      if (Number.isFinite(json?.load_duration) && json.load_duration > 0) stats.loadSeconds = json.load_duration / 1e9;
+      return Object.keys(stats).length ? stats : null;
+    }
+
+    function formatGenerationStats(stats) {
+      if (!stats) return "";
+      const parts = [];
+      if (Number.isFinite(stats.promptTokens)) {
+        const rate = stats.promptSeconds ? formatRate(stats.promptTokens / stats.promptSeconds) : "";
+        parts.push(`read ${formatCount(stats.promptTokens)} tokens${rate ? ` at ${rate}` : ""}`);
+      }
+      if (Number.isFinite(stats.outputTokens)) {
+        const rate = stats.outputSeconds ? formatRate(stats.outputTokens / stats.outputSeconds) : "";
+        parts.push(`wrote ${formatCount(stats.outputTokens)}${rate ? ` at ${rate}` : ""}`);
+      }
+      if (stats.loadSeconds >= 1) parts.push(`model load ${Math.round(stats.loadSeconds)}s`);
+      return parts.join(" · ");
+    }
+
+    function modelSpeedKey(modelValue) {
+      return `${isLlamaCppModel(modelValue) ? LLAMA_CPP_ENDPOINT : OLLAMA_ENDPOINT}|${modelValue}`;
+    }
+
+    function getModelSpeed(modelValue) {
+      try { return JSON.parse(localStorage.getItem("modelSpeeds") || "{}")[modelSpeedKey(modelValue)] || null; }
+      catch (_) { return null; }
+    }
+
+    // Remember how fast this model read and wrote here, averaged with earlier runs.
+    // estimatedPromptTokens: the app's own rough count for the same prompt. The
+    // ratio to the real count is kept so later estimates for this model are closer.
+    function rememberModelSpeed(modelValue, stats, estimatedPromptTokens = 0) {
+      if (!stats) return;
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem("modelSpeeds") || "{}") || {}; } catch (_) {}
+      const entry = all[modelSpeedKey(modelValue)] || {};
+      const blend = (previous, value) => Number.isFinite(previous) ? previous * 0.5 + value * 0.5 : value;
+      // A short or cached prompt says little about reading speed.
+      if (stats.promptTokens >= 200 && stats.promptSeconds > 0) entry.read = blend(entry.read, stats.promptTokens / stats.promptSeconds);
+      if (stats.outputTokens >= 20 && stats.outputSeconds > 0) entry.write = blend(entry.write, stats.outputTokens / stats.outputSeconds);
+      if (stats.promptTokens >= 200 && estimatedPromptTokens >= 200) {
+        entry.tokenRatio = blend(entry.tokenRatio, Math.max(0.5, Math.min(2, stats.promptTokens / estimatedPromptTokens)));
+      }
+      if (!Number.isFinite(entry.read) && !Number.isFinite(entry.write) && !Number.isFinite(entry.tokenRatio)) return;
+      entry.at = Date.now();
+      all[modelSpeedKey(modelValue)] = entry;
+      const keys = Object.keys(all);
+      if (keys.length > 40) keys.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, keys.length - 40).forEach(key => delete all[key]);
+      try { localStorage.setItem("modelSpeeds", JSON.stringify(all)); } catch (_) {}
+    }
+
+    // Status for the wait between sending a prompt and the first word back. A
+    // model server sends nothing while it loads a model and reads the prompt, so
+    // say how big the prompt is, how long that usually takes here, where the model
+    // is running, and for Ollama whether the model is in memory yet.
+    function estimatePromptTokens(messages) {
+      return messages.reduce((sum, message) => sum + estimateTokens(typeof message.content === "string" ? message.content : ""), 0);
+    }
+
+    function startModelWaitStatus(placeholder, modelValue, messages) {
+      const known = getModelSpeed(modelValue);
+      const promptTokens = estimatePromptTokens(messages) * (Number.isFinite(known?.tokenRatio) ? known.tokenRatio : 1);
+      const speed = known?.read;
+      const usesOllama = !isLlamaCppModel(modelValue) && !isWebGPUModel(modelValue);
+      let stopped = false, timer = null, shown = "";
+      const render = () => {
+        if (stopped) return;
+        const backend = describeModelBackend(modelValue);
+        const loading = usesOllama && backend.loaded === false;
+        const label = loading ? "Loading the model" : (usesOllama && backend.loaded !== true) ? "Waiting for the model" : "Reading your prompt";
+        const rounded = promptTokens >= 1000 ? Math.round(promptTokens / 100) * 100 : Math.max(10, Math.round(promptTokens / 10) * 10);
+        const parts = [`about ${formatCount(rounded)} tokens`];
+        if (Number.isFinite(speed) && speed > 0) parts.push(`${describeDuration(promptTokens / speed)} at this model's usual speed`);
+        if (backend.kind === "ollama" ? backend.loaded === true : backend.short) parts.push(backend.short);
+        const detail = parts.join(" · ");
+        // Redraw only on a real change, so the dots keep moving.
+        if (`${label}|${detail}` === shown) return;
+        shown = `${label}|${detail}`;
+        setProcessingLabel(placeholder, label, detail);
+      };
+      render();
+      if (usesOllama) {
+        const poll = () => refreshOllamaRunning().then(render).catch(() => {});
+        poll();
+        timer = setInterval(poll, 4000);
+      }
+      return () => { stopped = true; clearInterval(timer); };
     }
 
     // ============================================
@@ -6262,6 +6472,9 @@ self.onmessage = async (e) => {
         statusDot.className = "disconnected";
         statusText.textContent = "Disconnected";
       }
+      // Keep the "where is it running" label current without a request per keystroke.
+      if (ollamaConnected && !document.hidden) refreshOllamaRunning();
+      else updateModelBackendInfo();
     }
 
     // ============================================
@@ -6384,6 +6597,8 @@ self.onmessage = async (e) => {
       if (llamaResult.status === "rejected") console.warn("llama-server discovery failed:", llamaResult.reason);
       updateWebGPUUIState();
       updateMobileActiveChips();
+      // The selection is set here without a change event, so refresh the "where it runs" label too.
+      refreshOllamaRunning();
     }
 
     // ============================================
@@ -6926,6 +7141,7 @@ self.onmessage = async (e) => {
         const timeText = document.createElement("span");
         timeText.textContent = responseTime;
         timeElem.appendChild(timeText);
+        appendGenerationStats(timeElem, msg.stats);
         
         messageElem.appendChild(timeElem);
       }
@@ -7469,8 +7685,16 @@ self.onmessage = async (e) => {
       document.getElementById("cancelButton").disabled = false;
     }
 
+    // Hides the file-reading progress. While a request is running the bar that
+    // holds Cancel must stay, so only the meter goes and the label is restored.
     function hideProgressBar() {
-      document.getElementById("processingProgress").style.display = "none";
+      const progress = document.getElementById("processingProgress");
+      if (activeRequestController) {
+        progress.querySelector(".progress-bar").style.display = "none";
+        document.getElementById("progressText").textContent = "Generating response…";
+        return;
+      }
+      progress.style.display = "none";
     }
 
     function updateProgressBar(completed, total) {
@@ -10000,6 +10224,7 @@ JSON array:` }],
         let documentCitations = [];
         let documentMode = "none";
         let documentRetrieval = null;
+        let generationStats = null;
         let documentCoverage = null;
         let workspaceDocuments = [];
 
@@ -10327,17 +10552,21 @@ JSON array:` }],
                 }
               }
 
-              // Earlier steps (indexing, searching) are finished: say the model has the prompt now.
-              setProcessingLabel(placeholder, "Thinking", "waiting for the model");
-
-              // Streaming response
-              const response = await awaitForRequest(requestContext, (fetchOllamaChat({ requestContext,
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
-              })));
-
-              if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+              // Earlier steps (indexing, searching) are finished: the model has the prompt now.
+              const stopWaitStatus = startModelWaitStatus(placeholder, modelUsed, messages);
+              let response;
+              try {
+                // Streaming response
+                response = await awaitForRequest(requestContext, (fetchOllamaChat({ requestContext,
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ model: modelUsed, stream: true, messages, options: getOllamaOptions() })
+                })));
+              } catch (error) {
+                stopWaitStatus();
+                throw error;
+              }
+              if (!response.ok) { stopWaitStatus(); throw new Error(`Ollama error: ${response.status}`); }
 
               finalReply = "";
 
@@ -10350,11 +10579,14 @@ JSON array:` }],
               const showReasoning = () => {
                 if (replyVisible || reasoningShown) return;
                 reasoningShown = true;
+                stopWaitStatus();
                 setProcessingLabel(placeholder, "Reasoning", "the model is working out its answer");
               };
 
               try {
                 await awaitForRequest(requestContext, (readOllamaStream(response, json => {
+                  const reported = readGenerationStats(json);
+                  if (reported) generationStats = { ...(generationStats || {}), ...reported };
                   if (json.message?.thinking) showReasoning();
                   if (json.message?.content) {
                     finalReply += json.message.content;
@@ -10362,6 +10594,7 @@ JSON array:` }],
                     if (!replyVisible) {
                       if (!visibleText.trim()) { showReasoning(); return; }
                       replyVisible = true;
+                      stopWaitStatus();
                       placeholder.replaceChildren(contentDiv);
                     }
                     contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(visibleText));
@@ -10372,7 +10605,11 @@ JSON array:` }],
                 if (streamErr.name === "AbortError") throw streamErr;
                 // Stream closed unexpectedly — preserve whatever was accumulated
                 console.warn("Stream interrupted:", streamErr.message);
+              } finally {
+                stopWaitStatus();
               }
+              rememberModelSpeed(modelUsed, generationStats, estimatePromptTokens(messages));
+              refreshOllamaRunning();
               enhanceCodeBlocks(placeholder);
             }
 
@@ -10512,6 +10749,7 @@ JSON array:` }],
         const timeText = document.createElement("span");
         timeText.textContent = responseTimeLabel;
         timeDiv.appendChild(timeText);
+        appendGenerationStats(timeDiv, generationStats);
         placeholder.appendChild(timeDiv);
         
         // Save assistant message (strip think tags so loaded messages render identically to live ones)
@@ -10527,6 +10765,7 @@ JSON array:` }],
             documentMode,
             documentCoverage,
             documentRetrieval,
+            stats: generationStats || undefined,
             timestamp: Date.now()
           }, requestController.threadId, requestController)));
         }
@@ -11315,6 +11554,14 @@ JSON array:` }],
       const modelSelect = document.getElementById("modelSelection");
       const selectedModelLabel = modelSelect?.selectedOptions?.[0]?.textContent?.trim() || "No model";
       addChip(selectedModelLabel.replace(/\s+[—-]\s+.*$/, "").slice(0, 28));
+      const backend = describeModelBackend(modelSelect?.value);
+      if (backend.short) {
+        addChip(backend.short);
+        const chip = container.lastElementChild;
+        chip.title = backend.long;
+        chip.id = "mobileBackendChip";
+        if (backend.kind === "ollama" && backend.loaded === true && backend.share <= 0.01) chip.classList.add("slow");
+      }
       const contextSelect = document.getElementById("chatContextSelection");
       if (contextSelect && !contextSelect.disabled) addChip(contextSelect.selectedOptions?.[0]?.textContent || "Context");
 
@@ -11839,6 +12086,7 @@ JSON array:` }],
       }
       updateWebGPUUIState();
       updateMobileActiveChips();
+      refreshOllamaRunning();
     });
 
     document.getElementById("optionsRow").addEventListener("change", updateMobileActiveChips);

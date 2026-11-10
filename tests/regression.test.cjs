@@ -965,7 +965,7 @@ test('the status line stays until a reasoning model produces visible text', asyn
   const sending = app.run('sendMessage()');
   const bubble = () => [...app.document.querySelectorAll('.assistant-message')].pop();
   for (let i = 0; i < 100 && !bubble()?.querySelector('.stage-label'); i++) await settle();
-  assert.equal(bubble().querySelector('.stage-label').textContent, 'Thinking');
+  assert(['Waiting for the model', 'Loading the model'].includes(bubble().querySelector('.stage-label').textContent));
   assert(bubble().querySelector('.stage-elapsed'), 'the clock is present before any token arrives');
   push({ message: { thinking: 'Let me consider' } });
   await settle();
@@ -981,4 +981,143 @@ test('the status line stays until a reasoning model produces visible text', asyn
   push({ done: true }); close();
   await sending;
   assert.equal(normalize(await app.run('getThreadMessages(currentThreadId)')).at(-1).text, 'The answer is 42.');
+});
+
+
+// ---- Where the model runs, token figures and the waiting line (2.6.0) ----
+
+test('Cancel stays for the whole request after a file has been read', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const bar = app.document.getElementById('processingProgress');
+  app.run('beginForegroundRequest()');
+  assert.equal(bar.style.display, 'flex');
+  app.run('showProgressBar(); updateProgressBar(3, 15); hideProgressBar()');
+  assert.equal(bar.style.display, 'flex', 'the bar that holds Cancel is still shown');
+  assert.equal(bar.querySelector('.progress-bar').style.display, 'none');
+  assert.equal(app.document.getElementById('progressText').textContent, 'Generating response…');
+  assert.equal(app.document.getElementById('cancelButton').disabled, false);
+  app.run('endForegroundRequest(activeRequestController)');
+  assert.equal(bar.style.display, 'none');
+  app.run('showProgressBar(); hideProgressBar()');
+  assert.equal(bar.style.display, 'none', 'with no request running the bar is hidden as before');
+});
+
+test('the app says where the selected model is running, on both layouts', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  let running = [];
+  app.window.fetch = async url => String(url).endsWith('/api/ps') ? Response.json({ models: running }) : Response.json({ models: [], data: [] });
+  const select = app.document.getElementById('modelSelection');
+  const setModel = value => { select.innerHTML = ''; const option = app.document.createElement('option'); option.value = value; option.textContent = value; select.appendChild(option); select.value = value; };
+  const info = app.document.getElementById('modelBackendInfo');
+  const chip = () => app.document.getElementById('mobileBackendChip');
+  setModel('gemma4-e4b-32k:latest');
+  await app.run('refreshOllamaRunning()');
+  assert.equal(info.textContent, 'Ollama');
+  assert(info.title.includes('not loaded yet'));
+  running = [{ name: 'gemma4-e4b-32k:latest', size: 5e9, size_vram: 0, context_length: 8192 }];
+  await app.run('refreshOllamaRunning()');
+  assert.equal(info.textContent, 'Ollama · processor');
+  assert(info.title.includes('processor only') && info.title.includes('Context 8K'));
+  assert(info.classList.contains('slow'));
+  assert.equal(chip().textContent, 'Ollama · processor');
+  assert(chip().classList.contains('slow'));
+  running = [{ name: 'gemma4-e4b-32k:latest', size: 5e9, size_vram: 5e9 }];
+  await app.run('refreshOllamaRunning()');
+  assert.equal(info.textContent, 'Ollama · GPU');
+  assert(!info.classList.contains('slow'));
+  running = [{ name: 'gemma4-e4b-32k:latest', size: 10e9, size_vram: 6e9 }];
+  await app.run('refreshOllamaRunning()');
+  assert.equal(info.textContent, 'Ollama · 60% GPU');
+  // A tag-less name matches Ollama's ":latest" entry.
+  setModel('gemma4-e4b-32k');
+  app.run('updateModelBackendInfo()');
+  assert.equal(info.textContent, 'Ollama · 60% GPU');
+  assert.equal(normalize(app.run('describeModelBackend(LLAMA_CPP_MODEL_PREFIX + "gemma4-e4b-gpu")')).short, 'GPU server');
+  assert.equal(normalize(app.run('describeModelBackend(LLAMA_CPP_MODEL_PREFIX + "some-model")')).short, 'llama.cpp server');
+  assert.equal(normalize(app.run('describeModelBackend(WEBGPU_FAST_VALUE)')).short, 'in this browser');
+  // If Ollama cannot be asked, the label makes no claim.
+  app.window.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  setModel('gemma4-e4b-32k:latest');
+  await app.run('refreshOllamaRunning()');
+  assert.equal(info.textContent, 'Ollama');
+  assert.equal(info.title, 'Runs on Ollama.');
+});
+
+test('token counts and speeds reported by the server are shown, saved and remembered', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  for (const name of ['autoTitle', 'suggestedFollowUps', 'autoFactCheck', 'learnMemories']) app.window.localStorage.setItem(name, 'false');
+  app.window.fetch = async url => {
+    if (!String(url).endsWith('/api/chat')) return Response.json({ models: [], data: [] });
+    return ndjsonResponse([{ message: { content: 'The answer.' } }, { done: true, prompt_eval_count: 5012, prompt_eval_duration: 1022.9e9, eval_count: 312, eval_duration: 100.6e9, load_duration: 12.4e9 }]);
+  };
+  app.document.getElementById('userInput').value = 'A question';
+  await app.run('sendMessage()');
+  const stats = [...app.document.querySelectorAll('.assistant-message')].pop().querySelector('.token-stats');
+  assert.equal(stats.textContent, 'read 5,012 tokens at 4.9/s · wrote 312 at 3.1/s · model load 12s');
+  const stored = normalize(await app.run('getThreadMessages(currentThreadId)')).at(-1);
+  assert.deepEqual(stored.stats, { promptTokens: 5012, promptSeconds: 1022.9, outputTokens: 312, outputSeconds: 100.6, loadSeconds: 12.4 });
+  await app.run('loadMessages()');
+  assert.equal(app.document.querySelector('.assistant-message .token-stats').textContent, 'read 5,012 tokens at 4.9/s · wrote 312 at 3.1/s · model load 12s');
+  const speed = normalize(app.run('getModelSpeed("test-chat")'));
+  assert(Math.abs(speed.read - 4.9) < 0.01 && Math.abs(speed.write - 3.1) < 0.01);
+  // Later runs are averaged in; a tiny prompt does not change the reading speed.
+  app.run('rememberModelSpeed("test-chat", { promptTokens: 4000, promptSeconds: 400, outputTokens: 10, outputSeconds: 1 })');
+  assert(Math.abs(normalize(app.run('getModelSpeed("test-chat")')).read - 7.45) < 0.01);
+  app.run('rememberModelSpeed("test-chat", { promptTokens: 30, promptSeconds: 0.01 })');
+  assert(Math.abs(normalize(app.run('getModelSpeed("test-chat")')).read - 7.45) < 0.01);
+  assert.equal(app.run('getModelSpeed("another-model")'), null);
+  // The real count corrects the app's rough estimate for later prompts to the same model.
+  app.run('rememberModelSpeed("ratio-model", { promptTokens: 2800, promptSeconds: 2 }, 3500)');
+  assert(Math.abs(normalize(app.run('getModelSpeed("ratio-model")')).tokenRatio - 0.8) < 0.001);
+  app.window.ratioPlaceholder = app.document.createElement('div');
+  app.document.body.appendChild(app.window.ratioPlaceholder);
+  app.window.ratioMessages = [{ role: 'user', content: 'z'.repeat(20000) }];
+  app.run('stopRatio = startModelWaitStatus(ratioPlaceholder, "ratio-model", ratioMessages); stopRatio()');
+  assert(app.window.ratioPlaceholder.querySelector('.stage-detail').textContent.startsWith('about 4,000 tokens'));
+  assert.equal(app.run('formatGenerationStats({ promptTokens: 80, outputTokens: 1200, outputSeconds: 20 })'), 'read 80 tokens · wrote 1,200 at 60/s');
+  assert.equal(app.run('formatGenerationStats(null)'), '');
+  // llama.cpp reports the same facts in a different shape.
+  app.window.chunk = { choices: [{ delta: { content: '', reasoning_content: 'hmm' } }], timings: { prompt_n: 900, prompt_ms: 4500, predicted_n: 60, predicted_ms: 3000 } };
+  const translated = normalize(app.run('openAIChunkToOllama(chunk)'));
+  assert.equal(translated.message.thinking, 'hmm');
+  assert.deepEqual(normalize(app.run('readGenerationStats(openAIChunkToOllama(chunk))')), { promptTokens: 900, promptSeconds: 4.5, outputTokens: 60, outputSeconds: 3 });
+  app.window.chunk = { choices: [], usage: { prompt_tokens: 700, completion_tokens: 40 } };
+  assert.deepEqual(normalize(app.run('readGenerationStats(openAIChunkToOllama(chunk))')), { promptTokens: 700, outputTokens: 40 });
+});
+
+test('the waiting line gives the prompt size, the expected time and where the model runs', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  let running = null;
+  app.window.fetch = async url => String(url).endsWith('/api/ps') ? (running === null ? Promise.reject(new TypeError('offline')) : Response.json({ models: running })) : Response.json({ models: [], data: [] });
+  const placeholder = app.document.createElement('div');
+  app.document.body.appendChild(placeholder);
+  app.window.waitPlaceholder = placeholder;
+  app.window.waitMessages = [{ role: 'system', content: 'x'.repeat(16000) }, { role: 'user', content: 'y'.repeat(4000) }];
+  const text = () => `${placeholder.querySelector('.stage-label').textContent} | ${placeholder.querySelector('.stage-detail')?.textContent || ''}`;
+  // No measurement yet and Ollama cannot be asked: prompt size only.
+  app.run('stopWait = startModelWaitStatus(waitPlaceholder, "gemma4-e4b-32k:latest", waitMessages)');
+  await settle();
+  assert.equal(text(), 'Waiting for the model | about 5,000 tokens');
+  app.run('stopWait()');
+  // A measured speed gives an estimate; Ollama says the model is not in memory yet.
+  app.run('rememberModelSpeed("gemma4-e4b-32k:latest", { promptTokens: 5000, promptSeconds: 1000 })');
+  running = [];
+  app.run('stopWait = startModelWaitStatus(waitPlaceholder, "gemma4-e4b-32k:latest", waitMessages)');
+  await settle();
+  assert.equal(text(), "Loading the model | about 5,000 tokens · about 17 min at this model's usual speed");
+  // Once loaded, it reports reading and where the model is running.
+  running = [{ name: 'gemma4-e4b-32k:latest', size: 5e9, size_vram: 0 }];
+  await app.run('refreshOllamaRunning()');
+  app.run('stopWait()');
+  app.run('stopWait = startModelWaitStatus(waitPlaceholder, "gemma4-e4b-32k:latest", waitMessages)');
+  await settle();
+  assert.equal(text(), "Reading your prompt | about 5,000 tokens · about 17 min at this model's usual speed · Ollama · processor");
+  app.run('stopWait()');
+  // The same prompt on a fast GPU server.
+  app.run('rememberModelSpeed(LLAMA_CPP_MODEL_PREFIX + "gemma4-e4b-gpu", { promptTokens: 5000, promptSeconds: 25 })');
+  app.run('stopWait = startModelWaitStatus(waitPlaceholder, LLAMA_CPP_MODEL_PREFIX + "gemma4-e4b-gpu", waitMessages)');
+  assert.equal(text(), "Reading your prompt | about 5,000 tokens · about 25s at this model's usual speed · GPU server");
+  app.run('stopWait()');
+  assert.equal(app.run('describeDuration(2)'), 'a few seconds');
+  assert.equal(app.run('describeDuration(7200)'), 'about 2.0 hours');
 });

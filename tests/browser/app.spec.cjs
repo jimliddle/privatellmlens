@@ -391,11 +391,14 @@ test.describe('waiting on a phone', () => {
       return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/x-ndjson', body: JSON.stringify({ message: { content: 'Done waiting.' } }) + '\n' + JSON.stringify({ done: true }) + '\n' });
     });
     await openApp(page);
-    await page.locator('#fileInput').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Some notes.\n') });
-    await page.locator('#userInput').fill('What do the notes say?');
+    // A PDF, because reading one used to hide the Cancel bar for the rest of the request.
+    await page.locator('#fileInput').setInputFiles(path.join(root, '.test-assets/tracemonkey.pdf'));
+    await page.evaluate(() => { document.getElementById('documentStrategySelection').value = 'retrieval'; });
+    await page.locator('#userInput').fill('What is trace-based compilation?');
     await page.locator('#sendButton').click();
     const status = page.locator('.assistant-message').last();
-    await expect(status.locator('.stage-label')).toHaveText('Thinking');
+    await expect(status.locator('.stage-label')).toHaveText(/Waiting for the model|Loading the model|Reading your prompt/);
+    await expect(status.locator('.stage-detail')).toContainText(/about [\d,]+ tokens/);
     await expect(status.locator('.thinking-dots')).toBeVisible();
     await expect(status.locator('.stage-elapsed')).toHaveText(/^\d+s$/);
     const first = await status.locator('.stage-elapsed').textContent();
@@ -414,3 +417,42 @@ test.describe('waiting on a phone', () => {
     await expect(cancel).toBeHidden();
   });
 });
+
+
+for (const layout of [{ name: 'desktop', viewport: { width: 1280, height: 800 } }, { name: 'phone', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]) {
+  test.describe(`speed and backend on a ${layout.name}`, () => {
+    test.use({ viewport: layout.viewport, hasTouch: !!layout.hasTouch, isMobile: !!layout.isMobile });
+    test('shows where the model runs, the wait estimate and the measured token figures', async ({ page, context }) => {
+      let release;
+      const held = new Promise(resolve => { release = resolve; });
+      await routeApp(context, async route => {
+        await held;
+        const lines = [{ message: { content: 'Measured reply.' } }, { done: true, prompt_eval_count: 5012, prompt_eval_duration: 1022.9e9, eval_count: 312, eval_duration: 100.6e9 }];
+        return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/x-ndjson', body: lines.map(line => JSON.stringify(line)).join('\n') + '\n' });
+      });
+      await context.route('**/api/ps', route => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: JSON.stringify({ models: [{ name: 'test-chat', size: 5e9, size_vram: 0, context_length: 16384 }] }) }));
+      await context.addInitScript(() => localStorage.setItem('modelSpeeds', JSON.stringify({ 'http://localhost:11434/api/chat|test-chat': { read: 5, write: 3, at: 1 } })));
+      await openApp(page);
+      // Where the model runs is on screen without opening anything.
+      const where = layout.name === 'phone' ? page.locator('#mobileBackendChip') : page.locator('#modelBackendInfo');
+      await expect(where).toBeVisible();
+      await expect(where).toHaveText('Ollama · processor');
+      const box = await where.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(layout.viewport.width);
+      await page.locator('#userInput').fill('x'.repeat(4000));
+      await page.locator('#sendButton').click();
+      const status = page.locator('.assistant-message').last();
+      await expect(status.locator('.stage-label')).toHaveText('Reading your prompt');
+      await expect(status.locator('.stage-detail')).toHaveText("about 1,000 tokens · about 3 min at this model's usual speed · Ollama · processor");
+      await page.screenshot({ path: `test-results/waiting-estimate-${layout.name}.png` });
+      release();
+      await expect(status).toContainText('Measured reply.');
+      await expect(status.locator('.token-stats')).toHaveText('read 5,012 tokens at 4.9/s · wrote 312 at 3.1/s');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(layout.viewport.width);
+      await page.screenshot({ path: `test-results/token-stats-${layout.name}.png` });
+      // The figures are kept with the message.
+      await page.reload(); await openApp(page);
+      await expect(page.locator('.assistant-message .token-stats')).toHaveText('read 5,012 tokens at 4.9/s · wrote 312 at 3.1/s');
+    });
+  });
+}
