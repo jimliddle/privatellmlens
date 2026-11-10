@@ -1,6 +1,6 @@
 # PrivateLLMLens
 
-Current release: **2.5.0**
+Current release: **2.5.1**
 
 PrivateLLMLens is a single file browser interface for local Ollama, llama.cpp and optional in browser WebGPU models. It is deliberately a single page for portability and ease of use, and it works on desktop and on Android with Termux. There is no application server: the page talks straight to your model server.
 
@@ -188,7 +188,7 @@ Two searches run in the browser and their results are combined.
 - A **keyword search** (BM25) is good at exact words, names, part numbers and code.
 - A **meaning search** uses a small model, `all-MiniLM-L6-v2`, so a passage can match even when it uses different words from your question.
 
-The meaning search model is downloaded the first time it is needed. Its index is built per document, stored encrypted with the document, and reused afterwards. If the model cannot run on your device, the app uses the keyword search alone.
+The meaning search model is downloaded the first time it is needed, and the app shows how much has been downloaded. Its index is built per document, stored encrypted with the document, and reused afterwards. If the model cannot run on your device, or does not respond for a minute or two, the app carries on with the keyword search alone and marks the reply **keyword search only**.
 
 No document text and no question is sent to any outside service for this.
 
@@ -270,6 +270,10 @@ All of these are optional. Each needs its own API key, entered in Settings, and 
 API keys are stored encrypted in the browser. They are never included in exports or backups.
 
 ## While a reply is being written
+
+Every step of a request shows a status line in the chat: what the app is doing, any progress it can count, and the seconds since you pressed Send. If the clock is running, the app is working. A **Cancel** button sits just above the prompt box for the whole time.
+
+Some models think before they answer. While they do, the line reads **Reasoning** and the reply appears once the model starts writing it.
 
 Two settings help with long answers, mainly on phones. Both are in **Settings → While generating**.
 

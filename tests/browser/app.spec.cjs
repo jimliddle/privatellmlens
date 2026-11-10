@@ -380,3 +380,37 @@ test('generation settings persist and the alert status reflects notification per
   expect(JSON.stringify(shown.note)).not.toMatch(/QUOKKA|preserved/);
   expect(shown.title).toContain('Reply ready');
 });
+
+test.describe('waiting on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test('the status line keeps a running clock and Cancel stays on screen', async ({ page, context }) => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await routeApp(context, async route => {
+      await held;
+      return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/x-ndjson', body: JSON.stringify({ message: { content: 'Done waiting.' } }) + '\n' + JSON.stringify({ done: true }) + '\n' });
+    });
+    await openApp(page);
+    await page.locator('#fileInput').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Some notes.\n') });
+    await page.locator('#userInput').fill('What do the notes say?');
+    await page.locator('#sendButton').click();
+    const status = page.locator('.assistant-message').last();
+    await expect(status.locator('.stage-label')).toHaveText('Thinking');
+    await expect(status.locator('.thinking-dots')).toBeVisible();
+    await expect(status.locator('.stage-elapsed')).toHaveText(/^\d+s$/);
+    const first = await status.locator('.stage-elapsed').textContent();
+    await expect.poll(() => status.locator('.stage-elapsed').textContent(), { timeout: 5000 }).not.toBe(first);
+    // Cancel must be reachable without scrolling, even with a document attached.
+    const cancel = page.locator('#cancelButton');
+    await expect(cancel).toBeVisible();
+    const box = await cancel.boundingBox();
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(844);
+    expect(box.height).toBeGreaterThanOrEqual(36);
+    expect(await page.evaluate(() => { const b = document.getElementById('cancelButton').getBoundingClientRect(); const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return top?.id; })).toBe('cancelButton');
+    await page.screenshot({ path: 'test-results/waiting-phone.png' });
+    release();
+    await expect(status).toContainText('Done waiting.');
+    await expect(cancel).toBeHidden();
+  });
+});
