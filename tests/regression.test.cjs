@@ -843,3 +843,142 @@ test('the model manager lists, unloads, deletes and downloads Ollama models', as
   await app.run('refreshModelManager()');
   assert(text('modelManagerStatus').startsWith('Ollama is not reachable'));
 });
+
+// ---- Visible progress while waiting (2.5.1) ----
+
+test('every waiting step shows what is happening, any count, and a running clock', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const element = app.document.createElement('div');
+  app.window.stageElement = element;
+  element.dataset.startedAt = String(Date.now() - 42500);
+  app.run('setProcessingLabel(stageElement, "Indexing Report.pdf", "passages 9–16 of 56")');
+  assert.equal(element.querySelector('.stage-label').textContent, 'Indexing Report.pdf');
+  assert(element.querySelector('.thinking-dots'));
+  assert.equal(element.querySelector('.stage-detail').textContent, 'passages 9–16 of 56');
+  assert.equal(element.querySelector('.stage-elapsed').textContent, '42s');
+  app.run('setProcessingLabel(stageElement, "Thinking")');
+  assert.equal(element.querySelector('.stage-detail'), null);
+  assert.equal(element.querySelector('.stage-elapsed').textContent, '42s');
+  assert.equal(app.run('documentModeBadgeText("retrieval", null, "bm25")'), 'Retrieved passages · keyword search only');
+  assert.equal(app.run('documentModeBadgeText("retrieval", null, "hybrid")'), 'Retrieved passages');
+  assert.equal(app.run('documentModeBadgeText("direct")'), 'Full document');
+  // No hand-built status lines remain that would lack the clock.
+  assert(!/placeholder\.innerHTML = `\s*<span>[^<]+<\/span>\s*<span class="thinking-dots">/.test(html));
+});
+
+function fakeEmbeddingWorker(app) {
+  const workers = [];
+  app.window.Worker = class { constructor() { this.sent = []; this.terminated = false; workers.push(this); } postMessage(message) { this.sent.push(message); } terminate() { this.terminated = true; } };
+  app.window.URL.createObjectURL = () => 'blob:test';
+  app.run('persistDocumentEmbeddingCache = async () => {};');
+  return workers;
+}
+const sampleDocs = () => [{ id: 1, name: 'Zoo.txt', chunks: [{ text: 'Okapi notes. '.repeat(200), lineStart: 1, lineEnd: 1 }, { text: 'Parking permits and catering. '.repeat(120), lineStart: 2, lineEnd: 2 }] }];
+
+test('the search model reports download and indexing progress', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const workers = fakeEmbeddingWorker(app);
+  const placeholder = app.document.createElement('div');
+  app.document.body.appendChild(placeholder);
+  app.window.stagePlaceholder = placeholder; app.window.docs = sampleDocs();
+  app.run('beginForegroundRequest()');
+  const ranking = app.run('rankDocumentChunksHybrid(docs, "When does the okapi house open?", stagePlaceholder)');
+  await settle();
+  const worker = workers[0];
+  const label = () => placeholder.querySelector('.stage-label')?.textContent;
+  const detail = () => placeholder.querySelector('.stage-detail')?.textContent || '';
+  const say = data => { worker.onmessage({ data }); };
+  say({ type: 'stage', stage: 'library' });
+  assert.deepEqual([label(), detail()], ['Getting the search model ready', 'first use on this device']);
+  say({ type: 'stage', stage: 'model' });
+  app.run('documentEmbeddingLastDraw = 0');
+  say({ type: 'progress', file: 'model_quantized.onnx', loaded: 6 * 1048576, total: 24 * 1048576 });
+  say({ type: 'progress', file: 'config.json', loaded: 700, total: 700 });
+  assert.equal(label(), 'Downloading search model', 'a finished settings file is not the end of the download');
+  app.run('documentEmbeddingLastDraw = 0');
+  say({ type: 'progress', file: 'tokenizer.json', loaded: 1048576, total: 1048576 });
+  app.run('documentEmbeddingLastDraw = 0');
+  say({ type: 'progress', file: 'tokenizer.json', loaded: 1048576, total: 1048576 });
+  assert.deepEqual([label(), detail()], ['Downloading search model', '7.0 of 25.0 MB']);
+  assert.equal(app.document.getElementById('progressFill').style.width, '28%');
+  assert.equal(app.document.querySelector('#processingProgress .progress-bar').style.display, 'block');
+  say({ type: 'progress', file: 'model_quantized.onnx', loaded: 24 * 1048576, total: 24 * 1048576 });
+  assert.equal(label(), 'Starting search model');
+  say({ type: 'ready' });
+  // Answer each batch and watch the passage count move.
+  const seen = [];
+  for (let guard = 0; guard < 20; guard++) {
+    const request = worker.sent.find(message => !message.answered);
+    if (!request) { await settle(); if (!worker.sent.find(message => !message.answered)) break; continue; }
+    seen.push(`${label()} | ${detail()}`);
+    request.answered = true;
+    say({ type: 'result', id: request.id, embeddings: request.texts.map(() => Array.from({ length: 384 }, (_, i) => i === 0 ? 1 : 0)) });
+    await settle();
+  }
+  const result = await ranking;
+  assert.equal(result.method, 'hybrid');
+  assert(seen.some(line => /^Indexing Zoo\.txt \| passages 1–\d+ of \d+$/.test(line)), JSON.stringify(seen));
+  assert.equal(app.run('describeTimeLeft(3)'), '');
+  assert.equal(app.run('describeTimeLeft(42)'), 'about 45s left');
+  assert.equal(app.run('describeTimeLeft(200)'), 'about 3 min left');
+  assert(seen.at(-1).startsWith('Finding the most relevant passages'));
+  assert.equal(app.document.querySelector('#processingProgress .progress-bar').style.display, 'none', 'the bar is cleared afterwards');
+  app.run('resetComposerForThreadChange()');
+});
+
+test('a search model that goes silent falls back to keyword search instead of hanging', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const workers = fakeEmbeddingWorker(app);
+  const placeholder = app.document.createElement('div');
+  app.document.body.appendChild(placeholder);
+  app.window.stagePlaceholder = placeholder;
+  app.run('DOCUMENT_EMBEDDING_STALL_MS.loading = 300; DOCUMENT_EMBEDDING_STALL_MS.working = 300; beginForegroundRequest()');
+  app.window.docs = sampleDocs();
+  const started = Date.now();
+  const first = await app.run('rankDocumentChunksHybrid(docs, "okapi", stagePlaceholder)');
+  assert(Date.now() - started < 3000);
+  assert.deepEqual([first.method, first.fallback], ['bm25', 'timeout']);
+  assert(first.items.length > 0, 'keyword results are still returned');
+  assert.equal(workers[0].terminated, true);
+  assert.equal(placeholder.querySelector('.stage-label').textContent, 'Using keyword search');
+  assert.equal(app.run('documentEmbeddingsDisabledForSession'), false, 'one slow start is retried next time');
+  // Progress messages keep a slow download alive; silence afterwards still times out.
+  app.window.docs = sampleDocs();
+  const second = app.run('rankDocumentChunksHybrid(docs, "okapi", stagePlaceholder)');
+  await settle();
+  for (let i = 0; i < 5; i++) { await new Promise(resolve => setTimeout(resolve, 100)); workers[1].onmessage({ data: { type: 'progress', file: 'model.onnx', loaded: i, total: 10 } }); }
+  assert.equal(workers[1].terminated, false, 'activity resets the limit');
+  const outcome = await second;
+  assert.equal(outcome.fallback, 'timeout');
+  assert.equal(app.run('documentEmbeddingsDisabledForSession'), true, 'after two stalls it stops trying for the session');
+  app.run('resetComposerForThreadChange()');
+});
+
+test('the status line stays until a reasoning model produces visible text', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  for (const name of ['autoTitle', 'suggestedFollowUps', 'autoFactCheck', 'learnMemories']) app.window.localStorage.setItem(name, 'false');
+  let push, close;
+  const encoder = new TextEncoder();
+  const body = new ReadableStream({ start(controller) { push = value => controller.enqueue(encoder.encode(JSON.stringify(value) + '\n')); close = () => controller.close(); } });
+  app.window.fetch = async url => String(url).endsWith('/api/chat') ? new Response(body) : Response.json({ models: [], data: [] });
+  app.document.getElementById('userInput').value = 'Think hard';
+  const sending = app.run('sendMessage()');
+  const bubble = () => [...app.document.querySelectorAll('.assistant-message')].pop();
+  for (let i = 0; i < 100 && !bubble()?.querySelector('.stage-label'); i++) await settle();
+  assert.equal(bubble().querySelector('.stage-label').textContent, 'Thinking');
+  assert(bubble().querySelector('.stage-elapsed'), 'the clock is present before any token arrives');
+  push({ message: { thinking: 'Let me consider' } });
+  await settle();
+  assert.equal(bubble().querySelector('.stage-label').textContent, 'Reasoning');
+  push({ message: { content: '<think>still private' } });
+  await settle();
+  assert.equal(bubble().querySelector('.stage-label').textContent, 'Reasoning', 'hidden reasoning does not blank the bubble');
+  assert(!bubble().textContent.includes('still private'));
+  push({ message: { content: '</think>The answer is 42.' } });
+  await settle();
+  assert.equal(bubble().querySelector('.stage-label'), null);
+  assert(bubble().textContent.includes('The answer is 42.'));
+  push({ done: true }); close();
+  await sending;
+  assert.equal(normalize(await app.run('getThreadMessages(currentThreadId)')).at(-1).text, 'The answer is 42.');
+});
