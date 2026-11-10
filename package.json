@@ -1,17 +1,21 @@
 {
   "name": "privatellmlens",
   "private": true,
-  "version": "2.3.1",
+  "version": "2.4.0",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "pretest": "node tests/prepare-fixtures.cjs",
     "test": "node --test tests/*.test.cjs",
+    "vendor": "node tools/vendor.cjs",
+    "vendor:check": "node tools/vendor.cjs --check",
     "test:browser": "playwright test",
     "test:all": "npm test && npm run test:browser"
   },
   "devDependencies": {
+    "@fortawesome/fontawesome-free": "6.5.1",
+    "@highlightjs/cdn-assets": "11.9.0",
     "@playwright/test": "1.64.1",
     "acorn": "8.19.0",
     "dompurify": "3.4.17",

@@ -4,7 +4,8 @@
 
 #### Chat Interface
 
-- **Single-file application** — entire app is one `.html` file with no application backend required.
+- **Single-file application** — entire app is one `.html` file with no application backend required. Marked, DOMPurify, Highlight.js, JSZip and the icon set are embedded, so core features need no CDN.
+- **Content Security Policy** — scripts only from the file, blob workers and one pinned CDN; remote images in rendered output become links; PDF.js is hash-verified before it runs.
 - **Mobile support** — works on Android with Ollama or llama.cpp via Termux, and supports browser-hosted/local-network use on other mobile devices.
 - Text input with Send button and Enter key to submit prompts.
 - **Streaming responses** — assistant replies stream token-by-token in real time.
@@ -152,6 +153,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 - **Document encryption** — AES-256-GCM with additional authenticated data binding each encrypted document payload to its thread and crypto ID.
 - **Semantic index privacy** — MiniLM chunk vectors are cached only inside the encrypted document payload; no plaintext vector store or external embedding API is used.
 - **localStorage** — non-sensitive preferences and feature settings.
+- **Storage durability** — requests persistent storage after the first saved message, document or key (immediately for an installed app); Settings → Storage shows protection status, space used, stored item counts and the last encrypted backup; failed writes are reported.
 - Reset IndexedDB button is available in Settings.
 - Clear-all-messages and clear-all-memories controls are available without developer tools.
 

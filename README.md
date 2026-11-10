@@ -1,6 +1,6 @@
 # PrivateLLMLens
 
-Current application release: **2.3.1**.
+Current application release: **2.4.0**.
 
 PrivateLLMLens is a single-file browser interface for local Ollama, llama.cpp and optional in-browser WebGPU models. It works on desktop and Android/Termux without an application backend.
 
@@ -26,13 +26,22 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
 - Markdown, syntax highlighting, one-tap response copying, regeneration through the full Send pipeline, branching, search, conversation JSON export, encrypted workspace backups and PDF export
 - Responsive compact composer with Automatic, Compact and Desktop layout modes
-- Embedded PWA manifest and icon
+- Embedded PWA manifest, icons and core libraries: no CDN is needed for chat, Markdown, code highlighting or DOCX/PPTX
+- Persistent-storage request, storage usage display and write-failure reporting
 
 ## Single-file design
 
 The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
 
-Browser dependencies are loaded from CDNs: PDF.js, JSZip (DOCX/PPTX), Marked, DOMPurify, Highlight.js, Font Awesome, fonts, and the optional WebGPU/semantic-retrieval runtimes. PDF.js 6.4.299 is loaded lazily with a version-matched legacy worker, character maps and standard-font assets; JavaScript evaluation is disabled while text extraction and page citations remain available. DOMPurify 3.4.17 and Marked 18.1.1 are pinned. The first DOCX or PPTX use needs JSZip to have loaded; normal browser caching can reuse it afterward. The first hybrid document retrieval downloads the small q8 MiniLM embedding model and related tokenizer/config assets (approximately 25 MB in total); normal browser caching reuses those assets afterward.
+The libraries the core features need are embedded in the file: Marked 18.1.1, DOMPurify 3.4.17, Highlight.js 11.9.0, JSZip 3.10.1 and the 41 Font Awesome icons the interface uses. Chat, Markdown, code highlighting, DOCX/PPTX reading, encryption and backups therefore work with no CDN and no connection beyond the model server. The file is about 740 KB, or roughly 200 KB compressed in transit.
+
+Three things are still fetched, each only when used:
+
+- **PDF.js 6.4.299**, on the first PDF. The two scripts are downloaded, checked against SHA-384 hashes pinned in the page, and only then run; a file that does not match is refused. Character maps and standard-font data come from the same pinned version. JavaScript evaluation inside PDFs is disabled.
+- **Transformers.js 4.2.0 and model files**, for the optional WebGPU chat models and for hybrid document retrieval (about 25 MB for the q8 MiniLM embedding model). These are version-pinned but not hash-checked.
+- **Web fonts** from Google Fonts. Without a connection the page falls back to system fonts.
+
+A Content Security Policy in the page allows scripts only from the file itself, its own blob workers and `cdn.jsdelivr.net`. It refuses remote images, frames, plugins, form posts and `<base>` changes. A remote image in model output, a web result or a document is shown as a link to open deliberately, because an image URL can carry data to another site. Links open in a new tab. Network requests (`connect-src`) stay open, since the Ollama endpoint is user-configurable; the policy narrows what injected markup can do, and DOMPurify remains the main defence against script injection.
 
 ## Quick start with Ollama
 
@@ -164,7 +173,15 @@ Provider keys are stored in the WebCrypto vault. Leave a key unset to keep its i
 
 PrivateLLMLens uses IndexedDB version 6 for threads, messages, encrypted memories, the WebCrypto vault, and encrypted document workspaces. Non-sensitive preferences remain in `localStorage`.
 
-Provider keys, memories, document filenames, extracted document content and cached semantic document indexes use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. CDN dependencies remain part of the trust boundary.
+Provider keys, memories, document filenames, extracted document content and cached semantic document indexes use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. The remaining CDN downloads (PDF.js, hash-checked, and the optional Transformers.js runtime) are part of the trust boundary.
+
+### Storage durability
+
+Browser storage is "best effort" unless the browser has been asked to keep it: under storage pressure it can be cleared without warning, and that would take chats, documents and the vault key together. PrivateLLMLens asks for persistent storage after the first message, document or API key is saved, and straight away when it runs as an installed app. Chromium grants this silently for installed or regularly used sites; Firefox asks the user. A refusal is not repeated for two weeks.
+
+**Settings → Storage** shows whether storage is protected, how much space is used against the browser's allowance, what is stored, and when the last encrypted backup was taken, with buttons to request protection and to back up. The sidebar shows a notice when data is unprotected and has never been backed up, or when storage passes 75% and 90% full. A write that fails, for example because storage is full, is reported instead of being dropped silently.
+
+Protection stops automatic eviction only. Clearing site data, uninstalling the browser or changing device still removes everything, so the encrypted workspace backup remains the durable copy.
 
 Browser storage is origin-scoped. Changing hostname, port, protocol or file origin creates a different storage area. The **Export chat** button creates a plain JSON conversation export, compatible with existing conversation backups. It excludes API keys, memories and documents. **Workspace backup** creates a password-encrypted `.pllbackup` file containing conversations, extracted document workspaces, cached semantic indexes, source references and memories. API keys and network endpoints are excluded from both formats.
 
@@ -180,7 +197,7 @@ On touch devices, the compact composer exposes Tools and Model as stable bottom 
 
 ## Development
 
-There is no application build step. Edit `index.html`, reload, and test against a local provider. Model discovery uses capability metadata when available and excludes embedding-only models from chat. A saved model must still be available; known text-only models report a clear error for image input.
+There is no application build step. Edit `index.html`, reload, and test against a local provider. The embedded libraries and icons sit in a marked block generated by `npm run vendor` from the versions pinned in `package.json`; run it after changing a library version or using a new Font Awesome icon class. `npm test` fails if the block is out of date. Model discovery uses capability metadata when available and excludes embedding-only models from chat. A saved model must still be available; known text-only models report a clear error for image input.
 
 Development-only regression tests run with Node.js 22 or newer:
 
@@ -196,7 +213,7 @@ npm run test:browser
 For browser environments where a separate test browser cannot launch, run `node tests/server.cjs` and open `http://127.0.0.1:18767/native`. This local-only harness uses a separate test database and synthetic providers to exercise streaming, tools, PDF workers/source viewing, encrypted restore and cancellation. The production HTML does not include the harness. A basic main-script syntax check is:
 
 ```sh
-awk '/<script>/{inside=1;next} /<\/script>/{inside=0} inside{print}' index.html > /tmp/privatellmlens.js
+awk '/^  <script>$/{inside=1;next} /^  <\/script>$/{inside=0} inside{print}' index.html > /tmp/privatellmlens.js
 node --check /tmp/privatellmlens.js
 ```
 
