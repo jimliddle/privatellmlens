@@ -34,7 +34,6 @@ async function routeApp(context, chatHandler) {
       if (file.startsWith(path.join(root, 'node_modules/pdfjs-dist') + path.sep) && fs.existsSync(file)) return route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, contentType: file.endsWith('.mjs') ? 'text/javascript' : 'application/octet-stream', path: file });
     }
     if (url.pathname.includes('highlight.min.js')) return route.fulfill({ contentType: 'text/javascript', body: 'window.hljs={highlightElement(){}};' });
-    if (url.pathname.includes('coi-serviceworker')) return route.fulfill({ contentType: 'text/javascript', body: '' });
     // Unrelated fonts, icons and model downloads are not needed for these functional tests.
     return route.abort();
   });
@@ -153,4 +152,34 @@ test('workspace backup downloads encrypted data and restores usable documents an
   expect(restored.source).toBe(true);
   expect(restored.memories).toContain('Synthetic preference');
   await targetContext.close();
+});
+
+test('regenerate reuses the Send pipeline and PDF export cannot run message markup', async ({ page, context }) => {
+  const bodies = [];
+  await routeApp(context, (route, body) => {
+    bodies.push(body);
+    const text = '<think>hidden</think>Reply ' + bodies.length + ' <img src=x onerror="(window.opener||window).__pwned=1">';
+    return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/x-ndjson', body: JSON.stringify({ message: { content: text } }) + '\n' + JSON.stringify({ done: true }) + '\n' });
+  });
+  await openApp(page);
+  page.on('dialog', dialog => dialog.accept());
+  await page.locator('#userInput').fill('First question'); await page.locator('#sendButton').click();
+  await expect(page.locator('.assistant-message').last()).toContainText('Reply 1');
+  await page.reload(); await openApp(page);
+  await page.locator('.assistant-message .msg-action-btn.regenerate').first().click({ force: true });
+  await expect(page.locator('.assistant-message').last()).toContainText('Reply 2');
+  await expect(page.locator('.assistant-message').last()).toContainText('regenerated');
+  await expect(page.locator('.assistant-message')).toHaveCount(1);
+  await expect(page.locator('.assistant-message').last()).not.toContainText('hidden');
+  expect(bodies[1].messages).toEqual(bodies[0].messages);
+  expect(bodies.every(body => body.options.num_ctx === bodies[0].options.num_ctx)).toBe(true);
+  await page.evaluate(() => { window.print = () => {}; });
+  const [popup] = await Promise.all([page.waitForEvent('popup'), page.locator('#threadsList .thread-action-btn').first().click({ force: true })]);
+  await popup.waitForLoadState('domcontentloaded');
+  await expect(popup.locator('.msg.assistant')).toContainText('Reply 2');
+  expect(await popup.locator('[onerror]').count()).toBe(0);
+  await popup.waitForTimeout(300);
+  expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
+  expect(await popup.evaluate(() => window.__pwned)).toBeUndefined();
+  expect(await page.evaluate(() => self.crossOriginIsolated)).toBe(false);
 });

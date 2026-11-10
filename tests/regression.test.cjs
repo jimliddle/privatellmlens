@@ -194,3 +194,193 @@ test('very long document lines are split without losing tail facts or line prove
   assert.equal(chunks.map(chunk=>chunk.text).join(''),app.window.longLine);
   assert(chunks.at(-1).text.includes('THE FINAL IMPORTANT FACT'));
 });
+
+// ---- Regression tests for the v2.3.1 defect fixes ----
+
+test('PDF export sanitises message markup and escapes the thread name', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  app.window.exportFixture = [
+    { role: 'assistant', type: 'text', text: 'Fine **text** <img src=x onerror="window.__pwned=1"><script>window.__pwned=2</script><a href="javascript:alert(1)">link</a>', timestamp: 1 },
+    { role: 'user', type: 'image', imageData: 'javascript:alert(1)" onerror="window.__pwned=3', timestamp: 2 },
+    { role: 'user', type: 'image', imageData: 'data:image/png;base64,iVBORw0KGgo=', timestamp: 3 }
+  ];
+  const output = app.run('buildThreadPrintHtml("</title><script>window.__pwned=4</script><img src=x onerror=alert(1)>", exportFixture)');
+  const { JSDOM } = require('jsdom');
+  const printed = new JSDOM(output).window.document;
+  assert.equal(printed.querySelectorAll('script').length, 1, 'only the print trigger script may remain');
+  assert.equal(printed.querySelector('script').textContent.trim(), 'window.onload = () => { window.print(); }');
+  assert.equal(printed.querySelectorAll('[onerror],[onload],[onclick]').length, 0);
+  assert(![...printed.querySelectorAll('a')].some(link => /^javascript:/i.test(link.getAttribute('href') || '')));
+  assert.equal(printed.querySelectorAll('img[src^="data:image/png"]').length, 1);
+  assert(![...printed.querySelectorAll('img')].some(img => /^javascript:/i.test(img.getAttribute('src') || '')));
+  assert(printed.querySelector('h1').textContent.includes('</title><script>'));
+  assert(printed.querySelector('strong'), 'ordinary Markdown still renders');
+});
+
+test('dead code, the no-op isolation tag and the URL-borne Gemini key are gone', () => {
+  for (const gone of ['coi-serviceworker', 'pdfPagesPerChunkInput', 'shouldPassAttachmentRaw', 'processAttachmentInChunks', 'callSummarizationAPI', 'generateContent?key=']) assert(!html.includes(gone), gone);
+  assert(html.includes('"x-goog-api-key": geminiApiKey'));
+});
+
+test('utility calls keep the chat context size so Ollama does not reload the model', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  for (const context of ['8192', '16384', '32768']) {
+    app.run(`setModelContext("${context}")`);
+    assert.equal(app.run('getOllamaOptions("utility").num_ctx'), Number(context));
+    assert.equal(app.run('getOllamaOptions("utility").num_ctx'), app.run('getOllamaOptions().num_ctx'));
+  }
+});
+
+test('the conversation summary is cached on the thread and only extended in batches', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const calls = [];
+  app.window.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push(body);
+    return Response.json({ message: { content: '<think>hidden</think>Summary v' + calls.length } });
+  };
+  const add = (count, start) => app.run(`(async()=>{for(let i=0;i<${count};i++){await saveMessage({role:i%2?"assistant":"user",text:"Message number "+(${start}+i),type:"text",timestamp:${start}+i+1},1);}})()`);
+  const build = () => app.run('buildContextWithSummary(1, 10, "System prompt", "test-chat", document.getElementById("messageHistory"))').then(normalize);
+  await add(31, 0);
+  const first = await build();
+  assert.equal(calls.length, 1, 'first build summarises once');
+  assert.equal(calls[0].options.num_ctx, app.run('getOllamaOptions().num_ctx'));
+  assert(calls[0].messages[0].content.includes('Message number 0') && calls[0].messages[0].content.includes('Message number 19'));
+  assert(first[0].content.includes('Summary v1') && !first[0].content.includes('hidden'));
+  assert.equal(first.length, 11);
+  await add(2, 31);
+  const second = await build();
+  assert.equal(calls.length, 1, 'two more turns reuse the cached summary');
+  assert.equal(second[0].content, first[0].content, 'the prompt prefix is unchanged');
+  assert.equal(second.length, 13, 'aged-out turns stay verbatim until the next refresh');
+  assert.equal(second[1].content, 'Message number 20');
+  await add(6, 33);
+  const third = await build();
+  assert.equal(calls.length, 2, 'eight aged-out turns trigger one incremental refresh');
+  assert(calls[1].messages[0].content.includes('Summary v1'), 'the refresh extends the previous summary');
+  assert(!calls[1].messages[0].content.includes('Message number 5\n'), 'already-summarised turns are not re-sent');
+  assert(third[0].content.includes('Summary v2'));
+  assert.equal(third.length, 11);
+  const stored = normalize(await app.run('getThreadRecord(1)'));
+  assert.equal(stored.contextSummary.text, 'Summary v2');
+  assert.equal(stored.contextSummary.covered.count, 28);
+  // Deleting a summarised message invalidates the cache instead of reusing a stale summary.
+  await app.run('new Promise(resolve=>{const tx=db.transaction(["messages"],"readwrite");tx.objectStore("messages").delete(3);tx.oncomplete=resolve;})');
+  await build();
+  assert.equal(calls.length, 3);
+  assert(!calls[2].messages[0].content.includes('Summary v2'));
+});
+
+test('a long history is folded into the summary in batches rather than truncated', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const prompts = [];
+  app.window.fetch = async (_url, options) => { prompts.push(JSON.parse(options.body).messages[0].content); return Response.json({ message: { content: 'Summary ' + prompts.length } }); };
+  await app.run('(async()=>{for(let i=0;i<40;i++){await saveMessage({role:i%2?"assistant":"user",text:"FACT-"+i+" "+"detail ".repeat(250),type:"text",timestamp:i+1},1);}})()');
+  await app.run('buildContextWithSummary(1, 10, "", "test-chat", document.getElementById("messageHistory"))');
+  assert(prompts.length > 1);
+  assert(prompts.every(prompt => prompt.length < 12000), 'each batch fits the utility prompt budget');
+  for (let i = 0; i < 29; i++) assert(prompts.some(prompt => prompt.includes('FACT-' + i + ' ')), 'missing FACT-' + i);
+});
+
+test('Regenerate and Answer Now run the full Send pipeline', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  for (const name of ['autoTitle', 'suggestedFollowUps', 'autoFactCheck', 'learnMemories']) app.window.localStorage.setItem(name, 'false');
+  app.window.localStorage.setItem('useMemories', 'true');
+  await app.run('saveMemoryCandidate({fact:"The user is called Jim and prefers metric units",key:"user:name"},1,true)');
+  const calls = [];
+  app.window.fetch = async (url, options) => {
+    if (!String(url).endsWith('/api/chat')) return Response.json({ models: [], data: [] });
+    calls.push(JSON.parse(options.body));
+    return Response.json({ message: { content: '<think>private reasoning</think>Answer ' + calls.length } });
+  };
+  app.document.getElementById('userInput').value = 'What units should I use, Jim asks?';
+  await app.run('sendMessage()');
+  assert.equal(calls.length, 1);
+  app.document.getElementById('userInput').value = 'an unsent draft';
+  let stored = (await app.run('readBackupSnapshot()')).messages;
+  await app.run(`deleteMessageAndSubsequent(${stored.find(message => message.role === 'assistant').id})`);
+  await app.run('regenerateResponse()');
+  assert.equal(calls.length, 2);
+  const regenerated = calls[1];
+  assert.deepEqual(regenerated.messages.filter(message => message.role === 'user').map(message => message.content), ['What units should I use, Jim asks?']);
+  assert(regenerated.messages[0].role === 'system' && regenerated.messages[0].content.includes('prefers metric units'), 'memories are injected on regenerate');
+  assert.deepEqual(normalize(regenerated.messages), normalize(calls[0].messages), 'regenerate sends exactly what Send sent');
+  stored = (await app.run('readBackupSnapshot()')).messages;
+  assert.equal(stored.length, 2);
+  const reply = stored.find(message => message.role === 'assistant');
+  assert.equal(reply.text, 'Answer 2', 'think tags are stripped before saving');
+  assert(reply.responseTime.endsWith('• regenerated'));
+  assert.equal(app.document.getElementById('userInput').value, 'an unsent draft', 'a draft survives regeneration');
+  assert.equal(app.document.getElementById('sendButton').disabled, false);
+  // Answer Now keeps the clarification exchange and adds a direct-answer turn.
+  await app.run('forceAnswerNow("What units should I use, Jim asks?", "test-chat", document.querySelector(".assistant-message"))');
+  assert.equal(calls.length, 3);
+  assert.equal(calls[2].messages.at(-1).content, 'Please answer my original question directly without asking for further clarification: What units should I use, Jim asks?');
+  assert.equal(calls[2].messages.at(-2).content, 'Answer 2');
+  stored = (await app.run('readBackupSnapshot()')).messages;
+  assert.equal(stored.length, 3);
+  assert(stored.at(-1).responseTime.endsWith('• direct answer'));
+});
+
+test('retrieval indexes small passages so facts in the middle of a section are found', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const filler = 'Routine quarterly administrative notes about office supplies and parking. ';
+  app.window.sectionA = filler.repeat(40) + 'The okapi enclosure reopens in March after refurbishment. ' + filler.repeat(40);
+  app.window.sectionB = filler.repeat(80);
+  const passages = normalize(app.run('documentEmbeddingPassages({name:"Zoo.txt"},{text:sectionA})'));
+  assert(passages.length >= 6);
+  assert(passages.every(passage => passage.length <= 920 && passage.startsWith('Zoo.txt\n')));
+  assert(passages.some(passage => passage.includes('okapi enclosure reopens in March')));
+  // Synthetic embedder: one axis for the fact, one for everything else.
+  app.run(`embedDocumentTexts = async texts => texts.map(text => { const v = new Array(384).fill(0); v[/okapi|giraffe relative/i.test(text) ? 0 : 1] = 1; return v; });
+           persistDocumentEmbeddingCache = async () => {};`);
+  app.window.docs = [{ id: 1, name: 'Zoo.txt', chunks: [{ text: app.window.sectionB, lineStart: 1, lineEnd: 1 }, { text: app.window.sectionA, lineStart: 2, lineEnd: 2 }, { text: app.window.sectionB + ' more', lineStart: 3, lineEnd: 3 }] }];
+  const ranking = await app.run('rankDocumentChunksHybrid(docs, "When does the giraffe relative exhibit open again?", document.getElementById("messageHistory"))');
+  assert.equal(ranking.method, 'hybrid');
+  assert.equal(ranking.items[0].chunkIndex, 1, 'the section containing the fact ranks first with no shared keywords');
+  assert(ranking.items[0].semanticScore > 0.9);
+  assert.equal(app.run('docs[0].embeddingVersion'), 2);
+  const stored = app.run('docs[0].chunkEmbeddings');
+  assert.equal(stored.length, 3);
+  assert.equal(app.run('storedPassageVectors(docs[0].chunkEmbeddings[1]).length'), passages.length);
+  // A legacy single-vector cache entry is still readable.
+  assert.equal(app.run('storedPassageVectors("AQID").length'), 1);
+  assert(app.run('cosineStoredEmbeddings("AQID","AQID")') > 0.99);
+});
+
+test('the legacy 10240 chunk default is not used as the retrieval section size', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  assert.equal(app.window.localStorage.getItem('textChunkSize'), '5600');
+  assert.equal(app.window.localStorage.getItem('pdfPagesPerChunk'), null);
+});
+
+test('capped utility calls skip model thinking, fall back on older servers, and failed summaries back off', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const bodies = [];
+  let rejectThink = true, emptySummary = false;
+  app.window.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body); bodies.push(body);
+    if (body.think === false && rejectThink) return Response.json({ error: 'invalid think value' }, { status: 400 });
+    return Response.json({ message: { content: emptySummary ? '' : 'A summary' } });
+  };
+  const call = body => app.run(`fetchOllamaChat({method:"POST",headers:{"Content-Type":"application/json"},body:${JSON.stringify(JSON.stringify(body))}}).then(r=>r.json())`);
+  const capped = { model: 'test-chat', stream: false, messages: [{ role: 'user', content: 'x' }], options: { num_predict: 100 } };
+  assert.equal((await call(capped)).message.content, 'A summary');
+  assert.deepEqual(bodies.map(body => body.think), [false, undefined], 'retries without the field after a 400');
+  bodies.length = 0; rejectThink = false;
+  await call(capped);
+  await call({ ...capped, stream: true });
+  await call({ ...capped, options: {} });
+  await call({ ...capped, tools: [{ type: 'function' }] });
+  assert.deepEqual(bodies.map(body => body.think), [false, undefined, undefined, undefined], 'only capped non-streaming calls are changed');
+  // A summary that keeps failing is not retried on every send.
+  bodies.length = 0; emptySummary = true;
+  await app.run('(async()=>{for(let i=0;i<14;i++){await saveMessage({role:i%2?"assistant":"user",text:"Turn "+i,type:"text",timestamp:i+1},1);}})()');
+  const build = () => app.run('buildContextWithSummary(1, 4, "", "test-chat", document.getElementById("messageHistory"))').then(normalize);
+  const first = await build();
+  assert.equal(bodies.length, 1);
+  assert.equal(first.length, 12, 'without a summary the most recent aged-out turns stay verbatim');
+  await app.run('saveMessage({role:"user",text:"Turn 14",type:"text",timestamp:15},1)');
+  await build();
+  assert.equal(bodies.length, 1, 'no second attempt on the very next send');
+});

@@ -1,6 +1,6 @@
 # PrivateLLMLens
 
-Current application release: **2.3.0**.
+Current application release: **2.3.1**.
 
 PrivateLLMLens is a single-file browser interface for local Ollama, llama.cpp and optional in-browser WebGPU models. It works on desktop and Android/Termux without an application backend.
 
@@ -17,14 +17,14 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Multiple documents per thread, reusable without reattaching or re-extracting
 - Page, slide and line-level citations with an exact source-passage viewer
 - Ollama vision-model image attachments
-- Explicit 8K, 16K and 32K context profiles; 4K utility calls
+- Explicit 8K, 16K and 32K context profiles; utility calls reuse the chat context so Ollama never reloads the model between them
 - Active local/cloud request and document-processing cancellation, with responses bound to their original thread
 - Encrypted persistent memories with separate use and learning controls
 - Schema-driven local tool registry for calculator, date/time, encrypted document search/read and JSON inspection; Web Research can combine these with Tavily
 - Optional Tavily search, Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
 - Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
 - Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
-- Markdown, syntax highlighting, one-tap response copying, regeneration, branching, search, conversation JSON export, encrypted workspace backups and PDF export
+- Markdown, syntax highlighting, one-tap response copying, regeneration through the full Send pipeline, branching, search, conversation JSON export, encrypted workspace backups and PDF export
 - Responsive compact composer with Automatic, Compact and Desktop layout modes
 - Embedded PWA manifest and icon
 
@@ -70,7 +70,9 @@ Whole-document analysis processes every section, then combines all relevant find
 
 The two rankings are combined using reciprocal-rank fusion, followed by a lightweight MMR-style diversification pass to avoid spending the context budget on several near-duplicate or adjacent chunks.
 
-Semantic indexing is lazy: attaching a document does not immediately run the embedding model. The first targeted retrieval builds embeddings for that document, quantises the normalised vectors to compact signed 8-bit values, and stores them inside the existing encrypted document payload. Later queries reuse the cached encrypted index. Conversation branches preserve the semantic index when the workspace is copied and re-encrypted.
+Document sections are sized for the chat model (5,600 characters by default), which is far more than MiniLM reads in one pass. Each section is therefore indexed as several overlapping passages of about 900 characters. A section is scored by its best-matching passage, and the whole section is what the chat model receives.
+
+Semantic indexing is lazy: attaching a document does not immediately run the embedding model. The first targeted retrieval builds passage embeddings for that document, quantises the normalised vectors to compact signed 8-bit values, and stores them inside the existing encrypted document payload. Indexes built by 2.3.0 or earlier are rebuilt automatically on their next targeted retrieval. Later queries reuse the cached encrypted index. Conversation branches preserve the semantic index when the workspace is copied and re-encrypted.
 
 No document text or query is sent to an external embedding API. Embedding inference runs locally in the browser. If the worker, WebAssembly runtime, model load, or embedding inference is unavailable on a device, retrieval automatically falls back to local BM25 rather than blocking document Q&A.
 
@@ -127,9 +129,9 @@ This permits any website in the browser to attempt local Ollama requests. Prefer
 - **8K Performance:** lower KV-cache use and faster prompt handling
 - **16K Balanced:** default general-purpose Ollama context
 - **32K Maximum / deep documents:** deeper conversations and document work
-- **4K Utility:** automatically used for small classification, extraction and summarisation calls
+- **Utility calls** (routing, summaries, document analysis) keep their prompts within about 4K tokens but run at the selected chat context. Ollama reloads a model whenever `num_ctx` changes, so sharing one context size avoids a reload before and after every utility call.
 
-Conversation History controls stored message count; Model Context controls Ollama `num_ctx`. llama.cpp GPU contexts are fixed by the active server profile.
+Conversation History controls how many recent messages are sent verbatim; Model Context controls Ollama `num_ctx`. With **Auto-summarise Context** on, older messages are represented by a running summary stored with the thread. The summary is extended in batches once about eight further messages have aged out, so most sends need no extra model call and the prompt prefix stays stable between refreshes. Editing or deleting summarised messages rebuilds it. llama.cpp GPU contexts are fixed by the active server profile.
 
 ## Memories
 
