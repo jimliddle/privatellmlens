@@ -9,7 +9,7 @@
        model output or document text cannot pull in or beacon to another site.
        connect-src stays open because the Ollama endpoint is user-configurable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' http: https: data: blob:; manifest-src 'self' blob: data:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
-  <meta name="application-version" content="2.4.0">
+  <meta name="application-version" content="2.5.0">
   <meta name="theme-color" content="#111827">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1419,6 +1419,7 @@ return He}()
 .fa-solid.fa-file-word{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath d='M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM111 257.1l26.8 89.2 31.6-90.3c3.4-9.6 12.5-16.1 22.7-16.1s19.3 6.4 22.7 16.1l31.6 90.3L273 257.1c3.8-12.7 17.2-19.9 29.9-16.1s19.9 17.2 16.1 29.9l-48 160c-3 10-12 16.9-22.4 17.1s-19.8-6.2-23.2-16.1L192 336.6l-33.3 95.3c-3.4 9.8-12.8 16.3-23.2 16.1s-19.5-7.1-22.4-17.1l-48-160c-3.8-12.7 3.4-26.1 16.1-29.9s26.1 3.4 29.9 16.1z'/%3E%3C/svg%3E");width:0.75em}
 .fa-solid.fa-gear{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z'/%3E%3C/svg%3E");width:1em}
 .fa-solid.fa-globe{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z'/%3E%3C/svg%3E");width:1em}
+.fa-solid.fa-hard-drive{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V280.4c-17-15.2-39.4-24.4-64-24.4H64c-24.6 0-47 9.2-64 24.4V96zM64 288H448c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V352c0-35.3 28.7-64 64-64zM320 416a32 32 0 1 0 0-64 32 32 0 1 0 0 64zm128-32a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z'/%3E%3C/svg%3E");width:1em}
 .fa-solid.fa-image{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z'/%3E%3C/svg%3E");width:1em}
 .fa-solid.fa-lock{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath d='M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z'/%3E%3C/svg%3E");width:0.875em}
 .fa-solid.fa-microchip{--fa-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M176 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64c-35.3 0-64 28.7-64 64H24c-13.3 0-24 10.7-24 24s10.7 24 24 24H64v56H24c-13.3 0-24 10.7-24 24s10.7 24 24 24H64v56H24c-13.3 0-24 10.7-24 24s10.7 24 24 24H64c0 35.3 28.7 64 64 64v40c0 13.3 10.7 24 24 24s24-10.7 24-24V448h56v40c0 13.3 10.7 24 24 24s24-10.7 24-24V448h56v40c0 13.3 10.7 24 24 24s24-10.7 24-24V448c35.3 0 64-28.7 64-64h40c13.3 0 24-10.7 24-24s-10.7-24-24-24H448V280h40c13.3 0 24-10.7 24-24s-10.7-24-24-24H448V176h40c13.3 0 24-10.7 24-24s-10.7-24-24-24H448c0-35.3-28.7-64-64-64V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H280V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H176V24zM160 128H352c17.7 0 32 14.3 32 32V352c0 17.7-14.3 32-32 32H160c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32zm192 32H160V352H352V160z'/%3E%3C/svg%3E");width:1em}
@@ -1641,6 +1642,23 @@ return He}()
     .remote-image-link { font-size: 0.9em; }
     .backup-overlay { display: none; position: fixed; inset: 0; z-index: 1200; background: rgba(0,0,0,.6); align-items: center; justify-content: center; padding: 16px; }
     .backup-overlay.active { display: flex; }
+    .lock-screen { z-index: 3000; background: var(--bg-primary, #111827); }
+    .model-manager { width: min(640px,100%); }
+    .model-manager-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .model-manager h3 { margin: 18px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+    .model-list { list-style: none; margin: 0; padding: 0; }
+    .model-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .model-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .model-row-text strong { overflow-wrap: anywhere; font-size: 13px; }
+    .model-row-text span { font-size: 12px; color: var(--text-muted); }
+    .model-pull-form { display: flex; gap: 8px; flex-wrap: wrap; }
+    .model-pull-form input { flex: 1 1 200px; margin: 0; }
+    #modelPullMeterFill { height: 100%; width: 0%; background: var(--primary); }
+    #modelPullMeter { margin-top: 10px; }
+    #modelPullStatus { font-size: 12px; overflow-wrap: anywhere; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    body.vault-locked > :not(#lockOverlay) { visibility: hidden; }
+    .backup-panel [hidden] { display: none; }
     .backup-panel { width: min(520px,100%); max-height: 90dvh; overflow: auto; padding: 24px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); }
     .backup-panel p { margin: 12px 0; }
     .backup-panel label { display: block; margin-top: 12px; }
@@ -3868,6 +3886,9 @@ return He}()
             <button onclick="fetchModels()" class="input-btn" style="padding: 6px 10px;" title="Refresh models">
               <i class="fa-solid fa-rotate"></i>
             </button>
+            <button onclick="openModelManager()" class="input-btn" id="modelManagerButton" style="padding: 6px 10px;" title="Manage Ollama models">
+              <i class="fa-solid fa-hard-drive"></i>
+            </button>
             <select id="modelSelection">
               <option>Loading models...</option>
             </select>
@@ -4016,6 +4037,30 @@ return He}()
           </div>
         </div>
         <div class="settings-section">
+          <h3>While generating</h3>
+          <div class="setting-row">
+            <span class="setting-label">Keep screen awake</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="keepAwakeCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">Stops the phone locking mid-answer or mid-download</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Alert when a reply finishes in the background</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="completionAlertCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;" onchange="onCompletionAlertToggle(this)">
+              <span id="completionAlertStatus" style="font-size: 12px; color: var(--text-muted);"></span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Play a sound with the alert</span>
+            <div class="agentic-toggle">
+              <input type="checkbox" id="completionSoundCheckbox" style="width: 18px; height: 18px; flex-shrink: 0;">
+              <span style="font-size: 12px; color: var(--text-muted);">The alert never shows message text</span>
+            </div>
+          </div>
+        </div>
+        <div class="settings-section">
           <h3>Agentic Functions</h3>
           <div class="setting-row">
             <span class="setting-label">Auto-title Threads</span>
@@ -4088,6 +4133,36 @@ return He}()
             <span id="webgpuStatusText" style="font-size:12px;color:var(--text-muted);">Not loaded</span>
           </div>
         </div>
+        <div class="settings-section" id="securitySection">
+          <h3>Security</h3>
+          <div class="setting-row">
+            <span class="setting-label">Encryption at rest</span>
+            <span class="storage-value">Chats, documents, memories and API keys are encrypted in this browser</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Passphrase lock</span>
+            <div class="storage-value">
+              <span id="lockStatusText" role="status" aria-live="polite">Off</span>
+              <button type="button" class="settings-btn secondary" id="lockEnableButton" onclick="openLockDialog('enable')">Set passphrase</button>
+              <button type="button" class="settings-btn secondary" id="lockNowButton" onclick="lockNow()" style="display:none;">Lock now</button>
+              <button type="button" class="settings-btn secondary" id="lockChangeButton" onclick="openLockDialog('change')" style="display:none;">Change</button>
+              <button type="button" class="settings-btn secondary" id="lockDisableButton" onclick="openLockDialog('disable')" style="display:none;">Remove</button>
+            </div>
+          </div>
+          <div class="setting-row" id="autoLockRow" style="display:none;">
+            <span class="setting-label">Lock after time in the background</span>
+            <select id="autoLockSelect" class="setting-select" onchange="localStorage.setItem('autoLockMinutes', this.value)">
+              <option value="0">Never</option>
+              <option value="1">1 minute</option>
+              <option value="5">5 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="60">1 hour</option>
+            </select>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.45;padding-top:4px;">
+            Without a passphrase the encryption key is kept in this browser beside the data, which stops casual inspection but not someone with access to the browser profile. A passphrase lock stores the key only in a form the passphrase unlocks. A forgotten passphrase cannot be recovered.
+          </div>
+        </div>
         <div class="settings-section" id="storageSection">
           <h3>Storage</h3>
           <div class="setting-row">
@@ -4144,6 +4219,66 @@ return He}()
         <button class="settings-btn primary" onclick="saveSettings()">Save Settings</button>
       </div>
     </div>
+  </div>
+
+  <div id="modelManagerOverlay" class="backup-overlay">
+    <div class="backup-panel model-manager" role="dialog" aria-modal="true" aria-labelledby="modelManagerTitle">
+      <div class="model-manager-header">
+        <h2 id="modelManagerTitle">Ollama models</h2>
+        <button type="button" id="modelManagerClose" class="settings-btn secondary" onclick="closeModelManager()" aria-label="Close model manager"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <p id="modelManagerStatus" role="status" aria-live="polite">Checking…</p>
+      <h3>In memory</h3>
+      <ul id="loadedModelsList" class="model-list"></ul>
+      <h3>Installed</h3>
+      <ul id="installedModelsList" class="model-list"></ul>
+      <h3>Download a model</h3>
+      <form class="model-pull-form" onsubmit="event.preventDefault(); pullOllamaModel();">
+        <label for="modelPullName" class="visually-hidden">Model name</label>
+        <input id="modelPullName" type="text" inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Model name, for example qwen3:4b">
+        <button type="submit" id="modelPullButton" class="settings-btn primary">Download</button>
+      </form>
+      <div class="storage-meter" id="modelPullMeter" role="progressbar" aria-label="Download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display:none;"><div id="modelPullMeterFill"></div></div>
+      <p id="modelPullStatus" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <div id="lockOverlay" class="backup-overlay lock-screen">
+    <form class="backup-panel" onsubmit="event.preventDefault(); if (submitUnlock) submitUnlock();" role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+      <h2 id="unlockTitle"><i class="fa-solid fa-lock" aria-hidden="true"></i> PrivateLLMLens is locked</h2>
+      <p>Enter your passphrase to open your chats, documents and keys.</p>
+      <label for="unlockPassphrase">Passphrase</label>
+      <input id="unlockPassphrase" type="password" autocomplete="current-password" required>
+      <p id="unlockStatus" role="status" aria-live="polite"></p>
+      <div class="backup-buttons">
+        <button type="button" class="settings-btn secondary" style="color: var(--danger);" onclick="resetDatabase()">Forgot it: erase everything</button>
+        <button id="unlockButton" type="submit" class="settings-btn primary">Unlock</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="lockDialogOverlay" class="backup-overlay">
+    <form class="backup-panel" onsubmit="event.preventDefault(); runLockDialog();" role="dialog" aria-modal="true" aria-labelledby="lockDialogTitle">
+      <h2 id="lockDialogTitle">Set a passphrase lock</h2>
+      <p id="lockDialogDescription"></p>
+      <div id="lockCurrentRow">
+        <label for="lockCurrentPassphrase">Current passphrase</label>
+        <input id="lockCurrentPassphrase" type="password" autocomplete="current-password">
+      </div>
+      <div id="lockNewRow">
+        <label for="lockNewPassphrase">New passphrase (at least 8 characters)</label>
+        <input id="lockNewPassphrase" type="password" autocomplete="new-password">
+      </div>
+      <div id="lockConfirmRow">
+        <label for="lockConfirmPassphrase">Confirm new passphrase</label>
+        <input id="lockConfirmPassphrase" type="password" autocomplete="new-password">
+      </div>
+      <p id="lockDialogStatus" role="status" aria-live="polite"></p>
+      <div class="backup-buttons">
+        <button type="button" class="settings-btn secondary" onclick="closeLockDialog()">Close</button>
+        <button id="lockDialogAction" type="submit" class="settings-btn primary">Set passphrase</button>
+      </div>
+    </form>
   </div>
 
   <div id="backupOverlay" class="backup-overlay">
@@ -4668,12 +4803,15 @@ return He}()
       lastRequestController = controller;
       cancelProcessing = false;
       showForegroundCancel(label);
+      syncWakeLock();
+      primeCompletionSound();
       return controller;
     }
 
     function endForegroundRequest(controller) {
       if (activeRequestController !== controller) return false;
       activeRequestController = null;
+      syncWakeLock();
       sendSubmissionPending = false;
       cancelProcessing = false;
       const progress = document.getElementById("processingProgress");
@@ -4688,6 +4826,7 @@ return He}()
     function resetComposerForThreadChange() {
       if (lastRequestController) lastRequestController.abort();
       activeRequestController = null;
+      syncWakeLock();
       sendSubmissionPending = false;
       cancelProcessing = false;
       const progress = document.getElementById("processingProgress");
@@ -4795,10 +4934,17 @@ return He}()
     }
 
     async function initializeSecretVault() {
-      vaultKey = await vaultRequest("readonly", store => store.get("masterKey"));
-      if (!vaultKey) {
-        vaultKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-        await vaultRequest("readwrite", store => store.put(vaultKey, "masterKey"));
+      const lock = await vaultRequest("readonly", store => store.get("lock"));
+      vaultLockEnabled = !!lock;
+      if (lock) {
+        // With a passphrase lock the key is stored only in wrapped form.
+        vaultKey = await waitForUnlock(lock);
+      } else {
+        vaultKey = await vaultRequest("readonly", store => store.get("masterKey"));
+        if (!vaultKey) {
+          vaultKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+          await vaultRequest("readwrite", store => store.put(vaultKey, "masterKey"));
+        }
       }
 
       for (const name of API_KEY_NAMES) {
@@ -4852,6 +4998,772 @@ return He}()
       localStorage.removeItem(name);
     }
 
+    // ============================================
+    // WAKE LOCK AND COMPLETION ALERTS
+    // ============================================
+    // A phone that dims and locks its screen suspends the page, which stalls a
+    // long local generation. Hold a screen wake lock while work is running, and
+    // say when a reply lands if the app is in the background by then.
+    let wakeLockSentinel = null;
+    let wakeLockRequest = null;
+    let longTaskCount = 0;   // work other than chat that should also keep the screen awake
+
+    function wantsWakeLock() {
+      return localStorage.getItem("keepAwake") !== "false" && (!!activeRequestController || longTaskCount > 0) && !document.hidden;
+    }
+
+    async function syncWakeLock() {
+      if (!navigator.wakeLock?.request) return;
+      if (!wantsWakeLock()) {
+        const sentinel = wakeLockSentinel;
+        wakeLockSentinel = null;
+        if (sentinel) { try { await sentinel.release(); } catch (_) {} }
+        return;
+      }
+      if (wakeLockSentinel || wakeLockRequest) return;
+      wakeLockRequest = navigator.wakeLock.request("screen").then(sentinel => {
+        wakeLockSentinel = sentinel;
+        // The browser drops the lock when the page is hidden; take it again on return.
+        sentinel.addEventListener?.("release", () => { if (wakeLockSentinel === sentinel) wakeLockSentinel = null; });
+      }).catch(error => {
+        console.info("Screen wake lock unavailable:", error?.message || error);
+      }).finally(() => {
+        wakeLockRequest = null;
+        if (!wantsWakeLock()) syncWakeLock();
+      });
+    }
+
+    const BASE_TITLE = document.title;
+    let completionAudio = null;
+
+    // Browsers only allow sound that follows a tap, so open the audio context when a request starts.
+    function primeCompletionSound() {
+      if (localStorage.getItem("completionAlert") !== "true" || localStorage.getItem("completionSound") === "false") return;
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!completionAudio) completionAudio = new AudioContextClass();
+        if (completionAudio.state === "suspended") completionAudio.resume().catch(() => {});
+      } catch (_) { completionAudio = null; }
+    }
+
+    function playCompletionSound(ok = true) {
+      if (!completionAudio || localStorage.getItem("completionSound") === "false") return false;
+      try {
+        const now = completionAudio.currentTime;
+        (ok ? [660, 880] : [330, 247]).forEach((frequency, index) => {
+          const oscillator = completionAudio.createOscillator();
+          const gain = completionAudio.createGain();
+          oscillator.type = "sine";
+          oscillator.frequency.value = frequency;
+          const start = now + index * 0.16;
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.15);
+          oscillator.connect(gain).connect(completionAudio.destination);
+          oscillator.start(start);
+          oscillator.stop(start + 0.16);
+        });
+        return true;
+      } catch (_) { return false; }
+    }
+
+    async function showCompletionNotification(title, body) {
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return false;
+      const options = { body, tag: "privatellmlens-reply", renotify: true, icon: document.querySelector('link[rel="icon"]')?.href };
+      // Android browsers refuse page-created notifications; they need the optional service worker.
+      try {
+        const registration = await navigator.serviceWorker?.getRegistration?.();
+        if (registration?.showNotification) { await registration.showNotification(title, options); return true; }
+      } catch (_) {}
+      try {
+        const notification = new Notification(title, options);
+        notification.onclick = () => { window.focus(); notification.close(); };
+        return true;
+      } catch (_) { return false; }
+    }
+
+    // The alert never contains the prompt, the reply or the thread name: a
+    // notification can be read from a lock screen.
+    async function announceCompletion({ ok = true, elapsedSeconds = null } = {}) {
+      if (localStorage.getItem("completionAlert") !== "true") return { alerted: false };
+      const inBackground = document.hidden || (typeof document.hasFocus === "function" && !document.hasFocus());
+      if (!inBackground) return { alerted: false };
+      const body = ok ? `Your reply is ready${Number.isFinite(elapsedSeconds) && elapsedSeconds >= 1 ? ` (${elapsedSeconds}s)` : ""}.` : "The request stopped with an error.";
+      document.title = `${ok ? "✓ Reply ready" : "⚠ Request failed"} · ${BASE_TITLE}`;
+      const sound = playCompletionSound(ok);
+      try { navigator.vibrate?.(ok ? 200 : [120, 80, 120]); } catch (_) {}
+      const notified = await showCompletionNotification("PrivateLLMLens", body);
+      return { alerted: true, notified, sound, body };
+    }
+
+    function clearCompletionTitle() {
+      if (document.title !== BASE_TITLE) document.title = BASE_TITLE;
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) { clearCompletionTitle(); syncWakeLock(); }
+    });
+    window.addEventListener("focus", clearCompletionTitle);
+
+    function completionAlertStatus() {
+      if (typeof Notification === "undefined") return "This browser has no notifications; the tab title and sound are used instead.";
+      if (Notification.permission === "granted") return "Notifications allowed.";
+      if (Notification.permission === "denied") return "Notifications are blocked for this site; the tab title and sound are used instead.";
+      return "Notifications have not been allowed yet.";
+    }
+
+    // Called from the checkbox itself, because permission can only be requested from a tap.
+    async function onCompletionAlertToggle(checkbox) {
+      const status = document.getElementById("completionAlertStatus");
+      if (checkbox.checked) {
+        if (typeof Notification !== "undefined" && Notification.permission === "default") {
+          try { await Notification.requestPermission(); } catch (_) {}
+        }
+        // Only needed where page notifications are refused; a missing file is not an error.
+        if (navigator.serviceWorker?.register && /^https?:$/.test(location.protocol)) {
+          navigator.serviceWorker.register("sw.js").catch(() => {});
+        }
+      }
+      if (status) status.textContent = checkbox.checked ? completionAlertStatus() : "";
+    }
+
+    // ============================================
+    // OLLAMA MODEL MANAGER
+    // ============================================
+    let modelManagerTimer = null;
+    let modelPullController = null;
+
+    function ollamaBaseUrl() {
+      return OLLAMA_TAGS.replace(/\/api\/tags$/, "");
+    }
+
+    async function ollamaJson(path, options = {}) {
+      const response = await fetch(ollamaBaseUrl() + path, { signal: AbortSignal.timeout(8000), ...options });
+      if (!response.ok) {
+        let detail = "";
+        try { detail = (await response.json()).error || ""; } catch (_) {}
+        throw new Error(detail || `Ollama returned ${response.status}`);
+      }
+      return response.json().catch(() => ({}));
+    }
+
+    function describeExpiry(value) {
+      const time = Date.parse(value);
+      if (!Number.isFinite(time)) return "";
+      const seconds = Math.round((time - Date.now()) / 1000);
+      if (seconds > 365 * 24 * 3600) return "kept loaded";
+      if (seconds <= 0) return "unloading";
+      return seconds < 90 ? `unloads in ${seconds}s` : `unloads in ${Math.round(seconds / 60)} min`;
+    }
+
+    function modelManagerRow(title, detail, actions = []) {
+      const row = document.createElement("li");
+      row.className = "model-row";
+      const text = document.createElement("div");
+      text.className = "model-row-text";
+      const name = document.createElement("strong");
+      name.textContent = title;
+      const info = document.createElement("span");
+      info.textContent = detail;
+      text.append(name, info);
+      row.appendChild(text);
+      actions.forEach(({ label, onClick, danger }) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "settings-btn secondary";
+        if (danger) button.style.color = "var(--danger)";
+        button.textContent = label;
+        button.setAttribute("aria-label", `${label} ${title}`);
+        button.onclick = async () => {
+          button.disabled = true;
+          try { await onClick(); } finally { button.disabled = false; }
+        };
+        row.appendChild(button);
+      });
+      return row;
+    }
+
+    async function refreshModelManager() {
+      const status = document.getElementById("modelManagerStatus");
+      const loadedList = document.getElementById("loadedModelsList");
+      const installedList = document.getElementById("installedModelsList");
+      try {
+        const [tags, running, version] = await Promise.all([
+          ollamaJson("/api/tags"),
+          ollamaJson("/api/ps").catch(() => ({ models: [] })),
+          ollamaJson("/api/version").catch(() => ({}))
+        ]);
+        const installed = Array.isArray(tags.models) ? tags.models : [];
+        const loaded = Array.isArray(running.models) ? running.models : [];
+        const loadedNames = new Set(loaded.map(model => model.name));
+        const totalSize = installed.reduce((sum, model) => sum + (Number(model.size) || 0), 0);
+        status.textContent = `Ollama ${version.version || ""} at ${ollamaBaseUrl()} · ${installed.length} model${installed.length === 1 ? "" : "s"}, ${formatBytes(totalSize)} on disk`.replace("  ", " ");
+        loadedList.replaceChildren(...(loaded.length ? loaded.map(model => modelManagerRow(
+          model.name,
+          [formatBytes(Number(model.size_vram) || Number(model.size) || 0) + " in memory", model.context_length ? `${Math.round(model.context_length / 1024)}K context` : "", describeExpiry(model.expires_at)].filter(Boolean).join(" · "),
+          [{ label: "Unload", onClick: () => unloadOllamaModel(model.name) }]
+        )) : [modelManagerRow("Nothing loaded", "No model is using memory right now.")]));
+        installedList.replaceChildren(...(installed.length ? installed.map(model => modelManagerRow(
+          model.name,
+          [formatBytes(Number(model.size) || 0), model.details?.parameter_size, model.details?.quantization_level, loadedNames.has(model.name) ? "loaded" : ""].filter(Boolean).join(" · "),
+          [{ label: "Delete", danger: true, onClick: () => deleteOllamaModel(model.name) }]
+        )) : [modelManagerRow("No models installed", "Download one below.")]));
+        return { installed: installed.length, loaded: loaded.length };
+      } catch (error) {
+        status.textContent = `Ollama is not reachable at ${ollamaBaseUrl()}. ${error.message || ""}`.trim();
+        loadedList.replaceChildren();
+        installedList.replaceChildren();
+        return null;
+      }
+    }
+
+    function openModelManager() {
+      closeMobileSheets();
+      document.getElementById("modelPullStatus").textContent = modelPullController ? document.getElementById("modelPullStatus").textContent : "";
+      openAccessibleModal("modelManagerOverlay", "#modelManagerClose");
+      refreshModelManager();
+      clearInterval(modelManagerTimer);
+      modelManagerTimer = setInterval(() => { if (!document.hidden) refreshModelManager(); }, 5000);
+    }
+
+    function closeModelManager() {
+      clearInterval(modelManagerTimer);
+      modelManagerTimer = null;
+      closeAccessibleModal("modelManagerOverlay");
+    }
+
+    async function unloadOllamaModel(name) {
+      const body = extra => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: name, keep_alive: 0, ...extra }) });
+      try {
+        // Chat models unload through /api/generate; embedding models only accept /api/embed.
+        try { await ollamaJson("/api/generate", body({})); }
+        catch (_) { await ollamaJson("/api/embed", body({ input: "" })); }
+      } catch (error) {
+        alert(`Could not unload ${name}: ${error.message}`);
+      }
+      await refreshModelManager();
+    }
+
+    async function deleteOllamaModel(name) {
+      if (!confirm(`Delete ${name} from this Ollama server? It frees disk space and the model must be downloaded again to use it.`)) return;
+      try {
+        await ollamaJson("/api/delete", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: name }) });
+      } catch (error) {
+        alert(`Could not delete ${name}: ${error.message}`);
+      }
+      await refreshModelManager();
+      fetchModels();
+    }
+
+    function setPullProgress(text, fraction = null) {
+      document.getElementById("modelPullStatus").textContent = text;
+      const meter = document.getElementById("modelPullMeter");
+      meter.style.display = fraction === null ? "none" : "";
+      const percent = fraction === null ? 0 : Math.max(0, Math.min(100, Math.round(fraction * 100)));
+      meter.setAttribute("aria-valuenow", String(percent));
+      document.getElementById("modelPullMeterFill").style.width = `${percent}%`;
+    }
+
+    async function pullOllamaModel() {
+      const input = document.getElementById("modelPullName");
+      const name = input.value.trim();
+      const button = document.getElementById("modelPullButton");
+      if (modelPullController) { modelPullController.abort(); return; }
+      if (!/^[\w.\-/:@]{1,200}$/.test(name)) { setPullProgress("Enter a model name such as qwen3:4b."); return; }
+      const controller = new AbortController();
+      modelPullController = controller;
+      button.textContent = "Cancel";
+      input.disabled = true;
+      longTaskCount++;
+      syncWakeLock();
+      setPullProgress(`Contacting the registry for ${name}…`, 0);
+      const layers = new Map();
+      let succeeded = false;
+      try {
+        const response = await fetch(ollamaBaseUrl() + "/api/pull", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: name, stream: true }), signal: controller.signal });
+        if (!response.ok || !response.body) {
+          let detail = "";
+          try { detail = (await response.json()).error || ""; } catch (_) {}
+          throw new Error(detail || `Ollama returned ${response.status}`);
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        const consume = line => {
+          if (!line.trim()) return;
+          const update = JSON.parse(line);
+          if (update.error) throw new Error(update.error);
+          if (update.digest && Number.isFinite(update.total)) layers.set(update.digest, { total: update.total, completed: Number(update.completed) || 0 });
+          if (update.status === "success") succeeded = true;
+          const total = [...layers.values()].reduce((sum, layer) => sum + layer.total, 0);
+          const completed = [...layers.values()].reduce((sum, layer) => sum + Math.min(layer.completed, layer.total), 0);
+          const status = String(update.status || "").replace(/\s+sha256:[0-9a-f]+/i, "").replace(/^pulling [0-9a-f]{12}$/i, "downloading");
+          setPullProgress(total ? `${name}: ${status} · ${formatBytes(completed)} of ${formatBytes(total)}` : `${name}: ${status}`, total ? completed / total : 0);
+        };
+        while (true) {
+          const { done, value } = await reader.read();
+          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          lines.forEach(consume);
+          if (done) { consume(buffer); break; }
+        }
+        if (!succeeded) throw new Error("The download ended before Ollama confirmed success.");
+        setPullProgress(`${name} is ready to use.`, 1);
+        input.value = "";
+        fetchModels();
+        announceCompletion({ ok: true });
+      } catch (error) {
+        setPullProgress(error.name === "AbortError" ? `Download of ${name} cancelled. Ollama keeps the part already downloaded and resumes from it.` : `Could not download ${name}: ${error.message}`, null);
+      } finally {
+        modelPullController = null;
+        longTaskCount = Math.max(0, longTaskCount - 1);
+        syncWakeLock();
+        button.textContent = "Download";
+        input.disabled = false;
+        await refreshModelManager();
+      }
+      return succeeded;
+    }
+
+    // ============================================
+    // PASSPHRASE LOCK
+    // ============================================
+    // Without a lock the vault key sits in this browser's storage next to the
+    // data: that stops casual inspection but not someone holding the browser
+    // profile. With a lock the key is stored only wrapped by a key derived from
+    // the passphrase, so nothing can be read until it is entered. There is no
+    // recovery if the passphrase is forgotten.
+    const LOCK_ITERATIONS = 600000;
+    const LOCK_MIN_LENGTH = 8;
+    let vaultLockEnabled = false;
+    let lockOperationPending = false;
+
+    function lockAdditionalData() {
+      return new TextEncoder().encode("PrivateLLMLens:vault-lock:v1");
+    }
+
+    async function deriveLockKey(passphrase, salt, iterations) {
+      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, material, { name: "AES-GCM", length: 256 }, false, ["wrapKey", "unwrapKey"]);
+    }
+
+    async function wrapVaultKey(extractableKey, passphrase) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const wrappingKey = await deriveLockKey(passphrase, salt, LOCK_ITERATIONS);
+      const wrapped = await crypto.subtle.wrapKey("raw", extractableKey, wrappingKey, { name: "AES-GCM", iv, additionalData: lockAdditionalData() });
+      return { version: 1, kdf: "PBKDF2-SHA256", iterations: LOCK_ITERATIONS, salt: bytesToBase64(salt), iv: bytesToBase64(iv), wrappedKey: bytesToBase64(new Uint8Array(wrapped)), createdAt: Date.now() };
+    }
+
+    async function unwrapVaultKey(lock, passphrase, extractable = false) {
+      if (!lock || lock.version !== 1 || lock.kdf !== "PBKDF2-SHA256") throw new Error("This lock was created by a newer version of PrivateLLMLens.");
+      const wrappingKey = await deriveLockKey(passphrase, base64ToBytes(lock.salt), lock.iterations);
+      try {
+        return await crypto.subtle.unwrapKey("raw", base64ToBytes(lock.wrappedKey), wrappingKey,
+          { name: "AES-GCM", iv: base64ToBytes(lock.iv), additionalData: lockAdditionalData() },
+          { name: "AES-GCM", length: 256 }, extractable, ["encrypt", "decrypt"]);
+      } catch (_) {
+        throw new Error("That passphrase is not correct.");
+      }
+    }
+
+    // Shows the unlock screen and resolves with the vault key once the right passphrase is entered.
+    let submitUnlock = null;
+    function waitForUnlock(lock) {
+      const overlay = document.getElementById("lockOverlay");
+      const input = document.getElementById("unlockPassphrase");
+      const status = document.getElementById("unlockStatus");
+      const button = document.getElementById("unlockButton");
+      overlay.classList.add("active");
+      document.body.classList.add("vault-locked");
+      input.value = "";
+      status.textContent = "";
+      setTimeout(() => input.focus(), 0);
+      return new Promise(resolve => {
+        let busy = false;
+        submitUnlock = async () => {
+          if (busy) return;
+          const passphrase = input.value;
+          if (!passphrase) { status.textContent = "Enter your passphrase."; return; }
+          busy = true;
+          button.disabled = true;
+          status.textContent = "Unlocking…";
+          try {
+            const key = await unwrapVaultKey(lock, passphrase);
+            input.value = "";
+            status.textContent = "";
+            overlay.classList.remove("active");
+            document.body.classList.remove("vault-locked");
+            submitUnlock = null;
+            resolve(key);
+          } catch (error) {
+            status.textContent = error.message;
+            input.select();
+          } finally {
+            busy = false;
+            button.disabled = false;
+          }
+        };
+      });
+    }
+
+    function lockNow() {
+      if (!vaultLockEnabled) return;
+      // Reloading drops the key and every decrypted value from memory.
+      location.reload();
+    }
+
+    // Lock when the app has been in the background longer than the chosen time.
+    let hiddenSince = 0;
+    function startAutoLockWatch() {
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) { hiddenSince = Date.now(); return; }
+        const minutes = Number(localStorage.getItem("autoLockMinutes")) || 0;
+        const away = hiddenSince ? Date.now() - hiddenSince : 0;
+        hiddenSince = 0;
+        if (vaultLockEnabled && minutes > 0 && away >= minutes * 60000 && !activeRequestController && !lockOperationPending) lockNow();
+      });
+    }
+
+    async function recryptBytes(ciphertext, iv, additionalData, oldKey, newKey) {
+      const algorithm = value => additionalData ? { name: "AES-GCM", iv: value, additionalData } : { name: "AES-GCM", iv: value };
+      const plaintext = await crypto.subtle.decrypt(algorithm(iv), oldKey, ciphertext);
+      const nextIv = crypto.getRandomValues(new Uint8Array(12));
+      return { iv: nextIv, ciphertext: await crypto.subtle.encrypt(algorithm(nextIv), newKey, plaintext) };
+    }
+
+    // Every stored record re-encrypted under newKey. Nothing is written here.
+    async function reencryptEverything(oldKey, newKey, onProgress = () => {}) {
+      const snapshot = await readRawSnapshot();
+      const output = { secrets: [], memories: [], documents: [], messages: [], threads: [], skipped: 0 };
+      const total = snapshot.memories.length + snapshot.documents.length + snapshot.messages.length + snapshot.threads.length;
+      let done = 0;
+      const step = () => { if (++done % 25 === 0 || done === total) onProgress(done, total); };
+      const attempt = async (work) => { try { await work(); } catch (error) { output.skipped++; console.warn("A record could not be re-encrypted and was left as it is:", error); } step(); };
+      for (const name of API_KEY_NAMES) {
+        const record = await vaultRequest("readonly", store => store.get(`secret:${name}`));
+        if (!record) continue;
+        const next = await recryptBytes(base64ToBytes(record.ciphertext), base64ToBytes(record.iv), null, oldKey, newKey);
+        output.secrets.push({ key: `secret:${name}`, value: { iv: bytesToBase64(next.iv), ciphertext: bytesToBase64(new Uint8Array(next.ciphertext)) } });
+      }
+      for (const record of snapshot.memories) await attempt(async () => {
+        if (!record.ciphertext || !record.cryptoId) return;
+        const next = await recryptBytes(base64ToBytes(record.ciphertext), base64ToBytes(record.iv), memoryAdditionalData(record.cryptoId), oldKey, newKey);
+        output.memories.push({ ...record, iv: bytesToBase64(next.iv), ciphertext: bytesToBase64(new Uint8Array(next.ciphertext)) });
+      });
+      for (const record of snapshot.documents) await attempt(async () => {
+        const next = await recryptBytes(record.ciphertext, new Uint8Array(record.iv), documentAdditionalData(record.cryptoId, record.threadId), oldKey, newKey);
+        output.documents.push({ ...record, iv: Array.from(next.iv), ciphertext: next.ciphertext });
+      });
+      for (const [storeName, kind, publicFields] of [["threads", "thread", THREAD_PUBLIC_FIELDS], ["messages", "message", MESSAGE_PUBLIC_FIELDS]]) {
+        for (const record of snapshot[storeName]) await attempt(async () => {
+          if (record.encrypted !== true) { output[storeName].push(await sealChatRecord(kind, record, publicFields, newKey)); return; }
+          const next = await recryptBytes(record.ciphertext, new Uint8Array(record.iv), chatAdditionalData(kind, record.cryptoId), oldKey, newKey);
+          output[storeName].push({ ...record, iv: Array.from(next.iv), ciphertext: next.ciphertext });
+        });
+      }
+      return output;
+    }
+
+    function assertLockChangeAllowed() {
+      if (lockOperationPending || backupOperationPending) throw new Error("Another storage operation is still running.");
+      if (activeRequestController) throw new Error("Wait for the current response, or cancel it, first.");
+    }
+
+    function assertPassphraseUsable(passphrase) {
+      if (typeof passphrase !== "string" || passphrase.length < LOCK_MIN_LENGTH) throw new Error(`Use a passphrase of at least ${LOCK_MIN_LENGTH} characters.`);
+    }
+
+    // Turning the lock on replaces the stored key with a new one that only ever
+    // exists wrapped, and re-encrypts everything under it in one transaction.
+    async function enablePassphraseLock(passphrase, onProgress) {
+      assertLockChangeAllowed();
+      assertPassphraseUsable(passphrase);
+      if (vaultLockEnabled) throw new Error("A passphrase lock is already set.");
+      lockOperationPending = true;
+      if (memoryExtractionController) memoryExtractionController.abort();
+      try {
+        const freshKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+        const lock = await wrapVaultKey(freshKey, passphrase);
+        // Use the key exactly as a later unlock will produce it, which also proves the passphrase round-trips.
+        const newKey = await unwrapVaultKey(lock, passphrase);
+        const records = await reencryptEverything(vaultKey, newKey, onProgress);
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(["vault", "memories", "documents", "messages", "threads"], "readwrite");
+          tx.oncomplete = resolve;
+          tx.onabort = () => reject(tx.error || new Error("The lock could not be applied. Nothing was changed."));
+          tx.onerror = () => { /* onabort reports the atomic failure. */ };
+          try {
+            for (const name of ["memories", "documents", "messages", "threads"]) records[name].forEach(record => tx.objectStore(name).put(record));
+            const vault = tx.objectStore("vault");
+            records.secrets.forEach(secret => vault.put(secret.value, secret.key));
+            vault.delete("masterKey");
+            vault.put(lock, "lock");
+            vault.put(true, "chatsEncrypted");
+          } catch (error) { tx.abort(); reject(error); }
+        });
+        vaultKey = newKey;
+        vaultLockEnabled = true;
+        return { skipped: records.skipped };
+      } finally {
+        lockOperationPending = false;
+      }
+    }
+
+    async function changeLockPassphrase(currentPassphrase, nextPassphrase) {
+      assertLockChangeAllowed();
+      assertPassphraseUsable(nextPassphrase);
+      lockOperationPending = true;
+      try {
+        const lock = await vaultRequest("readonly", store => store.get("lock"));
+        if (!lock) throw new Error("No passphrase lock is set.");
+        const extractable = await unwrapVaultKey(lock, currentPassphrase, true);
+        const nextLock = await wrapVaultKey(extractable, nextPassphrase);
+        await unwrapVaultKey(nextLock, nextPassphrase);
+        await vaultRequest("readwrite", store => store.put(nextLock, "lock"));
+      } finally {
+        lockOperationPending = false;
+      }
+    }
+
+    // Removing the lock stores the same key unwrapped again, so no data is rewritten.
+    async function disablePassphraseLock(passphrase) {
+      assertLockChangeAllowed();
+      lockOperationPending = true;
+      try {
+        const lock = await vaultRequest("readonly", store => store.get("lock"));
+        if (!lock) throw new Error("No passphrase lock is set.");
+        const key = await unwrapVaultKey(lock, passphrase);
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(["vault"], "readwrite");
+          tx.objectStore("vault").put(key, "masterKey");
+          tx.objectStore("vault").delete("lock");
+          tx.oncomplete = resolve;
+          tx.onerror = tx.onabort = () => reject(tx.error || new Error("The lock could not be removed."));
+        });
+        vaultKey = key;
+        vaultLockEnabled = false;
+      } finally {
+        lockOperationPending = false;
+      }
+    }
+
+    let lockDialogMode = "enable";
+    function openLockDialog(mode) {
+      lockDialogMode = mode;
+      const copy = {
+        enable: ["Set a passphrase lock", "Chats, documents, memories and API keys will be unreadable until this passphrase is entered each time the app opens. If you forget it, the data cannot be recovered: take an encrypted workspace backup first.", "Set passphrase"],
+        change: ["Change passphrase", "Enter the current passphrase and choose a new one.", "Change passphrase"],
+        disable: ["Remove the passphrase lock", "The app will open without a passphrase. Data stays encrypted with a key kept in this browser.", "Remove lock"]
+      }[mode];
+      document.getElementById("lockDialogTitle").textContent = copy[0];
+      document.getElementById("lockDialogDescription").textContent = copy[1];
+      document.getElementById("lockDialogAction").textContent = copy[2];
+      document.getElementById("lockCurrentRow").hidden = mode === "enable";
+      document.getElementById("lockNewRow").hidden = mode === "disable";
+      document.getElementById("lockConfirmRow").hidden = mode === "disable";
+      for (const id of ["lockCurrentPassphrase", "lockNewPassphrase", "lockConfirmPassphrase"]) document.getElementById(id).value = "";
+      document.getElementById("lockDialogStatus").textContent = "";
+      closeSettings();
+      openAccessibleModal("lockDialogOverlay", mode === "enable" ? "#lockNewPassphrase" : "#lockCurrentPassphrase");
+    }
+
+    function closeLockDialog() {
+      if (lockOperationPending) return;
+      for (const id of ["lockCurrentPassphrase", "lockNewPassphrase", "lockConfirmPassphrase"]) document.getElementById(id).value = "";
+      closeAccessibleModal("lockDialogOverlay");
+    }
+
+    async function runLockDialog() {
+      const status = document.getElementById("lockDialogStatus");
+      const action = document.getElementById("lockDialogAction");
+      const current = document.getElementById("lockCurrentPassphrase").value;
+      const next = document.getElementById("lockNewPassphrase").value;
+      if (lockDialogMode !== "disable" && next !== document.getElementById("lockConfirmPassphrase").value) { status.textContent = "The passphrases do not match."; return; }
+      action.disabled = true;
+      document.getElementById("sendButton").disabled = true;
+      try {
+        if (lockDialogMode === "enable") {
+          status.textContent = "Encrypting with the new key…";
+          const result = await enablePassphraseLock(next, (done, total) => { status.textContent = `Encrypting with the new key… ${done}/${total}`; });
+          status.textContent = result.skipped ? `Lock set. ${result.skipped} damaged item${result.skipped === 1 ? " was" : "s were"} left unchanged.` : "Lock set. You will be asked for the passphrase when the app next opens.";
+        } else if (lockDialogMode === "change") {
+          status.textContent = "Changing passphrase…";
+          await changeLockPassphrase(current, next);
+          status.textContent = "Passphrase changed.";
+        } else {
+          status.textContent = "Removing lock…";
+          await disablePassphraseLock(current);
+          status.textContent = "Lock removed.";
+        }
+        for (const id of ["lockCurrentPassphrase", "lockNewPassphrase", "lockConfirmPassphrase"]) document.getElementById(id).value = "";
+        refreshSecurityStatus();
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        action.disabled = false;
+        document.getElementById("sendButton").disabled = !!activeRequestController;
+      }
+    }
+
+    function refreshSecurityStatus() {
+      const set = (id, text) => { const element = document.getElementById(id); if (element) element.textContent = text; };
+      set("lockStatusText", vaultLockEnabled ? "On: a passphrase is needed to open the app" : "Off: the app opens without a passphrase");
+      const show = (id, visible) => { const element = document.getElementById(id); if (element) element.style.display = visible ? "" : "none"; };
+      show("lockEnableButton", !vaultLockEnabled);
+      show("lockChangeButton", vaultLockEnabled);
+      show("lockDisableButton", vaultLockEnabled);
+      show("lockNowButton", vaultLockEnabled);
+      show("autoLockRow", vaultLockEnabled);
+      const select = document.getElementById("autoLockSelect");
+      if (select) select.value = String(Number(localStorage.getItem("autoLockMinutes")) || 0);
+    }
+
+    // ============================================
+    // ENCRYPTED CHAT RECORDS
+    // ============================================
+    // Messages and thread details are encrypted with the vault key, like
+    // documents and memories. Only what the database needs for ordering and
+    // lookup stays readable: ids, the thread a message belongs to, timestamps,
+    // and a message's role and type. Records written by earlier versions are
+    // plaintext; they are read as they are and encrypted by a one-off migration.
+    const MESSAGE_PUBLIC_FIELDS = ["id", "threadId", "timestamp", "role", "type"];
+    const THREAD_PUBLIC_FIELDS = ["id", "created"];
+    const SEALED_RECORD_FIELDS = ["cryptoId", "iv", "ciphertext", "encrypted", "version"];
+
+    function chatAdditionalData(kind, cryptoId) {
+      return new TextEncoder().encode(`PrivateLLMLens:${kind}:v1:${cryptoId}`);
+    }
+
+    async function sealChatRecord(kind, record, publicFields, key = vaultKey) {
+      if (!key) throw new Error("The vault is locked");
+      const stored = {}, secret = {};
+      for (const [name, value] of Object.entries(record)) {
+        if (value === undefined || SEALED_RECORD_FIELDS.includes(name)) continue;
+        (publicFields.includes(name) ? stored : secret)[name] = value;
+      }
+      const cryptoId = crypto.randomUUID();
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv, additionalData: chatAdditionalData(kind, cryptoId) },
+        key,
+        new TextEncoder().encode(JSON.stringify(secret))
+      );
+      return { ...stored, cryptoId, iv: Array.from(iv), ciphertext, encrypted: true, version: 1 };
+    }
+
+    async function openChatRecord(kind, record, key = vaultKey) {
+      if (!record || record.encrypted !== true) return record;
+      if (!key) throw new Error("The vault is locked");
+      const plaintext = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: new Uint8Array(record.iv), additionalData: chatAdditionalData(kind, record.cryptoId) },
+        key,
+        record.ciphertext
+      );
+      const publicPart = Object.fromEntries(Object.entries(record).filter(([name]) => !SEALED_RECORD_FIELDS.includes(name)));
+      return { ...JSON.parse(new TextDecoder().decode(plaintext)), ...publicPart };
+    }
+
+    async function openMessage(record) {
+      try { return await openChatRecord("message", record); }
+      catch (error) {
+        console.error("Could not decrypt message", record?.id, error);
+        return { id: record.id, threadId: record.threadId, timestamp: record.timestamp, role: record.role || "assistant", type: "text", text: "[This message could not be decrypted]", unreadable: true };
+      }
+    }
+
+    async function openThread(record) {
+      try { return await openChatRecord("thread", record); }
+      catch (error) {
+        console.error("Could not decrypt thread", record?.id, error);
+        return { id: record.id, created: record.created, name: "Unreadable thread", systemPrompt: "", unreadable: true };
+      }
+    }
+
+    // One request in its own transaction; resolves with the request's result once committed.
+    function storeRequest(storeName, mode, operation) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction([storeName], mode);
+        const request = operation(tx.objectStore(storeName));
+        tx.oncomplete = () => resolve(request.result);
+        tx.onerror = () => reject(tx.error || request.error);
+        tx.onabort = () => reject(tx.error || request.error || new Error("The storage transaction was aborted"));
+      });
+    }
+
+    async function listThreads() {
+      const records = await storeRequest("threads", "readonly", store => store.getAll());
+      const threads = await Promise.all(records.map(openThread));
+      return threads.sort((a, b) => (b.created || 0) - (a.created || 0) || b.id - a.id);
+    }
+
+    async function getThreadRecord(threadId) {
+      if (!db || !threadId) return null;
+      try {
+        const record = await storeRequest("threads", "readonly", store => store.get(Number(threadId)));
+        return record ? await openThread(record) : null;
+      } catch (error) {
+        console.error("Could not read thread", threadId, error);
+        return null;
+      }
+    }
+
+    async function addThread(fields) {
+      const sealed = await sealChatRecord("thread", { created: Date.now(), ...fields }, THREAD_PUBLIC_FIELDS);
+      return storeRequest("threads", "readwrite", store => store.add(sealed));
+    }
+
+    // Read, change and re-encrypt one thread. Updates run one at a time so two
+    // changes to the same thread cannot overwrite each other.
+    let threadUpdateQueue = Promise.resolve();
+    function updateThread(threadId, mutate) {
+      const run = async () => {
+        const thread = await getThreadRecord(threadId);
+        if (!thread || thread.unreadable) return null;
+        mutate(thread);
+        const sealed = await sealChatRecord("thread", thread, THREAD_PUBLIC_FIELDS);
+        await storeRequest("threads", "readwrite", store => store.put(sealed));
+        return thread;
+      };
+      const result = threadUpdateQueue.then(run, run);
+      threadUpdateQueue = result.catch(error => { console.error("Could not update thread", threadId, error); });
+      return result;
+    }
+
+    // Encrypt chats written by versions before 2.5. Each batch is one atomic
+    // transaction and readers accept both forms, so an interruption is harmless.
+    async function migratePlaintextChats() {
+      if (await vaultRequest("readonly", store => store.get("chatsEncrypted"))) return 0;
+      let migrated = 0;
+      for (const [storeName, kind, publicFields] of [["threads", "thread", THREAD_PUBLIC_FIELDS], ["messages", "message", MESSAGE_PUBLIC_FIELDS]]) {
+        const keys = await storeRequest(storeName, "readonly", store => store.getAllKeys());
+        for (let start = 0; start < keys.length; start += 100) {
+          const batchKeys = keys.slice(start, start + 100);
+          const records = await new Promise((resolve, reject) => {
+            const tx = db.transaction([storeName], "readonly");
+            const found = [];
+            batchKeys.forEach(key => { tx.objectStore(storeName).get(key).onsuccess = event => { if (event.target.result) found.push(event.target.result); }; });
+            tx.oncomplete = () => resolve(found);
+            tx.onerror = tx.onabort = () => reject(tx.error);
+          });
+          const plaintext = records.filter(record => record.encrypted !== true);
+          if (!plaintext.length) continue;
+          const sealed = await Promise.all(plaintext.map(record => sealChatRecord(kind, record, publicFields)));
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction([storeName], "readwrite");
+            sealed.forEach(record => tx.objectStore(storeName).put(record));
+            tx.oncomplete = resolve;
+            tx.onerror = tx.onabort = () => reject(tx.error || new Error("Chat encryption was interrupted"));
+          });
+          migrated += sealed.length;
+        }
+      }
+      await vaultRequest("readwrite", store => store.put(true, "chatsEncrypted"));
+      if (migrated) console.info(`Encrypted ${migrated} existing chat record${migrated === 1 ? "" : "s"}.`);
+      return migrated;
+    }
+
     // WebGPU in-browser model state
     const WEBGPU_FAST_VALUE = "__webgpu_qwen3__";
     const WEBGPU_QUALITY_VALUE = "__webgpu_qwen35_2b__";
@@ -4897,6 +5809,9 @@ return He}()
       suggestedFollowUps: "false",
       autoFactCheck: "false",
       webgpuEnabled: "false",
+      keepAwake: "true",
+      completionAlert: "false",
+      completionSound: "true",
       theme: "system",
       layoutMode: "auto"
     };
@@ -5435,71 +6350,56 @@ self.onmessage = async (e) => {
       threadsList.innerHTML = "";
       if (!db) return;
 
-      const transaction = db.transaction(["threads"], "readonly");
-      const store = transaction.objectStore("threads");
-      const index = store.index("created");
-      
-      const threads = [];
-      
-      return new Promise((resolve) => {
-        index.openCursor(null, "prev").onsuccess = (e) => {
-          const cursor = e.target.result;
-          if (cursor) {
-            threads.push(cursor.value);
-            cursor.continue();
-          } else {
-            threads.forEach(thread => {
-              const li = document.createElement("li");
-              li.dataset.threadId = thread.id;
-              li.onclick = () => selectThread(thread.id);
-              
-              const nameSpan = document.createElement("span");
-              nameSpan.className = "thread-name";
-              nameSpan.textContent = thread.name;
-              li.appendChild(nameSpan);
-              
-              const actions = document.createElement("div");
-              actions.className = "thread-actions";
-              
-              const pdfBtn = document.createElement("button");
-              pdfBtn.className = "thread-action-btn";
-              pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
-              pdfBtn.title = "Export as PDF";
-              pdfBtn.onclick = (ev) => {
-                ev.stopPropagation();
-                exportThreadAsPdf(thread.id, thread.name);
-              };
-              actions.appendChild(pdfBtn);
+      const threads = await listThreads();
+      threadsList.innerHTML = "";
+      threads.forEach(thread => {
+        const li = document.createElement("li");
+        li.dataset.threadId = thread.id;
+        li.onclick = () => selectThread(thread.id);
 
-              const editBtn = document.createElement("button");
-              editBtn.className = "thread-action-btn";
-              editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-              editBtn.title = "Edit thread";
-              editBtn.onclick = (ev) => {
-                ev.stopPropagation();
-                editThread(thread.id, thread.name, thread.systemPrompt);
-              };
-              actions.appendChild(editBtn);
-              
-              const delBtn = document.createElement("button");
-              delBtn.className = "thread-action-btn delete";
-              delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-              delBtn.title = "Delete thread";
-              delBtn.onclick = (ev) => {
-                ev.stopPropagation();
-                deleteThread(thread.id);
-              };
-              actions.appendChild(delBtn);
-              
-              li.appendChild(actions);
-              threadsList.appendChild(li);
-            });
-            
-            updateThreadSelectionUI();
-            resolve();
-          }
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "thread-name";
+        nameSpan.textContent = thread.name;
+        li.appendChild(nameSpan);
+
+        const actions = document.createElement("div");
+        actions.className = "thread-actions";
+
+        const pdfBtn = document.createElement("button");
+        pdfBtn.className = "thread-action-btn";
+        pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
+        pdfBtn.title = "Export as PDF";
+        pdfBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          exportThreadAsPdf(thread.id, thread.name);
         };
+        actions.appendChild(pdfBtn);
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "thread-action-btn";
+        editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+        editBtn.title = "Edit thread";
+        editBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          editThread(thread.id, thread.name, thread.systemPrompt);
+        };
+        actions.appendChild(editBtn);
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "thread-action-btn delete";
+        delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        delBtn.title = "Delete thread";
+        delBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          deleteThread(thread.id);
+        };
+        actions.appendChild(delBtn);
+
+        li.appendChild(actions);
+        threadsList.appendChild(li);
       });
+
+      updateThreadSelectionUI();
     }
 
     function showNewThreadModal() {
@@ -5520,23 +6420,15 @@ self.onmessage = async (e) => {
       if (!db) return;
       resetComposerForThreadChange();
       
-      const transaction = db.transaction(["threads"], "readwrite");
-      const store = transaction.objectStore("threads");
-      const thread = { 
-        name: threadName, 
-        systemPrompt: systemPrompt,
-        created: Date.now() 
-      };
-      
-      const request = store.add(thread);
-      request.onsuccess = (e) => {
-        currentThreadId = e.target.result;
+      addThread({ name: threadName, systemPrompt }).then(threadId => {
+        currentThreadId = threadId;
         loadThreads();
         loadMessages();
         renderDocumentWorkspace();
         closeNewThreadModal();
         focusPromptInputOnDesktop(document.getElementById("userInput"));
-      };
+        noteDataStored();
+      }).catch(error => reportStorageWriteError(error, "thread"));
     }
 
     function editThread(threadId, currentName, currentPrompt) {
@@ -5546,17 +6438,10 @@ self.onmessage = async (e) => {
       const newPrompt = prompt("System prompt (leave empty for none):", currentPrompt || "");
       if (newPrompt === null) return;
       
-      const transaction = db.transaction(["threads"], "readwrite");
-      const store = transaction.objectStore("threads");
-      const request = store.get(threadId);
-      
-      request.onsuccess = () => {
-        const thread = request.result;
+      updateThread(threadId, thread => {
         thread.name = newName.trim() || "Unnamed Thread";
         thread.systemPrompt = newPrompt.trim();
-        store.put(thread);
-        loadThreads();
-      };
+      }).then(() => loadThreads()).catch(error => reportStorageWriteError(error, "thread"));
     }
 
     function escapeHtml(value) {
@@ -5733,45 +6618,25 @@ self.onmessage = async (e) => {
     // MESSAGE MANAGEMENT
     // ============================================
     async function getThreadMessages(threadId, limit = null) {
-      return new Promise((resolve) => {
-        const messages = [];
+      const records = await new Promise((resolve) => {
+        const found = [];
         const transaction = db.transaction(["messages"], "readonly");
-        const store = transaction.objectStore("messages");
-        const index = store.index("threadId");
-        const range = IDBKeyRange.only(threadId);
-        
-        index.openCursor(range).onsuccess = (e) => {
+        const request = transaction.objectStore("messages").index("threadId").openCursor(IDBKeyRange.only(threadId));
+        request.onsuccess = (e) => {
           const cursor = e.target.result;
-          if (cursor) {
-            messages.push(cursor.value);
-            cursor.continue();
-          } else {
-            // Sort by timestamp and apply limit
-            messages.sort((a, b) => a.timestamp - b.timestamp);
-            if (limit && messages.length > limit) {
-              resolve(messages.slice(-limit));
-            } else {
-              resolve(messages);
-            }
-          }
+          if (cursor) { found.push(cursor.value); cursor.continue(); }
+          else resolve(found);
         };
+        request.onerror = () => resolve(found);
       });
+      // Sort on the plaintext timestamp first so a limit only decrypts what it returns.
+      records.sort((a, b) => a.timestamp - b.timestamp);
+      const wanted = limit && records.length > limit ? records.slice(-limit) : records;
+      return Promise.all(wanted.map(openMessage));
     }
 
     async function getThreadSystemPrompt(threadId) {
-      return new Promise((resolve) => {
-        const transaction = db.transaction(["threads"], "readonly");
-        const store = transaction.objectStore("threads");
-        const request = store.get(threadId);
-        
-        request.onsuccess = () => {
-          resolve(request.result?.systemPrompt || null);
-        };
-        
-        request.onerror = () => {
-          resolve(null);
-        };
-      });
+      return (await getThreadRecord(threadId))?.systemPrompt || null;
     }
 
     async function loadMessages() {
@@ -6109,15 +6974,37 @@ self.onmessage = async (e) => {
       });
     }
 
-    function saveMessage(messageObj, threadId = currentThreadId, requestContext = null) {
-      if (!db) return Promise.resolve();
+    async function saveMessage(messageObj, threadId = currentThreadId, requestContext = null) {
+      if (!db) return;
+      assertRequestActive(requestContext);
+      messageObj.threadId = threadId;
+      let sealed;
+      try {
+        sealed = await sealChatRecord("message", messageObj, MESSAGE_PUBLIC_FIELDS);
+      } catch (error) {
+        reportStorageWriteError(error, "message");
+        return null;
+      }
+      // Encrypting takes a moment; a cancelled or superseded request must not write.
       assertRequestActive(requestContext);
 
       return new Promise((resolve) => {
-        messageObj.threadId = threadId;
-        const transaction = db.transaction(["messages"], "readwrite");
-        const store = transaction.objectStore("messages");
-        const request = store.add(messageObj);
+        let failureReported = false;
+        const failed = (error) => {
+          if (!failureReported) {
+            failureReported = true;
+            reportStorageWriteError(error, "message");
+          }
+          resolve(null);
+        };
+        let transaction, request;
+        try {
+          transaction = db.transaction(["messages"], "readwrite");
+          request = transaction.objectStore("messages").add(sealed);
+        } catch (error) {
+          failed(error);
+          return;
+        }
         transaction.oncomplete = () => {
           const messageId = request.result;
           try {
@@ -6132,16 +7019,8 @@ self.onmessage = async (e) => {
             resolve(messageId);
           }
         };
-        let failureReported = false;
-        const failed = (e) => {
-          if (!failureReported) {
-            failureReported = true;
-            reportStorageWriteError(e.target?.error || transaction.error, "message");
-          }
-          resolve(null);
-        };
-        transaction.onabort = failed;
-        transaction.onerror = failed;
+        transaction.onabort = (e) => failed(e.target?.error || transaction.error);
+        transaction.onerror = (e) => failed(e.target?.error || transaction.error);
       });
     }
 
@@ -6234,48 +7113,21 @@ self.onmessage = async (e) => {
     async function searchMessages(query) {
       if (!query || query.length < 2) return [];
       
-      const results = [];
       const queryLower = query.toLowerCase();
-      
-      const transaction = db.transaction(["messages", "threads"], "readonly");
-      const messagesStore = transaction.objectStore("messages");
-      const threadsStore = transaction.objectStore("threads");
-      
-      // Get all threads for names
-      const threads = {};
-      await new Promise((resolve) => {
-        threadsStore.openCursor().onsuccess = (e) => {
-          const cursor = e.target.result;
-          if (cursor) {
-            threads[cursor.value.id] = cursor.value.name;
-            cursor.continue();
-          } else {
-            resolve();
+      const threads = Object.fromEntries((await listThreads()).map(thread => [thread.id, thread.name]));
+      const records = await storeRequest("messages", "readonly", store => store.getAll());
+      const results = [];
+      // Message text is encrypted at rest, so each record is opened to be searched.
+      for (let start = 0; start < records.length; start += 200) {
+        const batch = await Promise.all(records.slice(start, start + 200).map(openMessage));
+        batch.forEach(msg => {
+          if (!msg.unreadable && msg.text && msg.text.toLowerCase().includes(queryLower)) {
+            results.push({ ...msg, threadName: threads[msg.threadId] || "Unknown Thread", snippet: createSearchSnippet(msg.text, query) });
           }
-        };
-      });
-      
-      // Search messages
-      return new Promise((resolve) => {
-        messagesStore.openCursor().onsuccess = (e) => {
-          const cursor = e.target.result;
-          if (cursor) {
-            const msg = cursor.value;
-            if (msg.text && msg.text.toLowerCase().includes(queryLower)) {
-              results.push({
-                ...msg,
-                threadName: threads[msg.threadId] || "Unknown Thread",
-                snippet: createSearchSnippet(msg.text, query)
-              });
-            }
-            cursor.continue();
-          } else {
-            // Sort by relevance/recency and limit
-            results.sort((a, b) => b.timestamp - a.timestamp);
-            resolve(results.slice(0, 20));
-          }
-        };
-      });
+        });
+      }
+      results.sort((a, b) => b.timestamp - a.timestamp);
+      return results.slice(0, 20);
     }
 
     function createSearchSnippet(text, query) {
@@ -6374,15 +7226,21 @@ self.onmessage = async (e) => {
       return Math.ceil(text.length / 4);
     }
 
-    async function updateTokenDisplay() {
+    let contextTokenCache = { threadId: null, tokens: 0 };
+    // inputOnly: the thread has not changed, only the text being typed.
+    async function updateTokenDisplay({ inputOnly = false } = {}) {
       const input = document.getElementById("userInput").value;
       const tokenDisplay = document.getElementById("tokenCount");
       
       let contextTokens = 0;
-      if (currentThreadId) {
+      if (currentThreadId && inputOnly && contextTokenCache.threadId === currentThreadId) {
+        contextTokens = contextTokenCache.tokens;
+      } else if (currentThreadId) {
+        const threadId = currentThreadId;
         const contextWindow = parseInt(localStorage.getItem("contextWindow")) || 10;
-        const messages = await getThreadMessages(currentThreadId, contextWindow);
+        const messages = await getThreadMessages(threadId, contextWindow);
         contextTokens = messages.reduce((sum, msg) => sum + estimateTokens(msg.text), 0);
+        contextTokenCache = { threadId, tokens: contextTokens };
       }
       
       const inputTokens = estimateTokens(input);
@@ -7254,17 +8112,7 @@ User: Write a polite reply to this email
       if (title.length > 60) title = title.substring(0, 57).replace(/\s+\S*$/, "") + "…";
       else if (words.length > 8) title += "…";
 
-      const tx = db.transaction(["threads"], "readwrite");
-      const store = tx.objectStore("threads");
-      const req = store.get(threadId);
-      req.onsuccess = () => {
-        const thread = req.result;
-        if (thread) {
-          thread.name = title;
-          store.put(thread);
-          tx.oncomplete = () => loadThreads();
-        }
-      };
+      updateThread(threadId, thread => { thread.name = title; }).then(thread => { if (thread) loadThreads(); }).catch(() => {});
     }
 
     // ============================================
@@ -8523,29 +9371,10 @@ Reply with ONLY the JSON array.`;
       return `${message.role === "user" ? "User" : "Assistant"}: ${text}`;
     }
 
-    function getThreadRecord(threadId) {
-      return new Promise(resolve => {
-        const request = db.transaction(["threads"], "readonly").objectStore("threads").get(threadId);
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => resolve(null);
-      });
-    }
-
     function saveThreadContextSummary(threadId, contextSummary) {
-      return new Promise(resolve => {
-        const tx = db.transaction(["threads"], "readwrite");
-        const store = tx.objectStore("threads");
-        const request = store.get(threadId);
-        request.onsuccess = () => {
-          const thread = request.result;
-          if (!thread) return;
-          if (contextSummary) thread.contextSummary = contextSummary; else delete thread.contextSummary;
-          store.put(thread);
-        };
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
-        tx.onabort = () => resolve();
-      });
+      return updateThread(threadId, thread => {
+        if (contextSummary) thread.contextSummary = contextSummary; else delete thread.contextSummary;
+      }).catch(() => null);
     }
 
     // Fold `pending` messages into `previousSummary` in batches that fit the utility prompt budget.
@@ -8801,10 +9630,7 @@ JSON array:` }],
     // ============================================
     async function branchFromMessage(messageId) {
       // Get current thread metadata
-      const currentThread = await new Promise(resolve => {
-        const tx = db.transaction(["threads"], "readonly");
-        tx.objectStore("threads").get(currentThreadId).onsuccess = e => resolve(e.target.result);
-      });
+      const currentThread = await getThreadRecord(currentThreadId);
 
       // Get target message to find its timestamp
       const targetMsg = await new Promise(resolve => {
@@ -8821,25 +9647,24 @@ JSON array:` }],
       const newThreadId = Date.now();
       const newThreadName = `${currentThread?.name || "Thread"} (branch)`;
 
-      await new Promise(resolve => {
-        const tx = db.transaction(["threads"], "readwrite");
-        tx.objectStore("threads").add({
-          id: newThreadId,
-          name: newThreadName,
-          systemPrompt: currentThread?.systemPrompt || "",
-          created: Date.now()
-        });
-        tx.oncomplete = () => resolve();
+      await addThread({
+        id: newThreadId,
+        name: newThreadName,
+        systemPrompt: currentThread?.systemPrompt || "",
+        temperature: currentThread?.temperature,
+        topP: currentThread?.topP,
+        repeatPenalty: currentThread?.repeatPenalty
       });
 
       // Copy messages into the new thread (preserve timestamps, drop old IDs)
-      await new Promise(resolve => {
+      const copies = await Promise.all(messagesToCopy.filter(message => !message.unreadable).map(({ id: _drop, ...message }) =>
+        sealChatRecord("message", { ...message, threadId: newThreadId }, MESSAGE_PUBLIC_FIELDS)));
+      await new Promise((resolve, reject) => {
         const tx = db.transaction(["messages"], "readwrite");
         const store = tx.objectStore("messages");
-        messagesToCopy.forEach(({ id: _drop, ...msg }) => {
-          store.add({ ...msg, threadId: newThreadId });
-        });
+        copies.forEach(copy => store.add(copy));
         tx.oncomplete = () => resolve();
+        tx.onerror = tx.onabort = () => reject(tx.error || new Error("The branch could not be saved"));
       });
 
       // Branches inherit the document workspace, re-encrypted with AAD bound to the new thread.
@@ -8900,24 +9725,12 @@ JSON array:` }],
       if (!db) throw new Error("Conversation storage is not ready yet");
       if (implicitThreadCreationPromise) return implicitThreadCreationPromise;
 
-      implicitThreadCreationPromise = new Promise((resolve, reject) => {
-        const transaction = db.transaction(["threads"], "readwrite");
-        const request = transaction.objectStore("threads").add({
-          name: "New Thread",
-          systemPrompt: "",
-          created: Date.now()
-        });
-        transaction.oncomplete = () => {
-          currentThreadId = request.result;
-          loadThreads();
-          renderDocumentWorkspace();
-          resolve(currentThreadId);
-        };
-        transaction.onabort = () => reject(transaction.error || new Error("Could not create a conversation thread"));
-        transaction.onerror = () => reject(transaction.error || new Error("Could not create a conversation thread"));
-      }).finally(() => {
-        implicitThreadCreationPromise = null;
-      });
+      implicitThreadCreationPromise = addThread({ name: "New Thread", systemPrompt: "" }).then(threadId => {
+        currentThreadId = threadId;
+        loadThreads();
+        renderDocumentWorkspace();
+        return threadId;
+      }).finally(() => { implicitThreadCreationPromise = null; });
       return implicitThreadCreationPromise;
     }
 
@@ -9591,6 +10404,8 @@ JSON array:` }],
           }, requestController.threadId, requestController)));
         }
 
+        announceCompletion({ ok: true, elapsedSeconds: elapsed });
+
         // Generate the first title locally; no additional model inference.
         if (!generateImageChecked && isFirstExchange && finalReply && localStorage.getItem("autoTitle") !== "false") {
           autoTitleThread(requestController.threadId, promptText);
@@ -9607,7 +10422,10 @@ JSON array:` }],
       } catch (err) {
         clearInterval(timerInterval);
         placeholder.textContent = err.name === "AbortError" ? "Generation cancelled." : `Error: ${err.message}`;
-        if (err.name !== "AbortError") console.error("Send error:", err);
+        if (err.name !== "AbortError") {
+          console.error("Send error:", err);
+          announceCompletion({ ok: false });
+        }
       } finally {
         if (endForegroundRequest(requestController)) {
         userInput.disabled = false;
@@ -9777,7 +10595,17 @@ JSON array:` }],
     let pendingBackupImport = null;
     let backupOperationPending = false;
 
-    function readBackupSnapshot() {
+    // Conversations as they are meant to be read: thread details and messages decrypted.
+    async function readBackupSnapshot() {
+      const snapshot = await readRawSnapshot();
+      const [threads, messages] = await Promise.all([
+        Promise.all(snapshot.threads.map(openThread)),
+        Promise.all(snapshot.messages.map(openMessage))
+      ]);
+      return { ...snapshot, threads: threads.filter(thread => !thread.unreadable), messages: messages.filter(message => !message.unreadable) };
+    }
+
+    function readRawSnapshot() {
       return new Promise((resolve, reject) => {
         const names = ["threads", "messages", "documents", "memories"];
         const tx = db.transaction(names, "readonly");
@@ -9892,7 +10720,7 @@ JSON array:` }],
 
     async function restoreBackupData(input) {
       const data = validateBackupData(input);
-      const existing = await readBackupSnapshot();
+      const existing = await readRawSnapshot();
       let nextId = Object.values(existing).flat().reduce((maximum, record) => Math.max(maximum, Number(record.id) || 0), Date.now()) + 1;
       const threadIds = new Map(data.threads.map(thread => [thread.id, nextId++]));
       const documentIds = new Map(data.documents.map(document => [document.id, nextId++]));
@@ -9905,7 +10733,7 @@ JSON array:` }],
         sourceThreadId: threadIds.get(memory.sourceThreadId) || null, status: memory.status === "superseded" ? "superseded" : "active",
         manual: memory.manual === true, pinned: memory.pinned === true, supersededAt: memory.supersededAt
       })));
-      const messages = data.messages.map(({ id: _id, ...message }) => ({
+      const plainMessages = data.messages.map(({ id: _id, ...message }) => ({
         ...message, threadId: threadIds.get(message.threadId),
         ...(message.citations ? { citations: message.citations.map(citation => {
           if (citation.type !== "document" || !data.documents.length) return citation;
@@ -9917,13 +10745,18 @@ JSON array:` }],
           return { ...citation, documentId: source ? documentIds.get(source.id) : -1 };
         }) } : {})
       }));
+      // Thread details and messages are stored encrypted. The running summary refers
+      // to message ids from the source browser, so it is rebuilt here instead.
+      const threadRecords = await Promise.all(data.threads.map(({ contextSummary: _summary, ...thread }) =>
+        sealChatRecord("thread", { ...thread, id: threadIds.get(thread.id) }, THREAD_PUBLIC_FIELDS)));
+      const messages = await Promise.all(plainMessages.map(message => sealChatRecord("message", message, MESSAGE_PUBLIC_FIELDS)));
       await new Promise((resolve, reject) => {
         const tx = db.transaction(["threads", "messages", "documents", "memories"], "readwrite");
         tx.oncomplete = resolve;
         tx.onabort = () => reject(tx.error || new Error("The import was rolled back. Nothing was imported."));
         tx.onerror = () => { /* onabort reports the atomic failure. */ };
         try {
-        data.threads.forEach(thread => tx.objectStore("threads").add({ ...thread, id: threadIds.get(thread.id) }));
+        threadRecords.forEach(thread => tx.objectStore("threads").add(thread));
         messages.forEach(message => tx.objectStore("messages").add(message));
         documentRecords.forEach(document => tx.objectStore("documents").add(document));
         memoryRecords.forEach(memory => tx.objectStore("memories").add(memory));
@@ -10038,6 +10871,7 @@ JSON array:` }],
     function openSettings() {
       openAccessibleModal("settingsOverlay");
       refreshStorageStatus();
+      refreshSecurityStatus();
       
       document.getElementById("themeSelect").value = localStorage.getItem("theme") || "system";
       document.getElementById("layoutModeSelect").value = localStorage.getItem("layoutMode") || "auto";
@@ -10054,6 +10888,10 @@ JSON array:` }],
       document.getElementById("learnMemoriesCheckbox").checked = localStorage.getItem("learnMemories") === "true";
       document.getElementById("suggestedFollowUpsCheckbox").checked = localStorage.getItem("suggestedFollowUps") === "true";
       document.getElementById("autoFactCheckCheckbox").checked = localStorage.getItem("autoFactCheck") !== "false";
+      document.getElementById("keepAwakeCheckbox").checked = localStorage.getItem("keepAwake") !== "false";
+      document.getElementById("completionAlertCheckbox").checked = localStorage.getItem("completionAlert") === "true";
+      document.getElementById("completionSoundCheckbox").checked = localStorage.getItem("completionSound") !== "false";
+      document.getElementById("completionAlertStatus").textContent = localStorage.getItem("completionAlert") === "true" ? completionAlertStatus() : "";
       document.getElementById("webgpuEnabledCheckbox").checked = localStorage.getItem("webgpuEnabled") === "true";
       const webgpuStatus = webgpuReady
         ? `Ready — ${WEBGPU_MODELS[webgpuLoadedModelValue]?.label || "WebGPU"}`
@@ -10107,6 +10945,9 @@ JSON array:` }],
       localStorage.setItem("learnMemories", document.getElementById("learnMemoriesCheckbox").checked ? "true" : "false");
       localStorage.setItem("suggestedFollowUps", document.getElementById("suggestedFollowUpsCheckbox").checked ? "true" : "false");
       localStorage.setItem("autoFactCheck", document.getElementById("autoFactCheckCheckbox").checked ? "true" : "false");
+      localStorage.setItem("keepAwake", document.getElementById("keepAwakeCheckbox").checked ? "true" : "false");
+      localStorage.setItem("completionAlert", document.getElementById("completionAlertCheckbox").checked ? "true" : "false");
+      localStorage.setItem("completionSound", document.getElementById("completionSoundCheckbox").checked ? "true" : "false");
       localStorage.setItem("webgpuEnabled", document.getElementById("webgpuEnabledCheckbox").checked ? "true" : "false");
 
       const hostname = document.getElementById("customHostname").value.trim();
@@ -10432,7 +11273,10 @@ JSON array:` }],
     document.addEventListener("keydown", (e) => {
       // Escape - close modals (no modifier needed)
       if (e.key === "Escape") {
+        if (document.body.classList.contains("vault-locked")) return;
         closeBackupDialog();
+        closeLockDialog();
+        if (document.getElementById("modelManagerOverlay").classList.contains("active")) closeModelManager();
         closeHeaderActions();
         const sourceOverlay = document.getElementById("documentSourceOverlay");
         if (sourceOverlay) { closeAccessibleModal("documentSourceOverlay"); sourceOverlay.remove(); }
@@ -10511,7 +11355,7 @@ JSON array:` }],
     document.getElementById("userInput").addEventListener("input", function() {
       this.style.height = "auto";
       this.style.height = Math.min(this.scrollHeight, 200) + "px";
-      updateTokenDisplay();
+      updateTokenDisplay({ inputOnly: true });
     });
 
     // Paste handling
@@ -10593,34 +11437,26 @@ JSON array:` }],
       return opts;
     }
 
-    function loadThreadParams(threadId) {
+    async function loadThreadParams(threadId) {
       if (!db) return;
-      const tx = db.transaction(["threads"], "readonly");
-      tx.objectStore("threads").get(threadId).onsuccess = e => {
-        const thread = e.target.result;
-        currentThreadParams = {
-          temperature: thread?.temperature ?? DEFAULT_PARAMS.temperature,
-          topP:        thread?.topP        ?? DEFAULT_PARAMS.topP,
-          repeatPenalty: thread?.repeatPenalty ?? DEFAULT_PARAMS.repeatPenalty
-        };
-        updateParamsUI();
+      const thread = await getThreadRecord(threadId);
+      if (Number(threadId) !== Number(currentThreadId)) return;
+      currentThreadParams = {
+        temperature: thread?.temperature ?? DEFAULT_PARAMS.temperature,
+        topP:        thread?.topP        ?? DEFAULT_PARAMS.topP,
+        repeatPenalty: thread?.repeatPenalty ?? DEFAULT_PARAMS.repeatPenalty
       };
+      updateParamsUI();
     }
 
     function saveThreadParams() {
       if (!db || !currentThreadId) return;
-      const tx = db.transaction(["threads"], "readwrite");
-      const store = tx.objectStore("threads");
-      const req = store.get(currentThreadId);
-      req.onsuccess = () => {
-        const thread = req.result;
-        if (thread) {
-          thread.temperature   = currentThreadParams.temperature;
-          thread.topP          = currentThreadParams.topP;
-          thread.repeatPenalty = currentThreadParams.repeatPenalty;
-          store.put(thread);
-        }
-      };
+      const params = { ...currentThreadParams };
+      updateThread(currentThreadId, thread => {
+        thread.temperature   = params.temperature;
+        thread.topP          = params.topP;
+        thread.repeatPenalty = params.repeatPenalty;
+      }).catch(() => {});
     }
 
     function updateParamsUI() {
@@ -11021,6 +11857,8 @@ JSON array:` }],
         await openDatabase();
         await initializeSecretVault();
         await migratePlaintextMemories();
+        await migratePlaintextChats();
+        startAutoLockWatch();
 
         // Apply saved endpoint
         const savedEndpoint = localStorage.getItem("ollamaEndpoint");
@@ -11029,38 +11867,11 @@ JSON array:` }],
         }
 
         // Load threads immediately after DB is ready — do not block on network calls
-        const transaction = db.transaction(["threads"], "readonly");
-        const store = transaction.objectStore("threads");
-        const countRequest = store.count();
-
-        countRequest.onsuccess = async function() {
-          if (countRequest.result === 0) {
-            // Create default thread
-            const defaultTransaction = db.transaction(["threads"], "readwrite");
-            const defaultStore = defaultTransaction.objectStore("threads");
-            const defaultThread = {
-              name: "General",
-              systemPrompt: "",
-              created: Date.now()
-            };
-            const addRequest = defaultStore.add(defaultThread);
-            addRequest.onsuccess = (e) => {
-              currentThreadId = e.target.result;
-              loadThreads();
-              loadMessages();
-            };
-          } else {
-            // Select first thread
-            store.openCursor().onsuccess = (e) => {
-              const cursor = e.target.result;
-              if (cursor) {
-                currentThreadId = cursor.value.id;
-                loadThreads();
-                loadMessages();
-              }
-            };
-          }
-        };
+        const threadKeys = await storeRequest("threads", "readonly", store => store.getAllKeys());
+        // Open the first thread, creating one on a fresh install.
+        currentThreadId = threadKeys.length ? threadKeys[0] : await addThread({ name: "General", systemPrompt: "" });
+        loadThreads();
+        loadMessages();
 
         // Restore sidebar / input collapsed states
         if (localStorage.getItem("sidebarHidden") === "true") {

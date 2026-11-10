@@ -1,6 +1,6 @@
 # PrivateLLMLens
 
-Current application release: **2.4.0**.
+Current application release: **2.5.0**.
 
 PrivateLLMLens is a single-file browser interface for local Ollama, llama.cpp and optional in-browser WebGPU models. It works on desktop and Android/Termux without an application backend.
 
@@ -28,6 +28,9 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 - Responsive compact composer with Automatic, Compact and Desktop layout modes
 - Embedded PWA manifest, icons and core libraries: no CDN is needed for chat, Markdown, code highlighting or DOCX/PPTX
 - Persistent-storage request, storage usage display and write-failure reporting
+- Chats encrypted at rest, with an optional passphrase lock and auto-lock
+- Screen wake lock while generating, and a content-free alert when a reply finishes in the background
+- Ollama model manager: see what is loaded, unload, delete, and download with progress
 
 ## Single-file design
 
@@ -156,6 +159,17 @@ Each tool is defined once with a name, description, JSON parameter schema, priva
 
 Web Research uses the same registry and additionally exposes Tavily as an **external** `web_search` tool, with a three-search limit. Tool results are treated as untrusted data and cannot override system/application instructions.
 
+## Ollama model manager
+
+The drive button beside the model selector opens the model manager for the configured Ollama server. It shows which models are in memory, with their memory use, context size and time until Ollama unloads them, and lets you unload one to free RAM straight away. It lists installed models with size, parameter count and quantisation, and can delete one. **Download a model** pulls a model by name with a progress bar; cancelling keeps the part already downloaded, and Ollama resumes from it. The manager talks only to your Ollama server. It does not manage llama.cpp.
+
+## While generating
+
+- **Keep screen awake** (on by default) holds a screen wake lock during a response or a model download, so a phone does not lock and suspend the page part-way through. The browser releases the lock when the app is hidden.
+- **Alert when a reply finishes in the background** (off by default) shows a notification, changes the tab title and plays a short sound when a response completes while the app is not in front. The alert never contains the prompt, the reply or the thread name, because notifications can be read from a lock screen.
+
+Android browsers cannot show a notification from a page alone. The repository therefore includes an optional `sw.js` beside `index.html`: a service worker that caches nothing and handles no requests, registered only when the alert is switched on, whose single job is to show that notification. Without it everything else works, and the alert falls back to the title and sound.
+
 ## Search and cloud features
 
 - **Web Search:** one explicit Tavily search
@@ -171,7 +185,15 @@ Provider keys are stored in the WebCrypto vault. Leave a key unset to keep its i
 
 ## Local storage and privacy
 
-PrivateLLMLens uses IndexedDB version 6 for threads, messages, encrypted memories, the WebCrypto vault, and encrypted document workspaces. Non-sensitive preferences remain in `localStorage`.
+PrivateLLMLens uses IndexedDB version 6 for threads, messages, memories, the WebCrypto vault, and document workspaces, all encrypted. Non-sensitive preferences remain in `localStorage`.
+
+Message content and thread details (name, system prompt, parameters and the running summary) are encrypted with the vault key. Only what the database needs for ordering stays readable: record ids, the thread a message belongs to, timestamps, and a message's role and type. Chats stored by versions before 2.5 are encrypted automatically the first time 2.5 opens them. After that, a copy of the page older than 2.5 cannot read them, so update any separately downloaded `index.html`.
+
+### Passphrase lock
+
+By default the vault key is kept in the browser beside the data it protects. That stops casual inspection of browser storage but not someone who has the browser profile. **Settings → Security → Set passphrase** closes that gap: a new key is generated, everything is re-encrypted under it in one all-or-nothing step, and the key is stored only wrapped by a key derived from the passphrase (PBKDF2-SHA256, 600,000 iterations, AES-256-GCM). The app then shows an unlock screen each time it opens, and nothing can be read before the passphrase is entered. **Lock now** locks immediately, and the app can lock itself after 1, 5, 15 or 60 minutes in the background.
+
+There is no recovery. A forgotten passphrase leaves only "erase everything", so take an encrypted workspace backup before setting a lock. The backup has its own password and does not depend on the lock. The lock protects stored data; it does not protect an unlocked, open app.
 
 Provider keys, memories, document filenames, extracted document content and cached semantic document indexes use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. The remaining CDN downloads (PDF.js, hash-checked, and the optional Transformers.js runtime) are part of the trust boundary.
 
