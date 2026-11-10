@@ -353,3 +353,34 @@ test('the legacy 10240 chunk default is not used as the retrieval section size',
   assert.equal(app.window.localStorage.getItem('textChunkSize'), '5600');
   assert.equal(app.window.localStorage.getItem('pdfPagesPerChunk'), null);
 });
+
+test('capped utility calls skip model thinking, fall back on older servers, and failed summaries back off', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const bodies = [];
+  let rejectThink = true, emptySummary = false;
+  app.window.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body); bodies.push(body);
+    if (body.think === false && rejectThink) return Response.json({ error: 'invalid think value' }, { status: 400 });
+    return Response.json({ message: { content: emptySummary ? '' : 'A summary' } });
+  };
+  const call = body => app.run(`fetchOllamaChat({method:"POST",headers:{"Content-Type":"application/json"},body:${JSON.stringify(JSON.stringify(body))}}).then(r=>r.json())`);
+  const capped = { model: 'test-chat', stream: false, messages: [{ role: 'user', content: 'x' }], options: { num_predict: 100 } };
+  assert.equal((await call(capped)).message.content, 'A summary');
+  assert.deepEqual(bodies.map(body => body.think), [false, undefined], 'retries without the field after a 400');
+  bodies.length = 0; rejectThink = false;
+  await call(capped);
+  await call({ ...capped, stream: true });
+  await call({ ...capped, options: {} });
+  await call({ ...capped, tools: [{ type: 'function' }] });
+  assert.deepEqual(bodies.map(body => body.think), [false, undefined, undefined, undefined], 'only capped non-streaming calls are changed');
+  // A summary that keeps failing is not retried on every send.
+  bodies.length = 0; emptySummary = true;
+  await app.run('(async()=>{for(let i=0;i<14;i++){await saveMessage({role:i%2?"assistant":"user",text:"Turn "+i,type:"text",timestamp:i+1},1);}})()');
+  const build = () => app.run('buildContextWithSummary(1, 4, "", "test-chat", document.getElementById("messageHistory"))').then(normalize);
+  const first = await build();
+  assert.equal(bodies.length, 1);
+  assert.equal(first.length, 12, 'without a summary the most recent aged-out turns stay verbatim');
+  await app.run('saveMessage({role:"user",text:"Turn 14",type:"text",timestamp:15},1)');
+  await build();
+  assert.equal(bodies.length, 1, 'no second attempt on the very next send');
+});

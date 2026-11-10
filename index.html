@@ -3117,6 +3117,16 @@
       } catch (_) {}
 
       if (!isLlamaCppModel(requestBody?.model)) {
+        // Capped, non-streaming utility calls (routing, summaries, document
+        // analysis) need their whole token budget for the answer. A reasoning
+        // model would otherwise spend it thinking and return nothing, so ask
+        // Ollama to skip thinking and fall back if the server rejects the field.
+        const cappedUtilityCall = requestBody && requestBody.stream === false && requestBody.think === undefined
+          && requestBody.options?.num_predict !== undefined && !requestBody.tools;
+        if (cappedUtilityCall) {
+          const response = await fetchForRequest(requestContext, OLLAMA_ENDPOINT, { ...requestOptions, body: JSON.stringify({ ...requestBody, think: false }) });
+          if (response.status !== 400) return response;
+        }
         return fetchForRequest(requestContext, OLLAMA_ENDPOINT, requestOptions);
       }
 
@@ -7000,6 +7010,8 @@ Reply with ONLY the JSON array.`;
     const SUMMARY_BATCH_CHARS = 9000;       // fits the utility prompt budget with room for the reply
     const SUMMARY_MESSAGE_CHARS = 3000;
 
+    const summaryRetryAfter = new Map(); // threadId -> older-message count before another attempt
+
     function summarySignature(messages) {
       return {
         count: messages.length,
@@ -7102,15 +7114,18 @@ Reply with ONLY the JSON array.`;
       let pending = cached ? olderMessages.slice(cached.covered.count) : olderMessages;
       const pendingTokens = pending.reduce((sum, msg) => sum + estimateTokens(msg.text), 0);
       const refresh = pending.length > 0 && (!cached || pending.length >= SUMMARY_REFRESH_MESSAGES || pendingTokens >= SUMMARY_REFRESH_TOKENS);
-      if (refresh && modelName && !isWebGPUModel(modelName)) {
+      if (refresh && modelName && !isWebGPUModel(modelName) && olderMessages.length >= (summaryRetryAfter.get(threadId) || 0)) {
         try {
           const text = await extendConversationSummary(cached?.text || "", pending, modelName, placeholder, requestContext);
           cached = { text, covered: summarySignature(olderMessages), updatedAt: Date.now() };
           pending = [];
+          summaryRetryAfter.delete(threadId);
           await awaitForRequest(requestContext, saveThreadContextSummary(threadId, cached));
         } catch (err) {
           if (err.name === "AbortError") throw err;
           console.error("Context summarisation error:", err);
+          // Do not pay for a failing summary call on every send.
+          summaryRetryAfter.set(threadId, olderMessages.length + SUMMARY_REFRESH_MESSAGES);
         }
       }
       const messages = [];
