@@ -163,7 +163,7 @@ test('legacy chat imports validate references and ignore endpoint or credential 
   await assert.rejects(app.run('restoreBackupData(invalid)'),/Invalid backup/);
   assert.equal((await app.run('readBackupSnapshot()')).threads.length,before);
   // A synchronous structured-clone failure must roll back earlier queued writes as well.
-  app.window.uncloneable={...app.window.legacy,threads:[{id:10,name:'Good'},{id:11,name:'Bad',uncloneable(){}}]};
+  app.window.uncloneable={...app.window.legacy,threads:[{id:10,name:'Good'},{id:11,name:'Bad',created(){}}]};
   await assert.rejects(app.run('restoreBackupData(uncloneable)'));
   await new Promise(resolve=>setTimeout(resolve,5));
   assert.equal((await app.run('readBackupSnapshot()')).threads.length,before);
@@ -520,10 +520,326 @@ test('a failed write is reported instead of being silently dropped', async t => 
   const alerts = [];
   app.window.alert = message => alerts.push(message);
   app.run('alert = window.alert');
-  // A message that cannot be cloned makes the transaction fail, as a full disk would.
-  const id = await app.run('saveMessage({role:"user",text:"x",type:"text",timestamp:1,bad(){}},1).catch(()=>null)');
+  // A record the database cannot store makes the write fail, as a full disk would.
+  const id = await app.run('saveMessage({role:"user",text:"x",type:"text",timestamp(){}},1).catch(()=>null)');
   assert.equal(id ?? null, null);
   app.run('reportStorageWriteError(Object.assign(new Error("full"),{name:"QuotaExceededError"}),"message")');
   await settle();
   assert(alerts.some(message => /storage is full/.test(message) || /could not be saved/.test(message)), JSON.stringify(alerts));
+});
+
+// ---- Chat encryption, passphrase lock, alerts and model manager (2.5.0) ----
+
+const rawStores = app => app.run('readRawSnapshot()').then(snapshot => ({ threads: snapshot.threads, messages: snapshot.messages }));
+const asText = value => JSON.stringify(value, (_key, item) => item instanceof ArrayBuffer || ArrayBuffer.isView(item) ? Buffer.from(item.buffer || item).toString('latin1') : (item && item.constructor && item.constructor.name === 'ArrayBuffer' ? Buffer.from(new Uint8Array(item)).toString('latin1') : item));
+
+test('messages and thread details are encrypted at rest and still fully usable', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  for (const name of ['autoTitle', 'suggestedFollowUps', 'autoFactCheck', 'learnMemories']) app.window.localStorage.setItem(name, 'false');
+  app.window.fetch = async url => String(url).endsWith('/api/chat') ? Response.json({ message: { content: 'The launch code is PELICAN-7.' } }) : Response.json({ models: [], data: [] });
+  app.document.getElementById('userInput').value = 'Remember the ZANZIBAR project budget';
+  await app.run('sendMessage()');
+  await app.run('updateThread(currentThreadId, thread => { thread.name = "Secret roadmap"; thread.systemPrompt = "Be terse about MARMALADE"; })');
+  app.run('currentThreadParams = { temperature: 0.3, topP: 0.5, repeatPenalty: 1.2 }; saveThreadParams()');
+  await app.run('threadUpdateQueue');
+  const raw = await rawStores(app);
+  assert.equal(raw.messages.length, 2);
+  for (const record of [...raw.messages, ...raw.threads]) {
+    assert.equal(record.encrypted, true);
+    assert.equal(record.text, undefined); assert.equal(record.name, undefined); assert.equal(record.systemPrompt, undefined);
+  }
+  const stored = asText(raw);
+  for (const secret of ['ZANZIBAR', 'PELICAN', 'Secret roadmap', 'MARMALADE']) assert(!stored.includes(secret), secret + ' is readable in storage');
+  assert.deepEqual(Object.keys(raw.messages[0]).sort(), ['ciphertext', 'cryptoId', 'encrypted', 'id', 'iv', 'role', 'threadId', 'timestamp', 'type', 'version']);
+  // Everything that reads chats still sees them.
+  const messages = normalize(await app.run('getThreadMessages(currentThreadId)'));
+  assert.deepEqual(messages.map(message => message.text), ['Remember the ZANZIBAR project budget', 'The launch code is PELICAN-7.']);
+  assert.equal(normalize(await app.run('getThreadMessages(currentThreadId, 1)')).length, 1);
+  const thread = normalize(await app.run('getThreadRecord(currentThreadId)'));
+  assert.equal(thread.name, 'Secret roadmap'); assert.equal(thread.temperature, 0.3); assert.equal(thread.repeatPenalty, 1.2);
+  assert.equal(await app.run('getThreadSystemPrompt(currentThreadId)'), 'Be terse about MARMALADE');
+  await app.run('loadThreads()');
+  assert(app.document.getElementById('threadsList').textContent.includes('Secret roadmap'));
+  const found = normalize(await app.run('searchMessages("pelican")'));
+  assert.equal(found.length, 1); assert.equal(found[0].threadName, 'Secret roadmap');
+  const snapshot = normalize(await app.run('readBackupSnapshot()'));
+  assert.equal(snapshot.threads[0].name, 'Secret roadmap'); assert.equal(snapshot.messages[1].text, 'The launch code is PELICAN-7.');
+  // A branch copies the conversation into a new encrypted thread.
+  await app.run(`branchFromMessage(${messages[1].id})`);
+  const branched = normalize(await app.run('getThreadMessages(currentThreadId)'));
+  assert.deepEqual(branched.map(message => message.text), messages.map(message => message.text));
+  assert.equal(normalize(await app.run('getThreadRecord(currentThreadId)')).name, 'Secret roadmap (branch)');
+  assert(!asText(await rawStores(app)).includes('PELICAN'));
+  // A record damaged in storage is reported, not thrown.
+  await app.run('new Promise(resolve=>{const tx=db.transaction(["messages"],"readwrite");const store=tx.objectStore("messages");store.get(1).onsuccess=e=>{const r=e.target.result;r.cryptoId="tampered";store.put(r);};tx.oncomplete=resolve;})');
+  const damaged = normalize(await app.run('getThreadMessages(1)'));
+  assert.equal(damaged[0].unreadable, true);
+  assert.equal(damaged[1].text, 'The launch code is PELICAN-7.');
+});
+
+test('chats written by earlier versions are encrypted once, without loss', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  await app.run(`new Promise(resolve=>{
+    const tx=db.transaction(["threads","messages","vault"],"readwrite");
+    tx.objectStore("threads").add({id:50,name:"Legacy plans",systemPrompt:"Old prompt",temperature:0.4,created:5});
+    for(let i=0;i<230;i++) tx.objectStore("messages").add({threadId:50,role:i%2?"assistant":"user",text:"Legacy message "+i,type:"text",timestamp:i+1,citations:[{url:"https://example.com/"+i}]});
+    tx.objectStore("vault").delete("chatsEncrypted");
+    tx.oncomplete=resolve;})`);
+  assert(asText(await rawStores(app)).includes('Legacy message 7'));
+  assert.equal(normalize(await app.run('getThreadMessages(50)')).length, 230, 'plaintext records are readable before migration');
+  const migrated = await app.run('migratePlaintextChats()');
+  assert.equal(migrated, 231);
+  const raw = await rawStores(app);
+  assert(raw.messages.every(record => record.encrypted === true) && raw.threads.every(record => record.encrypted === true));
+  assert(!asText(raw).includes('Legacy'));
+  const messages = normalize(await app.run('getThreadMessages(50)'));
+  assert.equal(messages.length, 230);
+  assert.equal(messages[229].text, 'Legacy message 229');
+  assert.equal(messages[3].citations[0].url, 'https://example.com/3');
+  const thread = normalize(await app.run('getThreadRecord(50)'));
+  assert.deepEqual([thread.name, thread.systemPrompt, thread.temperature, thread.created], ['Legacy plans', 'Old prompt', 0.4, 5]);
+  assert.equal(await app.run('migratePlaintextChats()'), 0, 'the migration runs once');
+});
+
+async function seedVault(app) {
+  await app.run(`(async()=>{
+    await saveMessage({role:"user",text:"Locked message ALBATROSS",type:"text",timestamp:1},1);
+    const payload={name:"Private.pdf",type:"pdf",size:10,fullText:"Document fact HERON",chunks:[{text:"Document fact HERON",page:1,lineStart:1,lineEnd:1}],tokenEstimate:5};
+    const encrypted=await encryptDocumentPayload(payload,1);
+    await new Promise(resolve=>{const tx=db.transaction(["documents"],"readwrite");tx.objectStore("documents").add({threadId:1,contentHash:"h",createdAt:1,...encrypted});tx.oncomplete=resolve;});
+    await saveMemoryCandidate({fact:"Prefers the codename IBIS",key:"user:codename"},1,true);
+    await setApiKey("tavilyApiKey","tvly-SECRET-KEY");
+  })()`);
+}
+async function readEverything(app) {
+  return normalize(await app.run(`(async()=>({
+    messages:(await getThreadMessages(1)).map(m=>m.text),
+    documents:(await getThreadDocuments(1)).map(d=>d.fullText),
+    memories:(await loadAllMemories()).map(m=>m.fact),
+    thread:(await getThreadRecord(1)).name
+  }))()`));
+}
+const expectedEverything = { messages: ['Locked message ALBATROSS'], documents: ['Document fact HERON'], memories: ['Prefers the codename IBIS'], thread: 'General' };
+
+test('a passphrase lock leaves no usable key in storage and unlocks only with the passphrase', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  await seedVault(app);
+  await assert.rejects(app.run('enablePassphraseLock("short")'), /at least 8 characters/);
+  const progress = [];
+  app.window.lockProgress = (done, total) => progress.push([done, total]);
+  const result = normalize(await app.run('enablePassphraseLock("correct horse battery", lockProgress)'));
+  assert.equal(result.skipped, 0);
+  assert(progress.length > 0);
+  assert.equal(await app.run('vaultRequest("readonly", store => store.get("masterKey"))'), undefined, 'the unwrapped key is gone');
+  const lock = normalize(await app.run('vaultRequest("readonly", store => store.get("lock"))'));
+  assert.deepEqual([lock.version, lock.kdf, lock.iterations], [1, 'PBKDF2-SHA256', 600000]);
+  assert.equal(app.run('vaultLockEnabled'), true);
+  assert.deepEqual(await readEverything(app), expectedEverything, 'data is readable in the session that set the lock');
+  // A fresh start: no key in memory, so the unlock screen appears and blocks until the passphrase is right.
+  app.run('vaultKey = null; Object.keys(apiKeyCache).forEach(name => delete apiKeyCache[name]);');
+  let opened = false;
+  const opening = app.run('initializeSecretVault()').then(() => { opened = true; });
+  await settle();
+  assert(app.document.getElementById('lockOverlay').classList.contains('active'));
+  assert(app.document.body.classList.contains('vault-locked'));
+  await assert.rejects(app.run('sealChatRecord("message", {text:"x"}, MESSAGE_PUBLIC_FIELDS)'), /locked/);
+  assert.equal(normalize(await app.run('getThreadMessages(1)'))[0].unreadable, true, 'nothing decrypts while locked');
+  app.document.getElementById('unlockPassphrase').value = 'wrong passphrase';
+  await app.run('submitUnlock()');
+  assert.equal(app.document.getElementById('unlockStatus').textContent, 'That passphrase is not correct.');
+  assert.equal(opened, false);
+  app.document.getElementById('unlockPassphrase').value = 'correct horse battery';
+  await app.run('submitUnlock()');
+  await opening;
+  assert.equal(opened, true);
+  assert(!app.document.getElementById('lockOverlay').classList.contains('active'));
+  assert.equal(app.document.getElementById('unlockPassphrase').value, '');
+  assert.deepEqual(await readEverything(app), expectedEverything);
+  assert.equal(app.run('getApiKey("tavilyApiKey")'), 'tvly-SECRET-KEY');
+  assert.equal(app.run('vaultKey.extractable'), false);
+  // Changing the passphrase re-wraps the same key.
+  await assert.rejects(app.run('changeLockPassphrase("not it", "another long passphrase")'), /not correct/);
+  await app.run('changeLockPassphrase("correct horse battery", "another long passphrase")');
+  const relocked = normalize(await app.run('vaultRequest("readonly", store => store.get("lock"))'));
+  app.window.lockFixture = relocked;
+  await assert.rejects(app.run('unwrapVaultKey(lockFixture, "correct horse battery")'), /not correct/);
+  assert.equal((await app.run('unwrapVaultKey(lockFixture, "another long passphrase")')).type, 'secret');
+  // Removing the lock needs the passphrase and rewrites no data.
+  await assert.rejects(app.run('disablePassphraseLock("guess")'), /not correct/);
+  await app.run('disablePassphraseLock("another long passphrase")');
+  assert.equal(await app.run('vaultRequest("readonly", store => store.get("lock"))'), undefined);
+  assert.equal((await app.run('vaultRequest("readonly", store => store.get("masterKey"))')).extractable, false);
+  app.run('vaultKey = null');
+  await app.run('initializeSecretVault()');
+  assert.deepEqual(await readEverything(app), expectedEverything);
+});
+
+test('setting a lock is all-or-nothing and refused while a reply is being generated', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  await seedVault(app);
+  app.run('beginForegroundRequest()');
+  await assert.rejects(app.run('enablePassphraseLock("correct horse battery")'), /current response/);
+  app.run('resetComposerForThreadChange()');
+  // Make the final write fail part-way through: nothing may change.
+  app.run('const realReencrypt = reencryptEverything; reencryptEverything = async (...args) => { const out = await realReencrypt(...args); out.threads.push({ id: 999, created(){} }); return out; };');
+  await assert.rejects(app.run('enablePassphraseLock("correct horse battery")'));
+  await settle();
+  assert.equal(app.run('vaultLockEnabled'), false);
+  assert.equal(app.run('lockOperationPending'), false);
+  assert.equal(await app.run('vaultRequest("readonly", store => store.get("lock"))'), undefined);
+  assert((await app.run('vaultRequest("readonly", store => store.get("masterKey"))')));
+  assert.deepEqual(await readEverything(app), expectedEverything);
+  app.run('vaultKey = null');
+  await app.run('initializeSecretVault()');
+  assert.deepEqual(await readEverything(app), expectedEverything, 'the original key still opens everything');
+});
+
+test('the lock dialog validates input and reports the outcome', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  app.run('openSettings()');
+  assert.equal(app.document.getElementById('lockEnableButton').style.display, '');
+  assert.equal(app.document.getElementById('lockNowButton').style.display, 'none');
+  app.run('openLockDialog("enable")');
+  assert.equal(app.document.getElementById('lockCurrentRow').hidden, true);
+  app.document.getElementById('lockNewPassphrase').value = 'a long passphrase';
+  app.document.getElementById('lockConfirmPassphrase').value = 'a different one';
+  await app.run('runLockDialog()');
+  assert.equal(app.document.getElementById('lockDialogStatus').textContent, 'The passphrases do not match.');
+  app.document.getElementById('lockConfirmPassphrase').value = 'a long passphrase';
+  await app.run('runLockDialog()');
+  assert(app.document.getElementById('lockDialogStatus').textContent.startsWith('Lock set.'));
+  assert.equal(app.document.getElementById('lockNewPassphrase').value, '');
+  app.run('closeLockDialog(); openSettings()');
+  assert(app.document.getElementById('lockStatusText').textContent.startsWith('On'));
+  assert.equal(app.document.getElementById('lockEnableButton').style.display, 'none');
+  assert.equal(app.document.getElementById('autoLockRow').style.display, '');
+  app.run('closeSettings(); openLockDialog("disable")');
+  assert.equal(app.document.getElementById('lockNewRow').hidden, true);
+  app.document.getElementById('lockCurrentPassphrase').value = 'a long passphrase';
+  await app.run('runLockDialog()');
+  assert.equal(app.document.getElementById('lockDialogStatus').textContent, 'Lock removed.');
+  assert.equal(app.run('vaultLockEnabled'), false);
+});
+
+test('the screen wake lock is held only while work is running and the setting is on', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const events = [];
+  Object.defineProperty(app.window.navigator, 'wakeLock', { configurable: true, value: { request: async type => { events.push('request:' + type); return { release: async () => { events.push('release'); }, addEventListener() {} }; } } });
+  app.run('beginForegroundRequest()');
+  await settle();
+  assert.deepEqual(events, ['request:screen']);
+  app.run('beginForegroundRequest()');
+  await settle();
+  assert.deepEqual(events, ['request:screen'], 'a second request reuses the lock');
+  app.run('endForegroundRequest(activeRequestController)');
+  await settle();
+  assert.deepEqual(events, ['request:screen', 'release']);
+  app.window.localStorage.setItem('keepAwake', 'false');
+  app.run('beginForegroundRequest()');
+  await settle();
+  assert.equal(events.length, 2, 'nothing is requested when the setting is off');
+  app.run('resetComposerForThreadChange()');
+});
+
+test('a background completion alert carries no message text and stays silent in the foreground', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  for (const name of ['autoTitle', 'suggestedFollowUps', 'autoFactCheck', 'learnMemories']) app.window.localStorage.setItem(name, 'false');
+  const shown = [];
+  class FakeNotification { constructor(title, options) { shown.push({ title, ...options }); } close() {} }
+  FakeNotification.permission = 'granted';
+  app.window.Notification = FakeNotification;
+  app.run('Notification = window.Notification');
+  let hidden = false;
+  Object.defineProperty(app.document, 'hidden', { configurable: true, get: () => hidden });
+  app.document.hasFocus = () => !hidden;
+  app.window.fetch = async url => String(url).endsWith('/api/chat') ? Response.json({ message: { content: 'Confidential reply about OSPREY' } }) : Response.json({ models: [], data: [] });
+  const send = async () => { app.document.getElementById('userInput').value = 'Confidential question about KESTREL'; await app.run('sendMessage()'); await settle(); };
+  await send();
+  assert.equal(shown.length, 0, 'off by default');
+  app.window.localStorage.setItem('completionAlert', 'true');
+  await send();
+  assert.equal(shown.length, 0, 'no alert while the app is in front');
+  hidden = true;
+  await send();
+  assert.equal(shown.length, 1);
+  assert.equal(shown[0].title, 'PrivateLLMLens');
+  assert(/^Your reply is ready/.test(shown[0].body));
+  assert(!/OSPREY|KESTREL|General/.test(JSON.stringify(shown[0])));
+  assert(app.document.title.startsWith('✓ Reply ready'));
+  hidden = false;
+  app.document.dispatchEvent(new app.window.Event('visibilitychange'));
+  assert.equal(app.document.title, 'PrivateLLMLens');
+  // A failure is announced too, and a blocked permission falls back without throwing.
+  hidden = true;
+  app.window.fetch = async url => String(url).endsWith('/api/chat') ? new Response('', { status: 500 }) : Response.json({ models: [], data: [] });
+  await send();
+  assert.equal(shown.at(-1).body, 'The request stopped with an error.');
+  FakeNotification.permission = 'denied';
+  const outcome = normalize(await app.run('announceCompletion({ ok: true, elapsedSeconds: 42 })'));
+  assert.deepEqual([outcome.alerted, outcome.notified, outcome.body], [true, false, 'Your reply is ready (42s).']);
+});
+
+function ndjsonResponse(lines) {
+  const encoder = new TextEncoder();
+  return new Response(new ReadableStream({ start(controller) { lines.forEach(line => controller.enqueue(encoder.encode(JSON.stringify(line) + '\n'))); controller.close(); } }));
+}
+
+test('the model manager lists, unloads, deletes and downloads Ollama models', async t => {
+  const app = createApp(); t.after(app.close); await app.boot();
+  const calls = [];
+  let installed = [{ name: 'qwen3:4b', size: 2.6e9, details: { parameter_size: '4.0B', quantization_level: 'Q4_K_M' } }, { name: 'nomic-embed-text:latest', size: 2.7e8, details: {} }];
+  let loaded = [{ name: 'qwen3:4b', size_vram: 3.1e9, context_length: 16384, expires_at: new Date(Date.now() + 240000).toISOString() }];
+  app.window.fetch = async (url, options = {}) => {
+    const path = new URL(String(url)).pathname, body = options.body ? JSON.parse(options.body) : null;
+    calls.push({ path, method: options.method || 'GET', body });
+    if (path === '/api/tags') return Response.json({ models: installed });
+    if (path === '/api/ps') return Response.json({ models: loaded });
+    if (path === '/api/version') return Response.json({ version: '0.40.13' });
+    if (path === '/api/show') return Response.json({ capabilities: ['completion'] });
+    if (path === '/api/generate') { if (body.model.includes('embed')) return Response.json({ error: 'does not support generate' }, { status: 400 }); loaded = loaded.filter(model => model.name !== body.model); return Response.json({ done: true }); }
+    if (path === '/api/embed') { loaded = loaded.filter(model => model.name !== body.model); return Response.json({ embeddings: [] }); }
+    if (path === '/api/delete') { installed = installed.filter(model => model.name !== body.model); return new Response('', { status: 200 }); }
+    if (path === '/api/pull') {
+      if (body.model === 'missing:model') return ndjsonResponse([{ status: 'pulling manifest' }, { error: 'pull model manifest: file does not exist' }]);
+      installed = [...installed, { name: body.model, size: 1e9, details: {} }];
+      return ndjsonResponse([{ status: 'pulling manifest' }, { status: 'pulling aabbccddeeff', digest: 'sha256:aa', total: 1000, completed: 250 }, { status: 'pulling aabbccddeeff', digest: 'sha256:aa', total: 1000, completed: 1000 }, { status: 'verifying sha256 digest' }, { status: 'success' }]);
+    }
+    return Response.json({ data: [] });
+  };
+  app.run('openModelManager()');
+  await app.run('refreshModelManager()');
+  const text = id => app.document.getElementById(id).textContent;
+  assert(text('modelManagerStatus').includes('Ollama 0.40.13') && text('modelManagerStatus').includes('2 models'));
+  assert(text('loadedModelsList').includes('qwen3:4b') && text('loadedModelsList').includes('16K context') && text('loadedModelsList').includes('unloads in 4 min'));
+  assert(text('installedModelsList').includes('Q4_K_M') && text('installedModelsList').includes('nomic-embed-text'));
+  await app.run('unloadOllamaModel("qwen3:4b")');
+  assert.deepEqual(calls.find(call => call.path === '/api/generate').body, { model: 'qwen3:4b', keep_alive: 0 });
+  assert(text('loadedModelsList').includes('Nothing loaded'));
+  loaded = [{ name: 'nomic-embed-text:latest', size_vram: 3e8 }];
+  await app.run('unloadOllamaModel("nomic-embed-text:latest")');
+  assert.deepEqual(calls.find(call => call.path === '/api/embed').body, { model: 'nomic-embed-text:latest', keep_alive: 0, input: '' });
+  await app.run('deleteOllamaModel("nomic-embed-text:latest")');
+  const deletion = calls.find(call => call.path === '/api/delete');
+  assert.deepEqual([deletion.method, deletion.body], ['DELETE', { model: 'nomic-embed-text:latest' }]);
+  assert(!text('installedModelsList').includes('nomic-embed-text'));
+  // Download with progress, then an error from the registry, then a rejected name.
+  app.document.getElementById('modelPullName').value = 'gemma3:1b';
+  assert.equal(await app.run('pullOllamaModel()'), true);
+  assert.equal(text('modelPullStatus'), 'gemma3:1b is ready to use.');
+  assert.equal(app.document.getElementById('modelPullMeter').getAttribute('aria-valuenow'), '100');
+  assert(text('installedModelsList').includes('gemma3:1b'));
+  assert.equal(app.document.getElementById('modelPullButton').textContent, 'Download');
+  app.document.getElementById('modelPullName').value = 'missing:model';
+  assert.equal(await app.run('pullOllamaModel()'), false);
+  assert(text('modelPullStatus').includes('file does not exist'));
+  const pulls = calls.filter(call => call.path === '/api/pull').length;
+  app.document.getElementById('modelPullName').value = 'bad name; rm -rf';
+  await app.run('pullOllamaModel()');
+  assert.equal(calls.filter(call => call.path === '/api/pull').length, pulls, 'an invalid name is never sent');
+  assert.equal(app.run('longTaskCount'), 0);
+  app.run('closeModelManager()');
+  // An unreachable server is stated plainly.
+  app.window.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  await app.run('refreshModelManager()');
+  assert(text('modelManagerStatus').startsWith('Ollama is not reachable'));
 });

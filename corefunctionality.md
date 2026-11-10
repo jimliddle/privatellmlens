@@ -10,6 +10,7 @@
 - Text input with Send button and Enter key to submit prompts.
 - **Streaming responses** — assistant replies stream token-by-token in real time.
 - Displays a spinner with elapsed time while waiting for a response.
+- **Screen wake lock** while generating or downloading a model, and an optional content-free alert (notification, title, sound) when a reply finishes in the background.
 - Shows total response time after each reply completes.
 - **Markdown rendering** via marked.js — headings, bold, italic, lists, tables, code blocks all formatted correctly.
 - **Syntax-highlighted code blocks** via highlight.js with a one-click copy button per block.
@@ -80,6 +81,7 @@ All actions appear at the top-right of messages, with a second action row on lon
 - **Model parameter controls** — temperature, top-p and repeat penalty, saved per thread.
 - Explicit model-context profiles for Ollama; llama.cpp GPU context follows the active server profile.
 - Custom Ollama endpoint configurable in Settings.
+- **Ollama model manager** — lists loaded and installed models, unloads, deletes, and downloads by name with progress and cancel.
 - Optional in-browser Qwen3.5 WebGPU models.
 - **Perplexity AI** — routes the prompt to Perplexity's API instead of the local LLM. API key required.
 - **OpenAI image generation** — generates images through the OpenAI image API. API key required.
@@ -144,9 +146,11 @@ All actions appear at the top-right of messages, with a second action row on lon
 
 #### Data Storage
 
+- **Chat encryption** — message content and thread details are encrypted with the vault key; earlier plaintext chats are migrated on first run.
+- **Passphrase lock** — optional; stores the vault key only wrapped by a passphrase-derived key, with an unlock screen, Lock now and background auto-lock.
 - **IndexedDB version 6** contains:
-  - `messages` — conversation messages and response metadata.
-  - `threads` — thread metadata, system prompt and per-thread model parameters.
+  - `messages` — encrypted conversation messages and response metadata.
+  - `threads` — encrypted thread name, system prompt, per-thread model parameters and running summary.
   - `memories` — encrypted memory records and metadata.
   - `vault` — non-extractable WebCrypto master key and encrypted provider secrets.
   - `documents` — encrypted per-thread document workspaces, including extracted text, chunks and cached semantic indexes.

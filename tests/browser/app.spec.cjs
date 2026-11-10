@@ -251,3 +251,132 @@ test('storage settings show protection, usage and contents on a phone-sized scre
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   await page.screenshot({ path: 'test-results/storage-settings-phone.png' });
 });
+
+async function rawChatStore(page) {
+  return page.evaluate(async () => {
+    const snapshot = await readRawSnapshot();
+    const decoder = new TextDecoder('latin1');
+    return JSON.stringify([snapshot.threads, snapshot.messages], (_key, value) => value instanceof ArrayBuffer ? decoder.decode(value) : value);
+  });
+}
+
+test('chats are encrypted in the browser database and a passphrase lock survives a reload', async ({ page, context }) => {
+  await routeApp(context); await openApp(page);
+  page.on('dialog', dialog => dialog.accept());
+  await page.locator('#userInput').fill('A private note about WOMBAT'); await page.locator('#sendButton').click();
+  await expect(page.locator('.assistant-message').last()).toContainText('preserved local functionality');
+  const stored = await rawChatStore(page);
+  expect(stored).not.toContain('WOMBAT');
+  expect(stored).not.toContain('preserved local functionality');
+  expect(stored).toContain('"encrypted":true');
+  // Set a lock through the settings dialog.
+  await page.locator('#settingsButton').click();
+  await page.locator('#lockEnableButton').click();
+  await page.locator('#lockNewPassphrase').fill('open sesame please');
+  await page.locator('#lockConfirmPassphrase').fill('open sesame please');
+  await page.locator('#lockDialogAction').click();
+  await expect(page.locator('#lockDialogStatus')).toContainText('Lock set.');
+  expect(await page.evaluate(async () => ({ master: await vaultRequest('readonly', store => store.get('masterKey')), lock: !!(await vaultRequest('readonly', store => store.get('lock'))) }))).toEqual({ master: undefined, lock: true });
+  // After a reload nothing is shown until the passphrase is entered.
+  await page.reload();
+  await expect(page.locator('#lockOverlay')).toBeVisible();
+  await expect(page.locator('#unlockPassphrase')).toBeFocused();
+  await expect(page.locator('#messageHistory')).toBeHidden();
+  await expect(page.locator('#threadsList')).toBeHidden();
+  expect(await page.evaluate(() => vaultKey)).toBeNull();
+  await page.locator('#unlockPassphrase').fill('not the passphrase');
+  await page.locator('#unlockButton').click();
+  await expect(page.locator('#unlockStatus')).toHaveText('That passphrase is not correct.');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#lockOverlay')).toBeVisible();
+  await page.locator('#unlockPassphrase').fill('open sesame please');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#lockOverlay')).toBeHidden();
+  await expect(page.locator('.user-message').first()).toContainText('A private note about WOMBAT');
+  await expect(page.locator('#threadsList')).toContainText('General');
+  // The app keeps working while locked-capable: send again, then remove the lock.
+  await page.locator('#userInput').fill('Second note'); await page.locator('#sendButton').click();
+  await expect(page.locator('.assistant-message')).toHaveCount(2);
+  await page.locator('#settingsButton').click();
+  await expect(page.locator('#lockStatusText')).toContainText('On');
+  await page.locator('#lockDisableButton').click();
+  await page.locator('#lockCurrentPassphrase').fill('open sesame please');
+  await page.locator('#lockDialogAction').click();
+  await expect(page.locator('#lockDialogStatus')).toHaveText('Lock removed.');
+  await page.reload();
+  await expect(page.locator('#lockOverlay')).toBeHidden();
+  await expect(page.locator('.user-message').first()).toContainText('A private note about WOMBAT');
+});
+
+test('the model manager works at phone width, including a streamed download', async ({ page, context }) => {
+  await routeApp(context);
+  let installed = [{ name: 'test-chat', size: 2.6e9, details: { parameter_size: '4.0B', quantization_level: 'Q4_K_M' }, capabilities: ['completion'] }];
+  let loaded = [{ name: 'test-chat', size_vram: 3.1e9, context_length: 16384, expires_at: new Date(Date.now() + 200000).toISOString() }];
+  const seen = [];
+  const cors = { 'Access-Control-Allow-Origin': '*' };
+  await context.route(/\/api\/(tags|ps|version|generate|delete|pull)$/, async route => {
+    const request = route.request(), path = new URL(request.url()).pathname;
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...cors, 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS' } });
+    const body = request.postData() ? request.postDataJSON() : null;
+    seen.push(`${request.method()} ${path}`);
+    const json = data => route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify(data) });
+    if (path === '/api/tags') return json({ models: installed });
+    if (path === '/api/ps') return json({ models: loaded });
+    if (path === '/api/version') return json({ version: '0.40.13' });
+    if (path === '/api/generate') { loaded = []; return json({ done: true }); }
+    if (path === '/api/delete') { installed = installed.filter(model => model.name !== body.model); return json({}); }
+    installed = [...installed, { name: body.model, size: 8e8, details: {} }];
+    const lines = [{ status: 'pulling manifest' }, { status: 'pulling 1234567890ab', digest: 'sha256:1', total: 4000, completed: 1000 }, { status: 'pulling 1234567890ab', digest: 'sha256:1', total: 4000, completed: 4000 }, { status: 'success' }];
+    return route.fulfill({ status: 200, headers: cors, contentType: 'application/x-ndjson', body: lines.map(line => JSON.stringify(line)).join('\n') + '\n' });
+  });
+  await openApp(page);
+  page.on('dialog', dialog => dialog.accept());
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.evaluate(() => openModelManager());
+  const dialog = page.getByRole('dialog', { name: 'Ollama models' });
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#modelManagerStatus')).toContainText('Ollama 0.40.13');
+  await expect(page.locator('#loadedModelsList')).toContainText('16K context');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+  const box = await dialog.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(360);
+  await page.screenshot({ path: 'test-results/model-manager-phone.png' });
+  await page.getByRole('button', { name: 'Unload test-chat' }).click();
+  await expect(page.locator('#loadedModelsList')).toContainText('Nothing loaded');
+  await page.locator('#modelPullName').fill('gemma3:1b');
+  await page.locator('#modelPullButton').click();
+  await expect(page.locator('#modelPullStatus')).toHaveText('gemma3:1b is ready to use.');
+  await expect(page.locator('#installedModelsList')).toContainText('gemma3:1b');
+  await page.getByRole('button', { name: 'Delete gemma3:1b' }).click();
+  await expect(page.locator('#installedModelsList')).not.toContainText('gemma3:1b');
+  expect(seen).toEqual(expect.arrayContaining(['POST /api/generate', 'POST /api/pull', 'DELETE /api/delete']));
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('generation settings persist and the alert status reflects notification permission', async ({ page, context }) => {
+  // Headless browsers differ on real notification permission, so stand in a granted one.
+  await context.addInitScript(() => {
+    window.__notifications = [];
+    window.Notification = class { constructor(title, options) { window.__notifications.push({ title, body: options.body }); } close() {} static get permission() { return 'granted'; } static requestPermission() { return Promise.resolve('granted'); } };
+  });
+  await routeApp(context); await openApp(page);
+  await page.locator('#settingsButton').click();
+  await expect(page.locator('#keepAwakeCheckbox')).toBeChecked();
+  await expect(page.locator('#completionAlertCheckbox')).not.toBeChecked();
+  await page.locator('#completionAlertCheckbox').check();
+  await expect(page.locator('#completionAlertStatus')).toHaveText('Notifications allowed.');
+  await page.locator('#keepAwakeCheckbox').uncheck();
+  await page.locator('#settingsFooter button').last().click();
+  expect(await page.evaluate(() => [localStorage.getItem('completionAlert'), localStorage.getItem('keepAwake'), localStorage.getItem('completionSound')])).toEqual(['true', 'false', 'true']);
+  // A reply that lands while the page is hidden raises an alert with no chat content.
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.hasFocus = () => false; });
+  await page.locator('#userInput').fill('A confidential question about QUOKKA'); await page.locator('#sendButton').click();
+  await expect(page.locator('.assistant-message').last()).toContainText('preserved local functionality');
+  await expect.poll(() => page.evaluate(() => window.__notifications.length)).toBe(1);
+  const shown = await page.evaluate(() => ({ note: window.__notifications[0], title: document.title }));
+  expect(shown.note.title).toBe('PrivateLLMLens');
+  expect(shown.note.body).toMatch(/^Your reply is ready/);
+  expect(JSON.stringify(shown.note)).not.toMatch(/QUOKKA|preserved/);
+  expect(shown.title).toContain('Reply ready');
+});
