@@ -33,7 +33,7 @@ Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or
 
 The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
 
-The libraries the core features need are embedded in the file: Marked 18.1.1, DOMPurify 3.4.17, Highlight.js 11.9.0, JSZip 3.10.1 and the 41 Font Awesome icons the interface uses. Chat, Markdown, code highlighting, DOCX/PPTX reading, encryption and backups therefore work with no CDN and no connection beyond the model server. The file is about 710 KB, or roughly 230 KB compressed in transit.
+The libraries the core features need are embedded in the file: Marked 18.1.1, DOMPurify 3.4.17, Highlight.js 11.9.0, JSZip 3.10.1 and the 41 Font Awesome icons the interface uses. Chat, Markdown, code highlighting, DOCX/PPTX reading, encryption and backups therefore work with no CDN and no connection beyond the model server. The file is about 740 KB, or roughly 200 KB compressed in transit.
 
 Three things are still fetched, each only when used:
 
