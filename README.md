@@ -1,244 +1,382 @@
 # PrivateLLMLens
 
-Current application release: **2.5.0**.
+Current release: **2.5.0**
 
-PrivateLLMLens is a single file browser interface for local Ollama, llama.cpp and optional in browser WebGPU models. It is delbierately a single page for portability and ease of use and works on desktop and Android/Termux without an application backend.
+PrivateLLMLens is a single file browser interface for local Ollama, llama.cpp and optional in browser WebGPU models. It is deliberately a single page for portability and ease of use, and it works on desktop and on Android with Termux. There is no application server: the page talks straight to your model server.
 
 Try the hosted version: **https://jimliddle.github.io/privatellmlens/**
 
-Alternatively, download `index.html`. Serve it from `localhost`, `127.0.0.1`, or HTTPS for PWA installation and consistent browser storage.
+Or download `index.html` and serve it from `localhost`, `127.0.0.1` or an HTTPS address. Serving it this way lets you install it as an app and keeps your saved data in one place.
 
-## Highlights
+<p>
+  <img src="docs/screenshot-desktop.png" alt="PrivateLLMLens on a desktop, answering a question about an attached document" width="70%">
+  <img src="docs/screenshot-phone.png" alt="PrivateLLMLens on a phone" width="24%">
+</p>
 
-- Streaming Ollama and OpenAI-compatible llama.cpp chat
-- Multiple IndexedDB-backed conversation threads with editable system prompts
-- Encrypted persistent document workspaces for PDF, DOCX, PPTX, text, CSV, HTML, Python and JSON
-- Direct-context, hybrid BM25 + local semantic retrieval, and question-directed whole-document analysis
-- Multiple documents per thread, reusable without reattaching or re-extracting
-- Page, slide and line-level citations with an exact source-passage viewer
-- Ollama vision-model image attachments
-- Explicit 8K, 16K and 32K context profiles; utility calls reuse the chat context so Ollama never reloads the model between them
-- Active local/cloud request and document-processing cancellation, with responses bound to their original thread
-- Encrypted persistent memories with separate use and learning controls
-- Schema-driven local tool registry for calculator, date/time, encrypted document search/read and JSON inspection; Web Research can combine these with Tavily
-- Optional Tavily search, Web Research, Perplexity, OpenAI image generation and explicit Gemini long-context processing
-- Optional native Adreno GPU acceleration through llama.cpp/OpenCL on supported Android devices
-- Optional in-browser Qwen3.5 0.8B and 2B WebGPU models
-- Markdown, syntax highlighting, one-tap response copying, regeneration through the full Send pipeline, branching, search, conversation JSON export, encrypted workspace backups and PDF export
-- Responsive compact composer with Automatic, Compact and Desktop layout modes
-- Embedded PWA manifest, icons and core libraries: no CDN is needed for chat, Markdown, code highlighting or DOCX/PPTX
-- Persistent-storage request, storage usage display and write-failure reporting
-- Chats encrypted at rest, with an optional passphrase lock and auto-lock
-- Screen wake lock while generating, and a content-free alert when a reply finishes in the background
-- Ollama model manager: see what is loaded, unload, delete, and download with progress
+## Contents
 
-## Single-file design
+- [What it does](#what-it-does)
+- [Quick start with Ollama](#quick-start-with-ollama)
+- [Allowing the page to reach Ollama](#allowing-the-page-to-reach-ollama)
+- [One file, and what it loads](#one-file-and-what-it-loads)
+- [Working with documents](#working-with-documents)
+- [Models and context](#models-and-context)
+- [Memories](#memories)
+- [Local tools](#local-tools)
+- [Web search and cloud services](#web-search-and-cloud-services)
+- [While a reply is being written](#while-a-reply-is-being-written)
+- [Privacy and stored data](#privacy-and-stored-data)
+- [Installing as an app](#installing-as-an-app)
+- [Android GPU acceleration](#android-gpu-acceleration)
+- [Development](#development)
+- [Licence and contributions](#licence-and-contributions)
 
-The interface, styles, application logic, PWA manifest and icon live in `index.html`. Local inference requests go directly from the browser to Ollama or llama.cpp. Optional cloud calls go directly to the selected provider only when enabled.
+## What it does
 
-The libraries the core features need are embedded in the file: Marked 18.1.1, DOMPurify 3.4.17, Highlight.js 11.9.0, JSZip 3.10.1 and the 41 Font Awesome icons the interface uses. Chat, Markdown, code highlighting, DOCX/PPTX reading, encryption and backups therefore work with no CDN and no connection beyond the model server. The file is about 790 KB, or roughly 210 KB compressed in transit.
+**Chat**
 
-Three things are still fetched, each only when used:
+- Streams replies from Ollama, from a llama.cpp server, or from a small model running in the browser.
+- Keeps any number of conversation threads, each with its own system prompt and model settings.
+- Renders Markdown and highlights code, with a copy button on each reply and each code block.
+- Lets you edit a prompt, regenerate a reply, branch a conversation into a new thread, and search across all threads.
+- Accepts an image with a prompt when the selected model can read images.
+- Lets you cancel a reply or a document being processed at any time.
+- Has voice input, light and dark themes, keyboard shortcuts, and a compact layout for phones.
 
-- **PDF.js 6.4.299**, on the first PDF. The two scripts are downloaded, checked against SHA-384 hashes pinned in the page, and only then run; a file that does not match is refused. Character maps and standard-font data come from the same pinned version. JavaScript evaluation inside PDFs is disabled.
-- **Transformers.js 4.2.0 and model files**, for the optional WebGPU chat models and for hybrid document retrieval (about 25 MB for the q8 MiniLM embedding model). These are version-pinned but not hash-checked.
-- **Web fonts** from Google Fonts. Without a connection the page falls back to system fonts.
+**Documents**
 
-A Content Security Policy in the page allows scripts only from the file itself, its own blob workers and `cdn.jsdelivr.net`. It refuses remote images, frames, plugins, form posts and `<base>` changes. A remote image in model output, a web result or a document is shown as a link to open deliberately, because an image URL can carry data to another site. Links open in a new tab. Network requests (`connect-src`) stay open, since the Ollama endpoint is user-configurable; the policy narrows what injected markup can do, and DOMPurify remains the main defence against script injection.
+- Reads PDF, DOCX, PPTX, text, CSV, HTML, Python and JSON files in the browser.
+- Keeps the documents with the thread, so you can ask further questions without attaching them again.
+- Shows where each answer came from, down to the page, slide or line, and opens the source passage when you click it.
+- Handles documents too big for the model by finding the relevant passages, or by reading every section in turn.
+
+**Privacy**
+
+- Chats, documents, memories and API keys are encrypted in the browser's storage.
+- An optional passphrase lock keeps everything unreadable until you unlock the app.
+- Encrypted backups can be saved to a file and restored in another browser.
+- Nothing leaves your device unless you switch on a web search or cloud option for a prompt.
+
+**Managing models**
+
+- A model manager for Ollama shows what is loaded, frees memory, deletes models and downloads new ones.
+- Context sizes of 8K, 16K and 32K can be picked per chat.
+
+**Optional extras**
+
+- Web search and multi-step web research through Tavily.
+- Perplexity answers, OpenAI image generation and Gemini for very long files.
+- GPU acceleration on supported Android phones through llama.cpp.
 
 ## Quick start with Ollama
 
-1. Start Ollama and install a model:
+1. Install a model and start Ollama:
 
    ```sh
    ollama pull qwen3:4b
    ollama serve
    ```
 
-2. Open the hosted application or serve the downloaded file.
-3. Confirm the header reports **Ollama connected**.
-4. Select a model and start chatting.
+2. Open the hosted page, or serve your downloaded `index.html`.
+3. Check that the header says **Ollama connected**.
+4. Pick a model and start chatting.
 
-PrivateLLMLens discovers Ollama models through `/api/tags` and sends chat to `/api/chat`. It separately discovers a llama.cpp server through `/v1/models` on port 8080 and translates OpenAI-compatible streaming into the same internal format.
+If the header says **Disconnected**, see the next section.
 
-## Document workspaces
+The page finds Ollama models at `http://localhost:11434`. You can point it at another address in **Settings → API Configuration**. It also looks for a llama.cpp server at `http://127.0.0.1:8080` and lists its models alongside the Ollama ones.
 
-Ordinary document attachments are extracted once, encrypted with AES-256-GCM, stored in IndexedDB, and associated with the current thread. A SHA-256 content hash prevents duplicate storage. Branching a conversation copies and re-encrypts its document workspace for the new thread.
+## Allowing the page to reach Ollama
 
-Three strategies are available:
-
-- **Automatic** sends documents in full when they fit the selected context. Oversized targeted questions use hybrid local retrieval; oversized whole-document requests use question-directed map analysis.
-- **Exact / targeted** retrieves the most relevant source passages when the workspace is too large.
-- **Whole-document analysis** examines all document sections against the question before synthesis.
-
-### Hybrid local retrieval
-
-For oversized targeted questions, PrivateLLMLens combines two local retrieval signals:
-
-- **BM25 lexical ranking** handles exact words, identifiers, model names, code symbols and unusual technical terms well.
-- **Semantic ranking** uses `Xenova/all-MiniLM-L6-v2` locally in a dedicated WASM worker, so differently worded passages can still match the meaning of the question.
-
-Whole-document analysis processes every section, then combines all relevant findings through bounded reduction passes when they exceed the final context budget. Coverage is shown on the response; findings are not silently dropped to fit. Oversized individual text lines are split while retaining their source line number.
-
-The two rankings are combined using reciprocal-rank fusion, followed by a lightweight MMR-style diversification pass to avoid spending the context budget on several near-duplicate or adjacent chunks.
-
-Document sections are sized for the chat model (5,600 characters by default), which is far more than MiniLM reads in one pass. Each section is therefore indexed as several overlapping passages of about 900 characters. A section is scored by its best-matching passage, and the whole section is what the chat model receives.
-
-Semantic indexing is lazy: attaching a document does not immediately run the embedding model. The first targeted retrieval builds passage embeddings for that document, quantises the normalised vectors to compact signed 8-bit values, and stores them inside the existing encrypted document payload. Indexes built by 2.3.0 or earlier are rebuilt automatically on their next targeted retrieval. Later queries reuse the cached encrypted index. Conversation branches preserve the semantic index when the workspace is copied and re-encrypted.
-
-No document text or query is sent to an external embedding API. Embedding inference runs locally in the browser. If the worker, WebAssembly runtime, model load, or embedding inference is unavailable on a device, retrieval automatically falls back to local BM25 rather than blocking document Q&A.
-
-Context budgeting reserves room for the system prompt, memories, conversation and answer. Retrieved passages retain provenance. Citations open the exact decrypted page, slide or line range locally.
-
-Supported local workspace formats:
-
-- PDF, with page references
-- DOCX, including ordered paragraphs, headings, lists, tables, headers, footers, footnotes, endnotes and explicit page-break markers
-- PPTX, including slide text, tables, speaker notes and available image descriptions
-- Text, CSV, HTML, Python and JSON, with line references
-
-Legacy binary `.doc` and `.ppt` files are not parsed in-browser; convert them to DOCX, PPTX or PDF. DOCX extraction does not OCR image-only documents, and PPTX extraction does not visually interpret undescribed images, diagrams or chart graphics.
-
-Attachments are explicitly marked as untrusted data so their contents cannot override application instructions. Gemini Long Context remains a separate, explicit cloud option and never activates automatically.
-
-## Android Adreno GPU provider
-
-Reproducible Termux build instructions, portable scripts, model profiles and troubleshooting are in [`android-termux/`](android-termux/README.md).
-
-Tested Galaxy Z Fold 8 results:
-
-| Profile | Model | Context | Prompt | Generation |
-| --- | --- | ---: | ---: | ---: |
-| `qwen3-4b` | Qwen3 4B Q4_K_M | 32K | 287 tok/s | 19.8 tok/s |
-| `mistral-7b` | Mistral 7B Q4_K_M | 16K | 147 tok/s | 13.2 tok/s |
-| `deepseek-r1-8b` | DeepSeek-R1/Qwen3 8B Q4_K_M | 8K | 141 tok/s | 11.5 tok/s |
-| `gemma4-e4b` | Gemma 4 E4B Q4_0 | 8K | 203 tok/s | 17.7 tok/s |
-
-The Android launcher runs one heavyweight inference backend at a time to avoid mobile memory pressure. It also restricts both backends to one model/request slot and holds a Termux wake lock while running.
-
-```sh
-privatellmlens                    # use the remembered backend
-privatellmlens --gpu qwen3-4b    # switch to GPU and remember it
-privatellmlens --ollama          # switch to Ollama and remember it
-privatellmlens --gpu-list
-privatellmlens --stop
-```
-
-The default is Ollama. After switching once, plain `privatellmlens` continues using the remembered backend. Never run a large Ollama model and a large llama.cpp GPU model concurrently on the phone.
-
-## Ollama origins
-
-The browser origin must be allowed to access Ollama. A broad personal-machine configuration is:
+Ollama only answers web pages it has been told to trust. The simplest setting for a personal machine is:
 
 ```sh
 OLLAMA_ORIGINS="*" ollama serve
 ```
 
-This permits any website in the browser to attempt local Ollama requests. Prefer an origin-specific allowlist such as `http://127.0.0.1:8765` where practical, then restart Ollama.
+This lets any website open in your browser try to use your Ollama. If you would rather limit it, list only the address you use, for example `https://jimliddle.github.io` or `http://127.0.0.1:8765`, and restart Ollama.
 
-## Context profiles
+Recent versions of Chrome also ask before a website may contact services on your own computer or network. If you use the hosted page and see that prompt, choose **Allow**. Without it the page cannot reach Ollama.
 
-- **8K Performance:** lower KV-cache use and faster prompt handling
-- **16K Balanced:** default general-purpose Ollama context
-- **32K Maximum / deep documents:** deeper conversations and document work
-- **Utility calls** (routing, summaries, document analysis) keep their prompts within about 4K tokens but run at the selected chat context. Ollama reloads a model whenever `num_ctx` changes, so sharing one context size avoids a reload before and after every utility call.
+## One file, and what it loads
 
-Conversation History controls how many recent messages are sent verbatim; Model Context controls Ollama `num_ctx`. With **Auto-summarise Context** on, older messages are represented by a running summary stored with the thread. The summary is extended in batches once about eight further messages have aged out, so most sends need no extra model call and the prompt prefix stays stable between refreshes. Editing or deleting summarised messages rebuilds it. llama.cpp GPU contexts are fixed by the active server profile.
+Everything the app needs for its main features is inside `index.html`: the interface, the code, the icons and these libraries.
+
+| Library | Version | Used for |
+| --- | --- | --- |
+| Marked | 18.1.1 | Markdown |
+| DOMPurify | 3.4.17 | Making model output safe to display |
+| Highlight.js | 11.9.0 | Code highlighting |
+| JSZip | 3.10.1 | Reading DOCX and PPTX files |
+| Font Awesome Free | 6.5.1 | The 42 icons the interface uses |
+
+Chat, Markdown, code highlighting, DOCX and PPTX reading, encryption and backups all work with no connection other than the one to your model server. The file is about 790 KB, or about 210 KB when compressed in transit.
+
+Three things are still downloaded, and only when you use them:
+
+- **PDF.js 6.4.299**, the first time you attach a PDF. The page checks the downloaded code against a fingerprint stored in `index.html` and refuses to run it if it does not match. Scripts inside PDF files are never run.
+- **Transformers.js 4.2.0 and its model files**, for the optional in-browser chat models and for meaning-based document search (about 25 MB for the search model). These are fixed to a version but are not fingerprint-checked.
+- **Fonts** from Google Fonts. Without a connection the page uses your system fonts.
+
+The page also carries a Content Security Policy, which is a set of rules the browser enforces:
+
+- Code may only run from the file itself and from `cdn.jsdelivr.net`.
+- Images from other websites are not loaded. If a reply, a web result or a document contains one, you see a link you can choose to open. This matters because an image address can be used to send information to another site.
+- Links open in a new tab.
+- Frames, plugins and form submissions to other sites are blocked.
+
+Network requests are not restricted, because you can set the Ollama address to anything you like.
+
+There is one optional second file, `sw.js`. It is only needed for notifications on Android and is explained under [While a reply is being written](#while-a-reply-is-being-written). `index.html` works without it.
+
+## Working with documents
+
+Attach a file with the paper clip. The app reads it once, encrypts the text, and stores it with the current thread. Attaching the same file twice does not store it twice. If you branch a conversation, the new thread gets its own copy of the documents.
+
+Supported formats:
+
+- **PDF**, with page numbers
+- **DOCX**, including headings, lists, tables, headers, footers, footnotes and endnotes
+- **PPTX**, including slide text, tables, speaker notes and image descriptions where the file has them
+- **Text, CSV, HTML, Python and JSON**, with line numbers
+
+Older `.doc` and `.ppt` files are not supported. Save them as DOCX, PPTX or PDF first. Scanned documents that contain only pictures of text are not read, and pictures, diagrams and charts inside slides are not interpreted.
+
+### How large documents are handled
+
+The **Documents** setting beside the prompt box has three choices.
+
+- **Automatic** sends the whole document when it fits in the model's context. When it does not fit, the app picks one of the two methods below, based on your question.
+- **Exact / targeted** finds the passages most relevant to your question and sends only those.
+- **Whole-document analysis** reads every section against your question, then combines the findings. The reply shows how many sections were covered.
+
+### How passages are found
+
+Two searches run in the browser and their results are combined.
+
+- A **keyword search** (BM25) is good at exact words, names, part numbers and code.
+- A **meaning search** uses a small model, `all-MiniLM-L6-v2`, so a passage can match even when it uses different words from your question.
+
+The meaning search model is downloaded the first time it is needed. Its index is built per document, stored encrypted with the document, and reused afterwards. If the model cannot run on your device, the app uses the keyword search alone.
+
+No document text and no question is sent to any outside service for this.
+
+### Long files in the cloud
+
+**Long Context** is a separate option that sends whole files to Google's Gemini. It needs a Gemini API key and is only used when you tick it for a prompt.
+
+### Safety
+
+Text from documents is passed to the model marked as data to be read. The model is told not to follow instructions found inside it.
+
+## Models and context
+
+### Context size
+
+- **8K** uses the least memory and is the quickest.
+- **16K** is the default.
+- **32K** suits long conversations and large documents, and uses the most memory.
+
+These apply to Ollama. A llama.cpp server uses the context size it was started with.
+
+Behind the scenes the app sometimes asks the model short questions of its own, for example to decide whether to search the web or to summarise an older part of the chat. These use the same context size as the chat. Ollama reloads a model whenever the context size changes, so keeping one size avoids a delay before and after each of these.
+
+### Long conversations
+
+**Conversation History** in Settings sets how many recent messages are sent to the model word for word. With **Auto-summarise Context** switched on, older messages are replaced by a running summary kept with the thread. The summary is brought up to date every eight messages or so, so most prompts need no extra work.
+
+### Ollama model manager
+
+The drive button beside the model list opens the model manager. It works with your Ollama server and lets you:
+
+- see which models are in memory, how much memory they use, and when Ollama will unload them
+- unload a model to free memory straight away
+- see every installed model with its size
+- delete a model
+- download a model by name, with a progress bar and a cancel button
+
+If you cancel a download, Ollama keeps what it has and carries on from there next time.
+
+### Models in the browser
+
+**Settings → WebGPU Models** adds two small Qwen3.5 models that run entirely in the browser, with no Ollama needed. They work in Chrome and Edge. The fast one is about 850 MB to download and the better one about 1.8 GB. The browser keeps them after the first download.
 
 ## Memories
 
-**Use Memories** is enabled by default. It decrypts and ranks active facts without another inference call, injecting at most 10 memories and approximately 600 tokens. **Learn Memories** is experimental and off by default; it performs idle-time local extraction and is aborted by new foreground work.
+The app can remember facts about you and use them in later chats.
 
-Memory records contain an encrypted fact, semantic key and confidence. Exact duplicates are ignored, newer conflicting facts supersede older ones, instruction-like content and likely secrets are rejected, and storage is capped at 200 records. The manager supports manual addition, editing and deletion.
+- **Use Memories** is on by default. Before each prompt the app picks the saved facts that look relevant, up to ten of them, and gives them to the model.
+- **Learn Memories** is experimental and off by default. When switched on, the app looks for lasting facts in your conversations while it is idle and saves them.
 
-## Local tools and tool schemas
+You can add, edit and delete memories yourself in **Settings → View Memories**. Up to 200 are kept. Duplicates are ignored, a newer fact replaces an older one it contradicts, and anything that looks like an instruction or a password is not saved. Memories are encrypted.
 
-**Local Tools** is an explicit per-prompt mode that lets the selected private model call browser-only functions without sending tool arguments off-device. The initial registry includes a safe arithmetic evaluator, browser date/time, encrypted workspace document listing, hybrid document search, exact document reading and simple JSON-path inspection. Document tools preserve the existing source markers/citations.
+## Local tools
 
-Each tool is defined once with a name, description, JSON parameter schema, privacy classification (`local` or `external`) and executor. Ollama receives these schemas through native tool calling. OpenAI-compatible llama.cpp receives the same function schemas, while in-browser WebGPU models use a constrained JSON action protocol as a compatibility fallback. If native tool calling is unavailable for a local-server model, PrivateLLMLens falls back to the same JSON protocol.
+Tick **Local Tools** for a prompt and the model can use a small set of tools that run in your browser. Nothing is sent off your device.
 
-Web Research uses the same registry and additionally exposes Tavily as an **external** `web_search` tool, with a three-search limit. Tool results are treated as untrusted data and cannot override system/application instructions.
+- a calculator
+- the current date and time
+- a list of the documents in the thread
+- search within those documents
+- read an exact part of a document
+- look up a value inside JSON
 
-## Ollama model manager
+Ollama and llama.cpp models that support tool calling use it directly. Other models, including the in-browser ones, are given a simpler text format that does the same job.
 
-The drive button beside the model selector opens the model manager for the configured Ollama server. It shows which models are in memory, with their memory use, context size and time until Ollama unloads them, and lets you unload one to free RAM straight away. It lists installed models with size, parameter count and quantisation, and can delete one. **Download a model** pulls a model by name with a progress bar; cancelling keeps the part already downloaded, and Ollama resumes from it. The manager talks only to your Ollama server. It does not manage llama.cpp.
+## Web search and cloud services
 
-## While generating
+All of these are optional. Each needs its own API key, entered in Settings, and none is used unless you switch it on.
 
-- **Keep screen awake** (on by default) holds a screen wake lock during a response or a model download, so a phone does not lock and suspend the page part-way through. The browser releases the lock when the app is hidden.
-- **Alert when a reply finishes in the background** (off by default) shows a notification, changes the tab title and plays a short sound when a response completes while the app is not in front. The alert never contains the prompt, the reply or the thread name, because notifications can be read from a lock screen.
+| Option | What it does | What leaves your device |
+| --- | --- | --- |
+| **Web Search** | One Tavily search, then your local model answers | The search query |
+| **Auto-search** | The app decides whether a prompt needs a search. If unsure, it does not search | The search query, when it searches |
+| **Web Research** | Up to three Tavily searches, then your local model writes the answer with sources | The search queries |
+| **Perplexity** | Perplexity answers the prompt | The prompt |
+| **Generate Image** | OpenAI creates an image | The prompt |
+| **Long Context** | Gemini reads whole files | The prompt and the files |
 
-Android browsers cannot show a notification from a page alone. The repository therefore includes an optional `sw.js` beside `index.html`: a service worker that caches nothing and handles no requests, registered only when the alert is switched on, whose single job is to show that notification. Without it everything else works, and the alert falls back to the title and sound.
+API keys are stored encrypted in the browser. They are never included in exports or backups.
 
-## Search and cloud features
+## While a reply is being written
 
-- **Web Search:** one explicit Tavily search
-- **Auto-search:** a conservative hybrid router uses deterministic rules first, then a strict low-temperature JSON decision for ambiguous requests; uncertain decisions remain local
-- **Web Research:** an explicit structured search/answer loop with up to three distinct Tavily searches, URL deduplication, global citation numbering and guaranteed final synthesis
-- **Perplexity:** search-grounded cloud answers
-- **OpenAI:** image generation
-- **Gemini:** explicit cloud long-context file processing
+Two settings help with long answers, mainly on phones. Both are in **Settings → While generating**.
 
-Tavily search queries leave the device even though answer generation can remain local. Local and cloud requests share cancellation, and changing threads discards stale replies.
+- **Keep screen awake** is on by default. It stops the screen from locking during a reply or a model download, because a locked phone pauses the page and the reply stalls.
+- **Alert when a reply finishes in the background** is off by default. When it is on and the app is not in front, it shows a notification, changes the tab title and plays a short sound when the reply is ready.
 
-Provider keys are stored in the WebCrypto vault. Leave a key unset to keep its integration unavailable.
+The alert never shows your prompt, the reply or the thread name. Notifications can appear on a lock screen, so it only says that a reply is ready.
 
-## Local storage and privacy
+Android browsers will not show a notification from a web page by itself. They need a small helper file called a service worker. That is what `sw.js` is for. It stores nothing and does not touch your requests. The app only uses it once you switch the alert on. If the file is missing, the alert still changes the title and plays the sound.
 
-PrivateLLMLens uses IndexedDB version 6 for threads, messages, memories, the WebCrypto vault, and document workspaces, all encrypted. Non-sensitive preferences remain in `localStorage`.
+## Privacy and stored data
 
-Message content and thread details (name, system prompt, parameters and the running summary) are encrypted with the vault key. Only what the database needs for ordering stays readable: record ids, the thread a message belongs to, timestamps, and a message's role and type. Chats stored by versions before 2.5 are encrypted automatically the first time 2.5 opens them. After that, a copy of the page older than 2.5 cannot read them, so update any separately downloaded `index.html`.
+Everything is stored in your browser, for the address you opened the app from. A different address, port or browser has its own separate storage.
+
+### What is encrypted
+
+Chats, thread names, system prompts, documents, memories and API keys are all encrypted with AES-256-GCM. The only parts left readable are the ones the database needs to keep things in order: record numbers, which thread a message belongs to, timestamps, and whether a message came from you or the model.
+
+Chats saved by versions before 2.5 are encrypted the first time 2.5 opens them. After that an older copy of `index.html` cannot read them. If you keep your own copy of the file, replace it with the current one.
 
 ### Passphrase lock
 
-By default the vault key is kept in the browser beside the data it protects. That stops casual inspection of browser storage but not someone who has the browser profile. **Settings → Security → Set passphrase** closes that gap: a new key is generated, everything is re-encrypted under it in one all-or-nothing step, and the key is stored only wrapped by a key derived from the passphrase (PBKDF2-SHA256, 600,000 iterations, AES-256-GCM). The app then shows an unlock screen each time it opens, and nothing can be read before the passphrase is entered. **Lock now** locks immediately, and the app can lock itself after 1, 5, 15 or 60 minutes in the background.
+Without a passphrase, the encryption key is kept in the browser next to the data. That stops someone casually looking through browser storage, but it would not stop someone who has a copy of your whole browser profile.
 
-There is no recovery. A forgotten passphrase leaves only "erase everything", so take an encrypted workspace backup before setting a lock. The backup has its own password and does not depend on the lock. The lock protects stored data; it does not protect an unlocked, open app.
+**Settings → Security → Set passphrase** closes that gap. The app creates a new key, encrypts everything again with it, and stores the key only in a form that your passphrase unlocks. From then on:
 
-Provider keys, memories, document filenames, extracted document content and cached semantic document indexes use AES-256-GCM with fresh random IVs and authenticated record identity. The non-extractable vault key is stored in IndexedDB. This protects against casual storage inspection, not malicious JavaScript already executing in the application origin. The remaining CDN downloads (PDF.js, hash-checked, and the optional Transformers.js runtime) are part of the trust boundary.
+- the app asks for the passphrase every time it opens
+- nothing can be read until you enter it
+- **Lock now** locks it straight away
+- it can lock itself after 1, 5, 15 or 60 minutes in the background
 
-### Storage durability
+**If you forget the passphrase, your data cannot be recovered.** The only option left is to erase everything. Save an encrypted backup before you set a lock. The backup has its own password and does not depend on the lock.
 
-Browser storage is "best effort" unless the browser has been asked to keep it: under storage pressure it can be cleared without warning, and that would take chats, documents and the vault key together. PrivateLLMLens asks for persistent storage after the first message, document or API key is saved, and straight away when it runs as an installed app. Chromium grants this silently for installed or regularly used sites; Firefox asks the user. A refusal is not repeated for two weeks.
+The lock protects stored data. It does not protect the app while it is open and unlocked.
 
-**Settings → Storage** shows whether storage is protected, how much space is used against the browser's allowance, what is stored, and when the last encrypted backup was taken, with buttons to request protection and to back up. The sidebar shows a notice when data is unprotected and has never been backed up, or when storage passes 75% and 90% full. A write that fails, for example because storage is full, is reported instead of being dropped silently.
+For those who want the detail: the key is wrapped with AES-256-GCM using a key derived from the passphrase by PBKDF2-SHA256 with 600,000 rounds.
 
-Protection stops automatic eviction only. Clearing site data, uninstalling the browser or changing device still removes everything, so the encrypted workspace backup remains the durable copy.
+### Keeping your data
 
-Browser storage is origin-scoped. Changing hostname, port, protocol or file origin creates a different storage area. The **Export chat** button creates a plain JSON conversation export, compatible with existing conversation backups. It excludes API keys, memories and documents. **Workspace backup** creates a password-encrypted `.pllbackup` file containing conversations, extracted document workspaces, cached semantic indexes, source references and memories. API keys and network endpoints are excluded from both formats.
+Browsers are allowed to clear a website's storage when a device runs short of space. That would remove your chats, documents and keys together.
 
-Workspace backups use a fresh salt and IV, PBKDF2-SHA256 (310,000 iterations) and AES-256-GCM. Keep the backup password: the app cannot recover it. Use **Import** to restore either format; encrypted backups are authenticated and validated before one atomic import transaction. New IDs and encryption are generated for the destination browser, and document citations are remapped. Existing data is kept. Imported preferences are allowlisted and cannot silently redirect the Ollama endpoint or install provider credentials.
+The app asks the browser to protect its storage once you have saved something, and straight away when it is installed as an app. Chrome and Edge usually agree without asking you, especially for an installed app. Firefox shows a prompt.
 
-## PWA installation
+**Settings → Storage** shows:
 
-Install from HTTPS, `http://localhost`, or `http://127.0.0.1`. Browsers do not permit installation from raw `file://` URLs. Use the header install button or the browser's **Add to Home screen** action.
+- whether storage is protected
+- how much space is used
+- how many threads, messages, documents and memories are stored
+- when you last saved an encrypted backup
 
-At narrow phone widths, Settings and layout remain visible, with installation, shortcuts and fullscreen in **More actions**. Browser zoom stays enabled, form controls have associated labels, and modal dialogs retain and restore keyboard focus.
+A notice appears in the sidebar if your data is unprotected and has never been backed up, or if storage is nearly full. If something cannot be saved, for example because storage is full, the app tells you.
 
-On touch devices, the compact composer exposes Tools and Model as stable bottom sheets and keeps response-copy controls visible. The header layout button switches directly between Compact and Desktop; **Settings → Appearance → Layout** also offers Automatic mode, which follows screen size and pointer capability.
+Protection only stops the browser clearing storage by itself. Clearing site data, removing the browser or changing device still removes everything. A backup file is the only copy that survives those.
+
+### Backups and exports
+
+- **Export chat** saves your conversations as a plain, readable JSON file. It leaves out API keys, memories and documents.
+- **Workspace backup** saves conversations, documents and memories in one file, encrypted with a password you choose. It leaves out API keys and server addresses.
+- **Import** restores either kind of file. Your existing data is kept and the imported data is added to it.
+
+Keep the backup password safe. The app cannot recover it. Backups use PBKDF2-SHA256 with 310,000 rounds and AES-256-GCM.
+
+### Voice input
+
+Voice input uses your browser's speech recognition. In Chrome this normally sends the audio to Google to be turned into text. Do not use it for anything you want to keep on your device.
+
+### Limits
+
+The encryption protects data at rest in the browser. It does not protect against harmful code running inside the page, so the code the page loads matters. That is why the main libraries are built in, PDF.js is checked before it runs, and model output is cleaned before it is shown.
+
+## Installing as an app
+
+Open the app from an HTTPS address, `http://localhost` or `http://127.0.0.1`, then use the install button in the header or your browser's **Add to Home screen**. Browsers do not allow installing from a file opened directly from disk.
+
+On a phone the prompt box is compact, with **Tools** and **Model** buttons that open panels from the bottom of the screen. The button in the header switches between the compact and desktop layouts. **Settings → Appearance → Layout** also offers **Automatic**, which picks a layout to suit the screen.
+
+Zooming works as normal, form fields are labelled for screen readers, and dialogs keep keyboard focus inside them.
+
+## Android GPU acceleration
+
+On some Android phones, llama.cpp can use the phone's graphics chip, which is much faster than the processor alone. Build instructions, scripts, model profiles and troubleshooting are in [`android-termux/`](android-termux/README.md).
+
+Results on a Samsung Galaxy Z Fold 8:
+
+| Profile | Model | Context | Reading the prompt | Writing the reply |
+| --- | --- | ---: | ---: | ---: |
+| `qwen3-4b` | Qwen3 4B Q4_K_M | 32K | 287 tokens/s | 19.8 tokens/s |
+| `mistral-7b` | Mistral 7B Q4_K_M | 16K | 147 tokens/s | 13.2 tokens/s |
+| `deepseek-r1-8b` | DeepSeek-R1/Qwen3 8B Q4_K_M | 8K | 141 tokens/s | 11.5 tokens/s |
+| `gemma4-e4b` | Gemma 4 E4B Q4_0 | 8K | 203 tokens/s | 17.7 tokens/s |
+
+The launcher script runs either Ollama or the GPU server, never both, because a phone does not have the memory for two large models at once.
+
+```sh
+privatellmlens                    # start with the last one you used
+privatellmlens --gpu qwen3-4b    # switch to the GPU server and remember it
+privatellmlens --ollama          # switch to Ollama and remember it
+privatellmlens --gpu-list        # list the GPU profiles
+privatellmlens --stop
+```
+
+Ollama is the default until you switch.
 
 ## Development
 
-There is no application build step. Edit `index.html`, reload, and test against a local provider. The embedded libraries and icons sit in a marked block generated by `npm run vendor` from the versions pinned in `package.json`; run it after changing a library version or using a new Font Awesome icon class. `npm test` fails if the block is out of date. Model discovery uses capability metadata when available and excludes embedding-only models from chat. A saved model must still be available; known text-only models report a clear error for image input.
+There is nothing to build. Edit `index.html`, reload the page and test against a local model server.
 
-Development-only regression tests run with Node.js 22 or newer:
+The built-in libraries and icons sit in a marked block near the top of the file. That block is written by a script from the versions listed in `package.json`:
+
+```sh
+npm run vendor
+```
+
+Run it after changing a library version, or after using a Font Awesome icon the page has not used before. The tests fail if the block is out of date.
+
+Tests need Node.js 22 or newer:
 
 ```sh
 npm ci
-npm test
+npm test                          # tests that run in Node
 npx playwright install chromium
-npm run test:browser
+npm run test:browser              # tests that run in a real browser
 ```
 
-`npm run test:all` runs both suites. PDF reference fixtures are downloaded from a pinned Mozilla tag and checksum-verified; baseline hashes compare content across all 17 pages while allowing equivalent Unicode and whitespace formatting. Browser tests use synthetic provider responses rather than paid APIs. GitHub Actions runs these checks on pull requests and `main`.
+`npm run test:all` runs both. The tests use made-up model replies, so they need no model server and no paid API keys. GitHub Actions runs them on every pull request and on `main`.
 
-For browser environments where a separate test browser cannot launch, run `node tests/server.cjs` and open `http://127.0.0.1:18767/native`. This local-only harness uses a separate test database and synthetic providers to exercise streaming, tools, PDF workers/source viewing, encrypted restore and cancellation. The production HTML does not include the harness. A basic main-script syntax check is:
+If a test browser cannot be started on your machine, run `node tests/server.cjs` and open `http://127.0.0.1:18767/native` in your own browser. It runs a set of checks in the page against a separate test database.
+
+To check the main script for syntax errors:
 
 ```sh
 awk '/^  <script>$/{inside=1;next} /^  <\/script>$/{inside=0} inside{print}' index.html > /tmp/privatellmlens.js
 node --check /tmp/privatellmlens.js
 ```
 
-## License and contributions
+A fuller list of features is in [`corefunctionality.md`](corefunctionality.md).
 
-Issues, pull requests, suggestions and stars are welcome. Security-sensitive changes should account for the single-file deployment model and the page's access to local conversations, documents and unlocked provider credentials.
+## Licence and contributions
+
+PrivateLLMLens is released under the BSD 3-Clause licence. See [`LICENSE`](LICENSE). The licences of the built-in libraries are in the `third party licenses` folder.
+
+Issues, pull requests and suggestions are welcome. If a change touches security, please keep in mind that the app is one file and that the page can read the user's chats, documents and unlocked API keys.
